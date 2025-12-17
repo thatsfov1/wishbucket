@@ -1,0 +1,48 @@
+.friends-page {
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.section-title {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: var(--spacing);
+  color: var(--tg-theme-text-color);
+}
+
+.help-text {
+  font-size: 14px;
+  color: var(--tg-theme-hint-color);
+  margin-bottom: var(--spacing);
+}
+
+.share-section {
+  text-align: center;
+}
+
+.empty-state {
+  text-align: center;
+  padding: var(--spacing);
+  color: var(--tg-theme-hint-color);
+}
+
+.friends-list {
+  margin-top: var(--spacing);
+}
+
+.friend-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--spacing);
+}
+
+.friend-info {
+  flex: 1;
+}
+
+.friend-id {
+  color: var(--tg-theme-text-color);
+  font-size: 16px;
+}
+

@@ -1,0 +1,75 @@
+.telegram-warning {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  padding: var(--spacing);
+}
+
+.warning-content {
+  background-color: var(--tg-theme-bg-color);
+  border-radius: var(--border-radius);
+  padding: var(--spacing);
+  max-width: 500px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.warning-content h3 {
+  margin: 0 0 var(--spacing) 0;
+  color: var(--warning-color);
+  font-size: 20px;
+}
+
+.warning-content p {
+  margin: var(--spacing) 0;
+  color: var(--tg-theme-text-color);
+  line-height: 1.6;
+}
+
+.warning-content ol {
+  margin: var(--spacing) 0;
+  padding-left: 24px;
+  color: var(--tg-theme-text-color);
+}
+
+.warning-content li {
+  margin: 8px 0;
+  line-height: 1.6;
+}
+
+.warning-content code {
+  background-color: var(--tg-theme-secondary-bg-color);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 14px;
+}
+
+.warning-note {
+  font-size: 14px;
+  color: var(--tg-theme-hint-color);
+  font-style: italic;
+}
+
+.warning-content button {
+  margin-top: var(--spacing);
+  padding: 12px 24px;
+  background-color: var(--tg-theme-button-color);
+  color: var(--tg-theme-button-text-color);
+  border: none;
+  border-radius: var(--border-radius);
+  font-size: 16px;
+  cursor: pointer;
+  width: 100%;
+}
+
+.warning-content button:active {
+  opacity: 0.8;
+}
+

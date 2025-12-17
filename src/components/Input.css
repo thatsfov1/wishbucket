@@ -1,0 +1,47 @@
+.input-group {
+  margin-bottom: var(--spacing);
+}
+
+.input-label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--tg-theme-text-color);
+}
+
+.input,
+.textarea {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: var(--border-radius);
+  font-size: 16px;
+  background-color: var(--tg-theme-bg-color);
+  color: var(--tg-theme-text-color);
+  transition: border-color 0.2s;
+}
+
+.input:focus,
+.textarea:focus {
+  border-color: var(--tg-theme-button-color);
+  outline: none;
+}
+
+.input-error {
+  border-color: var(--danger-color);
+}
+
+.input-error-text {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--danger-color);
+}
+
+.textarea {
+  min-height: 100px;
+  resize: vertical;
+  font-family: inherit;
+}
+
