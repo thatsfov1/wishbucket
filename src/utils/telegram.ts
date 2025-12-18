@@ -11,6 +11,7 @@ declare global {
           };
           auth_date?: number;
           hash?: string;
+          start_param?: string;
         };
         colorScheme: "light" | "dark";
         themeParams: {
@@ -157,4 +158,88 @@ export const hapticFeedback = {
   selection: () => {
     window.Telegram?.WebApp?.HapticFeedback?.selectionChanged();
   },
+};
+
+/**
+ * Gets the start_param from Telegram deep link
+ * Checks multiple sources:
+ * 1. initDataUnsafe.start_param (for startapp= links)
+ * 2. URL hash params tgWebAppStartParam (Telegram sometimes passes it here)
+ * 3. URL query params (fallback)
+ */
+export const getStartParam = (): string | null => {
+  const webApp = window.Telegram?.WebApp;
+
+  // Method 1: Check initDataUnsafe.start_param
+  let startParam = webApp?.initDataUnsafe?.start_param || null;
+
+  console.log("🔍 Telegram WebApp:", !!webApp);
+  console.log("🔍 initDataUnsafe:", webApp?.initDataUnsafe);
+  console.log("🔍 start_param from initDataUnsafe:", startParam);
+
+  // Method 2: Check URL hash for tgWebAppStartParam
+  if (!startParam && window.location.hash) {
+    const hashParams = new URLSearchParams(window.location.hash.slice(1));
+    startParam = hashParams.get("tgWebAppStartParam");
+    console.log("🔍 start_param from hash:", startParam);
+  }
+
+  // Method 3: Check URL query params
+  if (!startParam) {
+    const urlParams = new URLSearchParams(window.location.search);
+    startParam = urlParams.get("tgWebAppStartParam") || urlParams.get("start");
+    console.log("🔍 start_param from URL query:", startParam);
+  }
+
+  // Method 4: Check initData string (parse it ourselves)
+  if (!startParam && webApp?.initData) {
+    try {
+      const initDataParams = new URLSearchParams(webApp.initData);
+      startParam = initDataParams.get("start_param");
+      console.log("🔍 start_param from initData string:", startParam);
+    } catch (e) {
+      console.log("🔍 Failed to parse initData:", e);
+    }
+  }
+
+  console.log("🔍 Final start_param:", startParam);
+  return startParam;
+};
+
+/**
+ * Parses referral code from start_param
+ * Link format: https://t.me/wishbucket_bot/app?startapp=ref_CODE
+ * Returns null if not a referral link
+ */
+export const getReferralCodeFromStart = (): string | null => {
+  const startParam = getStartParam();
+  console.log("🎫 getReferralCodeFromStart - startParam:", startParam);
+
+  if (!startParam) return null;
+
+  // Format: ref_CODE
+  if (startParam.startsWith("ref_")) {
+    const code = startParam.substring(4); // Remove 'ref_' prefix
+    console.log("🎫 Extracted referral code:", code);
+    return code;
+  }
+
+  return null;
+};
+
+/**
+ * Parses wishlist ID from start_param
+ * Link format: https://t.me/wishbucket_bot/app?startapp=wishlist_ID
+ * Returns null if not a wishlist link
+ */
+export const getWishlistIdFromStart = (): string | null => {
+  const startParam = getStartParam();
+  if (!startParam) return null;
+
+  // Format: wishlist_ID
+  if (startParam.startsWith("wishlist_")) {
+    return startParam.substring(9); // Remove 'wishlist_' prefix
+  }
+
+  return null;
 };

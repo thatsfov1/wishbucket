@@ -90,7 +90,7 @@ export default function ProfilePage() {
     const telegramUser = getTelegramUser();
     const message = `Join Wish Bucket and use my referral code: ${referralCode}\n\nGet bonus points when you sign up!`;
     openTelegramLink(
-      `https://t.me/share/url?url=https://t.me/wishly_bot&text=${encodeURIComponent(
+      `https://t.me/share/url?url=https://t.me/wishbucket_bot/app?startapp=invite&text=${encodeURIComponent(
         message
       )}`
     );

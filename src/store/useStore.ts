@@ -20,6 +20,9 @@ interface AppState {
   // Birthday reminders
   birthdayReminders: BirthdayReminder[];
   
+  // Notifications
+  unreadNotificationsCount: number;
+  
   // UI state
   isLoading: boolean;
   error: string | null;
@@ -37,6 +40,7 @@ interface AppState {
   setSecretSantas: (santas: SecretSanta[]) => void;
   addSecretSanta: (santa: SecretSanta) => void;
   setBirthdayReminders: (reminders: BirthdayReminder[]) => void;
+  setUnreadNotificationsCount: (count: number) => void;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
 }
@@ -49,6 +53,7 @@ export const useStore = create<AppState>((set) => ({
   items: [],
   secretSantas: [],
   birthdayReminders: [],
+  unreadNotificationsCount: 0,
   isLoading: false,
   error: null,
   
@@ -73,6 +78,7 @@ export const useStore = create<AppState>((set) => ({
   setSecretSantas: (santas) => set({ secretSantas: santas }),
   addSecretSanta: (santa) => set((state) => ({ secretSantas: [...state.secretSantas, santa] })),
   setBirthdayReminders: (reminders) => set({ birthdayReminders: reminders }),
+  setUnreadNotificationsCount: (count) => set({ unreadNotificationsCount: count }),
   setLoading: (loading) => set({ isLoading: loading }),
   setError: (error) => set({ error }),
 }));

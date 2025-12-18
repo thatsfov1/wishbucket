@@ -1,15 +1,18 @@
 import { useEffect } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { initTelegram, getTelegramUser } from "./utils/telegram";
+import {
+  initTelegram,
+  getTelegramUser,
+  getReferralCodeFromStart,
+  getWishlistIdFromStart,
+} from "./utils/telegram";
 import { useStore } from "./store/useStore";
-// Використовуємо Supabase API
 import {
   getUserProfile,
   getWishlists,
   getBirthdayReminders,
+  applyReferral,
 } from "./services/supabase-api";
-
-// Pages
 import HomePage from "./pages/HomePage";
 import WishlistsPage from "./pages/WishlistsPage";
 import WishlistDetailPage from "./pages/WishlistDetailPage";
@@ -18,7 +21,10 @@ import SecretSantaPage from "./pages/SecretSantaPage";
 import ProfilePage from "./pages/ProfilePage";
 import FriendsPage from "./pages/FriendsPage";
 import CrowdfundingPage from "./pages/CrowdfundingPage";
-import TelegramWarning from "./components/TelegramWarning";
+import InspirationPage from "./pages/InspirationPage";
+import FindGiftPage from "./pages/FindGiftPage";
+import NotificationsPage from "./pages/NotificationsPage";
+import FriendProfilePage from "./pages/FriendProfilePage";
 
 function App() {
   const {
@@ -30,14 +36,12 @@ function App() {
   } = useStore();
 
   useEffect(() => {
-    // Initialize Telegram WebApp
     const tg = initTelegram();
     if (!tg) {
       console.warn("Telegram WebApp not available");
       return;
     }
 
-    // Load initial data
     const loadData = async () => {
       try {
         setLoading(true);
@@ -46,15 +50,44 @@ function App() {
           throw new Error("User not authenticated");
         }
 
-        // Load user profile
+        // Get user profile (creates new user if doesn't exist)
         const profile = await getUserProfile();
         setUserProfile(profile);
 
-        // Load wishlists
+        // Check for referral code in start_param
+        const referralCode = getReferralCodeFromStart();
+        console.log("🔍 Start param referral code:", referralCode);
+
+        if (referralCode) {
+          console.log("📝 Attempting to apply referral code:", referralCode);
+          try {
+            // Check if this is a new user (no referrals used before)
+            const result = await applyReferral(referralCode);
+            console.log("✅ Referral result:", result);
+            if (result.success) {
+              console.log(
+                `🎉 Referral applied! Earned ${result.bonus} bonus points`
+              );
+              // Refresh profile to get updated bonus
+              const updatedProfile = await getUserProfile();
+              setUserProfile(updatedProfile);
+            }
+          } catch (e: any) {
+            // Log the actual error
+            console.error("❌ Referral error:", e?.message || e);
+          }
+        }
+
+        // Check for wishlist deeplink
+        const wishlistId = getWishlistIdFromStart();
+        if (wishlistId) {
+          // Navigate to wishlist (handled by router)
+          window.location.hash = `/wishlists/${wishlistId}`;
+        }
+
         const wishlists = await getWishlists();
         setWishlists(wishlists);
 
-        // Load birthday reminders
         const reminders = await getBirthdayReminders();
         setBirthdayReminders(reminders);
       } catch (error) {
@@ -77,22 +110,23 @@ function App() {
   ]);
 
   return (
-    <>
-      <TelegramWarning />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/wishlists" element={<WishlistsPage />} />
-          <Route path="/wishlists/:id" element={<WishlistDetailPage />} />
-          <Route path="/wishlists/:id/add-item" element={<AddItemPage />} />
-          <Route path="/secret-santa" element={<SecretSantaPage />} />
-          <Route path="/profile" element={<ProfilePage />} />
-          <Route path="/friends" element={<FriendsPage />} />
-          <Route path="/crowdfunding" element={<CrowdfundingPage />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </BrowserRouter>
-    </>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/wishlists" element={<WishlistsPage />} />
+        <Route path="/wishlists/:id" element={<WishlistDetailPage />} />
+        <Route path="/wishlists/:id/add-item" element={<AddItemPage />} />
+        <Route path="/secret-santa" element={<SecretSantaPage />} />
+        <Route path="/profile" element={<ProfilePage />} />
+        <Route path="/friends" element={<FriendsPage />} />
+        <Route path="/user/:userId" element={<FriendProfilePage />} />
+        <Route path="/crowdfunding" element={<CrowdfundingPage />} />
+        <Route path="/inspiration" element={<InspirationPage />} />
+        <Route path="/find-gift" element={<FindGiftPage />} />
+        <Route path="/notifications" element={<NotificationsPage />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </BrowserRouter>
   );
 }
 

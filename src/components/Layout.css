@@ -2,82 +2,61 @@
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background-color: var(--tg-theme-bg-color);
+  background: var(--bg-primary);
+  transition: background var(--transition-normal);
+}
+
+.custom-layout {
+  background: transparent;
 }
 
 .header {
   display: flex;
   align-items: center;
-  padding: var(--spacing);
-  background-color: var(--tg-theme-secondary-bg-color);
-  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  padding: 16px;
+  background: var(--bg-secondary);
   position: sticky;
   top: 0;
   z-index: 100;
   gap: 12px;
-}
-
-.header-avatar {
-  margin-left: auto;
+  border-bottom: 1px solid var(--border-color);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
 }
 
 .back-button {
-  background: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: var(--bg-tertiary);
   border: none;
-  font-size: 24px;
-  padding: 8px 12px;
-  margin-right: 12px;
-  color: var(--tg-theme-text-color);
+  color: var(--text-primary);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.back-button:active {
+  transform: scale(0.95);
 }
 
 .header-title {
   font-size: 20px;
   font-weight: 600;
-  color: var(--tg-theme-text-color);
+  color: var(--text-primary);
   margin: 0;
+  flex: 1;
 }
 
 .main-content {
   flex: 1;
-  padding: var(--spacing);
-  padding-bottom: 80px; /* Space for bottom nav */
+  padding: 16px;
+  padding-bottom: 100px;
   overflow-y: auto;
 }
 
-.bottom-nav {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  display: flex;
-  background-color: var(--tg-theme-secondary-bg-color);
-  border-top: 1px solid rgba(0, 0, 0, 0.1);
-  z-index: 100;
-}
-
-.nav-item {
-  flex: 1;
-  padding: 12px;
-  background: none;
-  border: none;
-  color: var(--tg-theme-hint-color);
-  font-size: 12px;
-  cursor: pointer;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  transition: color 0.2s;
-}
-
-.nav-item.active {
-  color: var(--tg-theme-button-color);
-}
-
-.nav-item:active {
-  opacity: 0.7;
+.main-content.no-header {
+  padding: 0;
 }

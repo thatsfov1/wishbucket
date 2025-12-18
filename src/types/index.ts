@@ -13,6 +13,8 @@ export interface Wishlist {
   userId: number;
   name: string;
   description?: string;
+  imageUrl?: string;
+  eventDate?: string;
   isPublic: boolean;
   isDefault: boolean;
   createdAt: string;
@@ -103,4 +105,74 @@ export interface BirthdayReminder {
   birthday: string;
   daysUntil: number;
   notified: boolean;
+}
+
+// Friend types
+export interface Friend {
+  id: number;
+  firstName: string;
+  lastName?: string;
+  username?: string;
+  photoUrl?: string;
+  isFollowing: boolean;
+  isFollowedBy: boolean;
+  addedAt: string;
+}
+
+export interface FriendRequest {
+  id: string;
+  fromUserId: number;
+  fromUser: {
+    firstName: string;
+    lastName?: string;
+    username?: string;
+    photoUrl?: string;
+  };
+  status: 'pending' | 'accepted' | 'rejected';
+  createdAt: string;
+}
+
+// Notification types
+export type NotificationType = 
+  | 'new_follower'
+  | 'item_reserved'
+  | 'item_purchased'
+  | 'wishlist_shared'
+  | 'birthday_reminder'
+  | 'friend_added_item'
+  | 'referral_signup'
+  | 'bonus_earned';
+
+export interface Notification {
+  id: string;
+  userId: number;
+  type: NotificationType;
+  title: string;
+  message: string;
+  data?: Record<string, any>;
+  read: boolean;
+  createdAt: string;
+}
+
+// Referral types
+export interface Referral {
+  id: string;
+  referrerId: number;
+  referredUserId: number;
+  referredUser: {
+    firstName: string;
+    lastName?: string;
+    username?: string;
+    photoUrl?: string;
+  };
+  bonusEarned: number;
+  createdAt: string;
+}
+
+export interface ReferralStats {
+  referralCode: string;
+  totalReferrals: number;
+  activeReferrals: number;
+  totalBonusEarned: number;
+  referralLink: string;
 }

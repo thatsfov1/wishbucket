@@ -12,7 +12,12 @@ import {
   UserProfile, 
   SecretSanta, 
   BirthdayReminder,
-  TelegramUser 
+  TelegramUser,
+  Friend,
+  Notification,
+  NotificationType,
+  Referral,
+  ReferralStats,
 } from '../types';
 import { getTelegramUser } from '../utils/telegram';
 
@@ -54,6 +59,8 @@ const mapWishlist = (wishlist: any, items: any[] = []): Wishlist => {
     userId: wishlist.user_id,
     name: wishlist.name,
     description: wishlist.description || undefined,
+    imageUrl: wishlist.image_url || undefined,
+    eventDate: wishlist.event_date || undefined,
     isPublic: wishlist.is_public,
     isDefault: wishlist.is_default,
     createdAt: wishlist.created_at,
@@ -256,7 +263,7 @@ export const applyReferralCode = async (code: string): Promise<void> => {
 // ============================================
 
 /**
- * Додає друга
+ * Додає друга (follow)
  */
 export const addFriend = async (friendId: number): Promise<void> => {
   const userId = getCurrentUserId();
@@ -267,6 +274,16 @@ export const addFriend = async (friendId: number): Promise<void> => {
   if (userId === friendId) {
     throw new Error('Cannot add yourself as a friend');
   }
+
+  // Check if they already follow us (for "follow back" notification)
+  const { data: existingFollow } = await supabase
+    .from('friends')
+    .select('id')
+    .eq('user_id', friendId)
+    .eq('friend_id', userId)
+    .single();
+
+  const isFollowBack = !!existingFollow;
 
   const { error } = await supabase
     .from('friends')
@@ -281,10 +298,29 @@ export const addFriend = async (friendId: number): Promise<void> => {
     }
     throw new Error(`Failed to add friend: ${error.message}`);
   }
+
+  // Get current user's data for notification
+  const telegramUser = getTelegramUser();
+  const userName = telegramUser?.first_name || 'Someone';
+
+  // Send notification to the person being followed
+  try {
+    await createNotification(
+      friendId,
+      isFollowBack ? 'new_follower' : 'new_follower',
+      isFollowBack ? '🎉 New Follower!' : '👤 New Follower!',
+      isFollowBack 
+        ? `${userName} followed you back!`
+        : `${userName} started following you`,
+      { followerId: userId, isFollowBack }
+    );
+  } catch (e) {
+    console.error('Failed to send follow notification:', e);
+  }
 };
 
 /**
- * Видаляє друга
+ * Видаляє друга (unfollow)
  */
 export const removeFriend = async (friendId: number): Promise<void> => {
   const userId = getCurrentUserId();
@@ -301,6 +337,374 @@ export const removeFriend = async (friendId: number): Promise<void> => {
   if (error) {
     throw new Error(`Failed to remove friend: ${error.message}`);
   }
+};
+
+/**
+ * Отримує список друзів (following)
+ */
+export const getFriends = async (): Promise<Friend[]> => {
+  const userId = getCurrentUserId();
+  if (!userId) {
+    throw new Error('User not authenticated');
+  }
+
+  // Get people I follow
+  const { data: following, error: followingError } = await supabase
+    .from('friends')
+    .select(`
+      friend_id,
+      created_at,
+      friend:users!friends_friend_id_fkey (
+        user_id,
+        telegram_data
+      )
+    `)
+    .eq('user_id', userId);
+
+  if (followingError) {
+    throw new Error(`Failed to fetch friends: ${followingError.message}`);
+  }
+
+  // Get people who follow me
+  const { data: followers } = await supabase
+    .from('friends')
+    .select('user_id')
+    .eq('friend_id', userId);
+
+  const followerIds = new Set(followers?.map(f => f.user_id) || []);
+
+  return (following || []).map(f => {
+    const telegramData = typeof f.friend.telegram_data === 'string' 
+      ? JSON.parse(f.friend.telegram_data) 
+      : f.friend.telegram_data;
+    
+    return {
+      id: f.friend.user_id,
+      firstName: telegramData.first_name,
+      lastName: telegramData.last_name,
+      username: telegramData.username,
+      photoUrl: telegramData.photo_url,
+      isFollowing: true,
+      isFollowedBy: followerIds.has(f.friend.user_id),
+      addedAt: f.created_at,
+    };
+  });
+};
+
+/**
+ * Отримує список підписників (followers)
+ */
+export const getFollowers = async (): Promise<Friend[]> => {
+  const userId = getCurrentUserId();
+  if (!userId) {
+    throw new Error('User not authenticated');
+  }
+
+  // Get people who follow me
+  const { data: followers, error: followersError } = await supabase
+    .from('friends')
+    .select(`
+      user_id,
+      created_at,
+      user:users!friends_user_id_fkey (
+        user_id,
+        telegram_data
+      )
+    `)
+    .eq('friend_id', userId);
+
+  if (followersError) {
+    throw new Error(`Failed to fetch followers: ${followersError.message}`);
+  }
+
+  // Get people I follow
+  const { data: following } = await supabase
+    .from('friends')
+    .select('friend_id')
+    .eq('user_id', userId);
+
+  const followingIds = new Set(following?.map(f => f.friend_id) || []);
+
+  return (followers || []).map(f => {
+    const telegramData = typeof f.user.telegram_data === 'string' 
+      ? JSON.parse(f.user.telegram_data) 
+      : f.user.telegram_data;
+    
+    return {
+      id: f.user.user_id,
+      firstName: telegramData.first_name,
+      lastName: telegramData.last_name,
+      username: telegramData.username,
+      photoUrl: telegramData.photo_url,
+      isFollowing: followingIds.has(f.user.user_id),
+      isFollowedBy: true,
+      addedAt: f.created_at,
+    };
+  });
+};
+
+/**
+ * Пошук користувачів за username або ім'ям
+ */
+export const searchUsers = async (query: string): Promise<Friend[]> => {
+  const userId = getCurrentUserId();
+  if (!userId) {
+    throw new Error('User not authenticated');
+  }
+
+  if (!query || query.trim().length < 2) {
+    return [];
+  }
+
+  const searchTerm = query.toLowerCase().trim();
+
+  // Search users by username in telegram_data
+  const { data: users, error } = await supabase
+    .from('users')
+    .select('user_id, telegram_data')
+    .neq('user_id', userId)
+    .limit(20);
+
+  if (error) {
+    throw new Error(`Failed to search users: ${error.message}`);
+  }
+
+  // Get current following
+  const { data: following } = await supabase
+    .from('friends')
+    .select('friend_id')
+    .eq('user_id', userId);
+
+  const followingIds = new Set(following?.map(f => f.friend_id) || []);
+
+  // Get followers
+  const { data: followers } = await supabase
+    .from('friends')
+    .select('user_id')
+    .eq('friend_id', userId);
+
+  const followerIds = new Set(followers?.map(f => f.user_id) || []);
+
+  // Filter and map users
+  return (users || [])
+    .map(u => {
+      const telegramData = typeof u.telegram_data === 'string' 
+        ? JSON.parse(u.telegram_data) 
+        : u.telegram_data;
+      
+      return {
+        id: u.user_id,
+        firstName: telegramData.first_name,
+        lastName: telegramData.last_name,
+        username: telegramData.username,
+        photoUrl: telegramData.photo_url,
+        isFollowing: followingIds.has(u.user_id),
+        isFollowedBy: followerIds.has(u.user_id),
+        addedAt: '',
+      };
+    })
+    .filter(u => {
+      const fullName = `${u.firstName} ${u.lastName || ''}`.toLowerCase();
+      const username = (u.username || '').toLowerCase();
+      return fullName.includes(searchTerm) || username.includes(searchTerm);
+    });
+};
+
+/**
+ * Знаходить користувачів за Telegram user_ids (для контактів)
+ */
+export const findUsersByTelegramIds = async (telegramIds: number[]): Promise<Friend[]> => {
+  const userId = getCurrentUserId();
+  if (!userId) {
+    throw new Error('User not authenticated');
+  }
+
+  if (!telegramIds.length) {
+    return [];
+  }
+
+  const { data: users, error } = await supabase
+    .from('users')
+    .select('user_id, telegram_data')
+    .in('user_id', telegramIds)
+    .neq('user_id', userId);
+
+  if (error) {
+    throw new Error(`Failed to find users: ${error.message}`);
+  }
+
+  // Get current following
+  const { data: following } = await supabase
+    .from('friends')
+    .select('friend_id')
+    .eq('user_id', userId);
+
+  const followingIds = new Set(following?.map(f => f.friend_id) || []);
+
+  // Get followers
+  const { data: followers } = await supabase
+    .from('friends')
+    .select('user_id')
+    .eq('friend_id', userId);
+
+  const followerIds = new Set(followers?.map(f => f.user_id) || []);
+
+  return (users || []).map(u => {
+    const telegramData = typeof u.telegram_data === 'string' 
+      ? JSON.parse(u.telegram_data) 
+      : u.telegram_data;
+    
+    return {
+      id: u.user_id,
+      firstName: telegramData.first_name,
+      lastName: telegramData.last_name,
+      username: telegramData.username,
+      photoUrl: telegramData.photo_url,
+      isFollowing: followingIds.has(u.user_id),
+      isFollowedBy: followerIds.has(u.user_id),
+      addedAt: '',
+    };
+  });
+};
+
+/**
+ * Отримує профіль користувача за ID
+ */
+export const getUserById = async (targetUserId: number): Promise<Friend | null> => {
+  const userId = getCurrentUserId();
+  if (!userId) {
+    throw new Error('User not authenticated');
+  }
+
+  const { data: user, error } = await supabase
+    .from('users')
+    .select('user_id, telegram_data')
+    .eq('user_id', targetUserId)
+    .single();
+
+  if (error || !user) {
+    return null;
+  }
+
+  const telegramData = typeof user.telegram_data === 'string' 
+    ? JSON.parse(user.telegram_data) 
+    : user.telegram_data;
+
+  // Check following status
+  const { data: following } = await supabase
+    .from('friends')
+    .select('friend_id')
+    .eq('user_id', userId)
+    .eq('friend_id', targetUserId)
+    .single();
+
+  const { data: follower } = await supabase
+    .from('friends')
+    .select('user_id')
+    .eq('user_id', targetUserId)
+    .eq('friend_id', userId)
+    .single();
+
+  return {
+    id: user.user_id,
+    firstName: telegramData.first_name,
+    lastName: telegramData.last_name,
+    username: telegramData.username,
+    photoUrl: telegramData.photo_url,
+    isFollowing: !!following,
+    isFollowedBy: !!follower,
+    addedAt: '',
+  };
+};
+
+/**
+ * Отримує публічні wishlists користувача
+ */
+export const getUserPublicWishlists = async (targetUserId: number): Promise<Wishlist[]> => {
+  const { data: wishlists, error } = await supabase
+    .from('wishlists')
+    .select('*')
+    .eq('user_id', targetUserId)
+    .eq('is_public', true)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    throw new Error(`Failed to fetch wishlists: ${error.message}`);
+  }
+
+  // Load items for each wishlist
+  const wishlistsWithItems = await Promise.all(
+    (wishlists || []).map(async (wishlist) => {
+      const { data: items } = await supabase
+        .from('wishlist_items')
+        .select('*')
+        .eq('wishlist_id', wishlist.id)
+        .order('created_at', { ascending: false });
+
+      return mapWishlist(wishlist, items || []);
+    })
+  );
+
+  return wishlistsWithItems;
+};
+
+/**
+ * Отримує профіль користувача за username
+ */
+export const getUserByUsername = async (username: string): Promise<Friend | null> => {
+  const userId = getCurrentUserId();
+  if (!userId) {
+    throw new Error('User not authenticated');
+  }
+
+  // Search for user by username in telegram_data
+  const { data: users, error } = await supabase
+    .from('users')
+    .select('user_id, telegram_data')
+    .neq('user_id', userId);
+
+  if (error) {
+    throw new Error(`Failed to find user: ${error.message}`);
+  }
+
+  const user = users?.find(u => {
+    const telegramData = typeof u.telegram_data === 'string' 
+      ? JSON.parse(u.telegram_data) 
+      : u.telegram_data;
+    return telegramData.username?.toLowerCase() === username.toLowerCase().replace('@', '');
+  });
+
+  if (!user) return null;
+
+  const telegramData = typeof user.telegram_data === 'string' 
+    ? JSON.parse(user.telegram_data) 
+    : user.telegram_data;
+
+  // Check following status
+  const { data: following } = await supabase
+    .from('friends')
+    .select('friend_id')
+    .eq('user_id', userId)
+    .eq('friend_id', user.user_id)
+    .single();
+
+  const { data: follower } = await supabase
+    .from('friends')
+    .select('user_id')
+    .eq('user_id', user.user_id)
+    .eq('friend_id', userId)
+    .single();
+
+  return {
+    id: user.user_id,
+    firstName: telegramData.first_name,
+    lastName: telegramData.last_name,
+    username: telegramData.username,
+    photoUrl: telegramData.photo_url,
+    isFollowing: !!following,
+    isFollowedBy: !!follower,
+    addedAt: '',
+  };
 };
 
 // ============================================
@@ -369,8 +773,41 @@ export const getWishlist = async (wishlistId: string): Promise<Wishlist> => {
 /**
  * Створює новий wishlist
  */
+/**
+ * Notifies all followers about an event
+ */
+const notifyFollowers = async (
+  type: NotificationType,
+  title: string,
+  message: string,
+  data?: Record<string, any>
+): Promise<void> => {
+  const userId = getCurrentUserId();
+  if (!userId) return;
+
+  try {
+    // Get all followers
+    const { data: followers } = await supabase
+      .from('friends')
+      .select('user_id')
+      .eq('friend_id', userId);
+
+    if (!followers || followers.length === 0) return;
+
+    // Create notification for each follower
+    await Promise.all(
+      followers.map(f => 
+        createNotification(f.user_id, type, title, message, data)
+      )
+    );
+  } catch (e) {
+    console.error('Failed to notify followers:', e);
+  }
+};
+
 export const createWishlist = async (
-  wishlist: Omit<Wishlist, 'id' | 'createdAt' | 'updatedAt' | 'items'>
+  wishlist: Omit<Wishlist, 'id' | 'createdAt' | 'updatedAt' | 'items'>,
+  notifyFollowersFlag = true
 ): Promise<Wishlist> => {
   const userId = getCurrentUserId();
   if (!userId) {
@@ -392,6 +829,8 @@ export const createWishlist = async (
       user_id: userId,
       name: wishlist.name,
       description: wishlist.description || null,
+      image_url: wishlist.imageUrl || null,
+      event_date: wishlist.eventDate || null,
       is_public: wishlist.isPublic,
       is_default: wishlist.isDefault,
     })
@@ -400,6 +839,19 @@ export const createWishlist = async (
 
   if (error) {
     throw new Error(`Failed to create wishlist: ${error.message}`);
+  }
+
+  // Notify followers about new public wishlist
+  if (wishlist.isPublic && notifyFollowersFlag) {
+    const telegramUser = getTelegramUser();
+    const userName = telegramUser?.first_name || 'Someone';
+    
+    notifyFollowers(
+      'wishlist_shared',
+      '📝 New Wishlist!',
+      `${userName} created a new wishlist: "${wishlist.name}"`,
+      { wishlistId: data.id, userId }
+    );
   }
 
   return mapWishlist(data, []);
@@ -478,8 +930,11 @@ export const getShareLink = async (wishlistId: string): Promise<string> => {
  */
 export const addItem = async (
   wishlistId: string,
-  item: Omit<WishlistItem, 'id' | 'createdAt' | 'updatedAt'>
+  item: Omit<WishlistItem, 'id' | 'createdAt' | 'updatedAt'>,
+  notifyFollowersFlag = true
 ): Promise<WishlistItem> => {
+  const userId = getCurrentUserId();
+  
   const { data, error } = await supabase
     .from('wishlist_items')
     .insert({
@@ -500,6 +955,31 @@ export const addItem = async (
 
   if (error) {
     throw new Error(`Failed to add item: ${error.message}`);
+  }
+
+  // Check if wishlist is public and notify followers
+  if (notifyFollowersFlag && userId) {
+    try {
+      const { data: wishlist } = await supabase
+        .from('wishlists')
+        .select('is_public, name')
+        .eq('id', wishlistId)
+        .single();
+      
+      if (wishlist?.is_public) {
+        const telegramUser = getTelegramUser();
+        const userName = telegramUser?.first_name || 'Someone';
+        
+        notifyFollowers(
+          'friend_added_item',
+          '✨ New Item Added!',
+          `${userName} added "${item.name}" to their wishlist "${wishlist.name}"`,
+          { wishlistId, itemId: data.id, userId }
+        );
+      }
+    } catch (e) {
+      console.error('Failed to check wishlist publicity:', e);
+    }
   }
 
   return mapItem(data);
@@ -886,5 +1366,420 @@ export const getBirthdayReminders = async (): Promise<BirthdayReminder[]> => {
   });
 
   return reminders.sort((a, b) => a.daysUntil - b.daysUntil);
+};
+
+// ============================================
+// Notifications API
+// ============================================
+
+/**
+ * Отримує всі нотифікації користувача
+ */
+export const getNotifications = async (): Promise<Notification[]> => {
+  const userId = getCurrentUserId();
+  if (!userId) {
+    throw new Error('User not authenticated');
+  }
+
+  const { data, error } = await supabase
+    .from('notifications')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(50);
+
+  if (error) {
+    throw new Error(`Failed to fetch notifications: ${error.message}`);
+  }
+
+  return (data || []).map(n => ({
+    id: n.id,
+    userId: n.user_id,
+    type: n.type as NotificationType,
+    title: n.title,
+    message: n.message,
+    data: n.data,
+    read: n.read,
+    createdAt: n.created_at,
+  }));
+};
+
+/**
+ * Позначає нотифікацію як прочитану
+ */
+export const markNotificationRead = async (notificationId: string): Promise<void> => {
+  const { error } = await supabase
+    .from('notifications')
+    .update({ read: true })
+    .eq('id', notificationId);
+
+  if (error) {
+    throw new Error(`Failed to mark notification as read: ${error.message}`);
+  }
+};
+
+/**
+ * Позначає всі нотифікації як прочитані
+ */
+export const markAllNotificationsRead = async (): Promise<void> => {
+  const userId = getCurrentUserId();
+  if (!userId) {
+    throw new Error('User not authenticated');
+  }
+
+  const { error } = await supabase
+    .from('notifications')
+    .update({ read: true })
+    .eq('user_id', userId)
+    .eq('read', false);
+
+  if (error) {
+    throw new Error(`Failed to mark notifications as read: ${error.message}`);
+  }
+};
+
+/**
+ * Отримує кількість непрочитаних нотифікацій
+ */
+export const getUnreadNotificationsCount = async (): Promise<number> => {
+  const userId = getCurrentUserId();
+  if (!userId) {
+    throw new Error('User not authenticated');
+  }
+
+  const { count, error } = await supabase
+    .from('notifications')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .eq('read', false);
+
+  if (error) {
+    throw new Error(`Failed to count notifications: ${error.message}`);
+  }
+
+  return count || 0;
+};
+
+/**
+ * Створює нотифікацію (викликається з бекенду)
+ */
+export const createNotification = async (
+  targetUserId: number,
+  type: NotificationType,
+  title: string,
+  message: string,
+  data?: Record<string, any>
+): Promise<void> => {
+  const { error } = await supabase
+    .from('notifications')
+    .insert({
+      user_id: targetUserId,
+      type,
+      title,
+      message,
+      data: data || null,
+      read: false,
+    });
+
+  if (error) {
+    throw new Error(`Failed to create notification: ${error.message}`);
+  }
+
+  // Trigger Telegram notification via Edge Function
+  try {
+    await supabase.functions.invoke('send-telegram-notification', {
+      body: {
+        userId: targetUserId,
+        title,
+        message,
+        type,
+      },
+    });
+  } catch (e) {
+    console.error('Failed to send Telegram notification:', e);
+    // Don't throw - notification was still saved
+  }
+};
+
+// ============================================
+// Referrals API
+// ============================================
+
+/**
+ * Отримує статистику рефералів
+ */
+export const getReferralStats = async (): Promise<ReferralStats> => {
+  const userId = getCurrentUserId();
+  if (!userId) {
+    throw new Error('User not authenticated');
+  }
+
+  const { data: user, error: userError } = await supabase
+    .from('users')
+    .select('referral_code, referrals, bonus_points')
+    .eq('user_id', userId)
+    .single();
+
+  if (userError) {
+    throw new Error(`Failed to get referral stats: ${userError.message}`);
+  }
+
+  // Get detailed referral list
+  const { data: referrals, error: referralsError } = await supabase
+    .from('referrals')
+    .select('*')
+    .eq('referrer_id', userId);
+
+  if (referralsError) {
+    console.error('Failed to get referrals:', referralsError);
+  }
+
+  const totalBonusEarned = (referrals || []).reduce((sum, r) => sum + (r.bonus_earned || 0), 0);
+
+  return {
+    referralCode: user.referral_code,
+    totalReferrals: user.referrals || 0,
+    activeReferrals: referrals?.length || 0,
+    totalBonusEarned,
+    // Use /app format with startapp - shows confirmation dialog for new users AND passes parameter
+    referralLink: `https://t.me/wishbucket_bot/app?startapp=ref_${user.referral_code}`,
+  };
+};
+
+/**
+ * Debug: Check if referrals table exists and is accessible
+ */
+export const checkReferralsTable = async (): Promise<{
+  tableExists: boolean;
+  userExists: boolean;
+  currentUserId: number | null;
+  userReferralCode: string | null;
+  referralsCount: number;
+  error?: string;
+}> => {
+  const userId = getCurrentUserId();
+  console.log("🔍 checkReferralsTable - Current user ID:", userId);
+  
+  const result: any = {
+    tableExists: false,
+    userExists: false,
+    currentUserId: userId,
+    userReferralCode: null,
+    referralsCount: 0,
+  };
+  
+  try {
+    // Check if user exists
+    const { data: user, error: userError } = await supabase
+      .from('users')
+      .select('user_id, referral_code, referrals, bonus_points')
+      .eq('user_id', userId)
+      .single();
+    
+    console.log("📋 User lookup:", { user, error: userError?.message });
+    
+    if (user) {
+      result.userExists = true;
+      result.userReferralCode = user.referral_code;
+      result.userReferrals = user.referrals;
+      result.userBonusPoints = user.bonus_points;
+    }
+    
+    if (userError) {
+      result.userError = userError.message;
+    }
+    
+    // Check if referrals table is accessible
+    const { data: referrals, error: refError } = await supabase
+      .from('referrals')
+      .select('*')
+      .limit(5);
+    
+    console.log("📋 Referrals table check:", { data: referrals, error: refError?.message });
+    
+    if (!refError) {
+      result.tableExists = true;
+      result.referralsCount = referrals?.length || 0;
+      result.sampleReferrals = referrals;
+    } else {
+      result.tableError = refError.message;
+    }
+    
+    // Check all users with referral codes
+    const { data: allUsers, error: allUsersError } = await supabase
+      .from('users')
+      .select('user_id, referral_code, referrals')
+      .limit(10);
+    
+    console.log("📋 All users sample:", { data: allUsers, error: allUsersError?.message });
+    
+    if (allUsers) {
+      result.sampleUsers = allUsers;
+    }
+    
+  } catch (e: any) {
+    result.error = e?.message || String(e);
+  }
+  
+  return result;
+};
+
+/**
+ * Отримує список рефералів
+ */
+export const getReferrals = async (): Promise<Referral[]> => {
+  const userId = getCurrentUserId();
+  if (!userId) {
+    throw new Error('User not authenticated');
+  }
+
+  const { data, error } = await supabase
+    .from('referrals')
+    .select(`
+      id,
+      referred_user_id,
+      bonus_earned,
+      created_at,
+      referred_user:users!referrals_referred_user_id_fkey (
+        telegram_data
+      )
+    `)
+    .eq('referrer_id', userId)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    throw new Error(`Failed to get referrals: ${error.message}`);
+  }
+
+  return (data || []).map(r => {
+    const telegramData = typeof r.referred_user.telegram_data === 'string'
+      ? JSON.parse(r.referred_user.telegram_data)
+      : r.referred_user.telegram_data;
+
+    return {
+      id: r.id,
+      referrerId: userId,
+      referredUserId: r.referred_user_id,
+      referredUser: {
+        firstName: telegramData.first_name,
+        lastName: telegramData.last_name,
+        username: telegramData.username,
+        photoUrl: telegramData.photo_url,
+      },
+      bonusEarned: r.bonus_earned || 0,
+      createdAt: r.created_at,
+    };
+  });
+};
+
+/**
+ * Застосовує реферальний код при реєстрації
+ */
+export const applyReferral = async (referralCode: string): Promise<{ success: boolean; bonus: number }> => {
+  console.log("🔄 applyReferral called with code:", referralCode);
+  
+  const userId = getCurrentUserId();
+  console.log("👤 Current user ID:", userId);
+  
+  if (!userId) {
+    throw new Error('User not authenticated');
+  }
+
+  // Find referrer
+  console.log("🔍 Looking for referrer with code:", referralCode.toUpperCase());
+  const { data: referrer, error: findError } = await supabase
+    .from('users')
+    .select('user_id, referrals')
+    .eq('referral_code', referralCode.toUpperCase())
+    .single();
+  
+  console.log("📋 Referrer lookup result:", { referrer, error: findError?.message });
+
+  if (findError || !referrer) {
+    throw new Error('Invalid referral code');
+  }
+
+  if (referrer.user_id === userId) {
+    throw new Error('Cannot use your own referral code');
+  }
+
+  // Check if already referred
+  console.log("🔍 Checking if user already used a referral...");
+  const { data: existingReferral, error: existingError } = await supabase
+    .from('referrals')
+    .select('id')
+    .eq('referred_user_id', userId)
+    .single();
+
+  console.log("📋 Existing referral check:", { existingReferral, error: existingError?.message });
+
+  if (existingReferral) {
+    throw new Error('You have already used a referral code');
+  }
+
+  // Create referral record
+  const bonusForReferrer = 100;
+  const bonusForReferred = 50;
+
+  console.log("📝 Creating referral record:", {
+    referrer_id: referrer.user_id,
+    referred_user_id: userId,
+    bonus_earned: bonusForReferrer,
+  });
+
+  const { error: createError } = await supabase
+    .from('referrals')
+    .insert({
+      referrer_id: referrer.user_id,
+      referred_user_id: userId,
+      bonus_earned: bonusForReferrer,
+    });
+
+  console.log("📋 Referral insert result:", { error: createError?.message });
+
+  if (createError) {
+    throw new Error(`Failed to apply referral: ${createError.message}`);
+  }
+
+  // Get referrer's current bonus points
+  const { data: referrerData } = await supabase
+    .from('users')
+    .select('bonus_points')
+    .eq('user_id', referrer.user_id)
+    .single();
+
+  // Update referrer's stats
+  await supabase
+    .from('users')
+    .update({ 
+      referrals: (referrer.referrals || 0) + 1,
+      bonus_points: (referrerData?.bonus_points || 0) + bonusForReferrer,
+    })
+    .eq('user_id', referrer.user_id);
+
+  // Update referred user's bonus
+  const { data: userData } = await supabase
+    .from('users')
+    .select('bonus_points')
+    .eq('user_id', userId)
+    .single();
+
+  await supabase
+    .from('users')
+    .update({ bonus_points: (userData?.bonus_points || 0) + bonusForReferred })
+    .eq('user_id', userId);
+
+  // Notify referrer
+  await createNotification(
+    referrer.user_id,
+    'referral_signup',
+    '🎉 New Referral!',
+    `Someone joined using your referral code! You earned ${bonusForReferrer} bonus points.`
+  );
+
+  return {
+    success: true,
+    bonus: bonusForReferred,
+  };
 };
 

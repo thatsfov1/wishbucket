@@ -56,6 +56,8 @@ export interface Database {
           user_id: number;
           name: string;
           description: string | null;
+          image_url: string | null;
+          event_date: string | null;
           is_public: boolean;
           is_default: boolean;
           created_at: string;
@@ -66,6 +68,8 @@ export interface Database {
           user_id: number;
           name: string;
           description?: string | null;
+          image_url?: string | null;
+          event_date?: string | null;
           is_public?: boolean;
           is_default?: boolean;
           created_at?: string;
@@ -76,6 +80,8 @@ export interface Database {
           user_id?: number;
           name?: string;
           description?: string | null;
+          image_url?: string | null;
+          event_date?: string | null;
           is_public?: boolean;
           is_default?: boolean;
           created_at?: string;
@@ -268,6 +274,61 @@ export interface Database {
           wishlist_id?: string | null;
           assigned_to?: number | null;
           has_drawn?: boolean;
+          created_at?: string;
+        };
+      };
+      notifications: {
+        Row: {
+          id: string;
+          user_id: number;
+          type: string;
+          title: string;
+          message: string;
+          data: Json | null;
+          read: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: number;
+          type: string;
+          title: string;
+          message: string;
+          data?: Json | null;
+          read?: boolean;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: number;
+          type?: string;
+          title?: string;
+          message?: string;
+          data?: Json | null;
+          read?: boolean;
+          created_at?: string;
+        };
+      };
+      referrals: {
+        Row: {
+          id: string;
+          referrer_id: number;
+          referred_user_id: number;
+          bonus_earned: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          referrer_id: number;
+          referred_user_id: number;
+          bonus_earned?: number;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          referrer_id?: number;
+          referred_user_id?: number;
+          bonus_earned?: number;
           created_at?: string;
         };
       };
