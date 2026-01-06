@@ -1,24 +1,27 @@
-import { useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import Layout from '../components/Layout';
-import Button from '../components/Button';
-import { Input, Textarea } from '../components/Input';
-import { useStore } from '../store/useStore';
-import { addItem, processUrl } from '../services/api';
-import { showTelegramAlert, hapticFeedback } from '../utils/telegram';
-import './AddItemPage.css';
+import { useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import Layout from "../components/Layout";
+import Button from "../components/Button";
+import { Input, Textarea } from "../components/Input";
+import { useStore } from "../store/useStore";
+import { addItem as addItemApi } from "../services/supabase-api";
+import { scrapeProductUrl } from "../services/supabase-api";
+import { generateAffiliateLink } from "../utils/affiliate";
+import { showTelegramAlert, hapticFeedback } from "../utils/telegram";
+import "./AddItemPage.css";
 
 export default function AddItemPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { setLoading, addItem: addItemToStore } = useStore();
   const [formData, setFormData] = useState({
-    name: '',
-    description: '',
-    url: '',
-    priority: 'medium' as 'low' | 'medium' | 'high',
+    name: "",
+    description: "",
+    url: "",
+    priority: "medium" as "low" | "medium" | "high",
   });
   const [processingUrl, setProcessingUrl] = useState(false);
+  const [urlError, setUrlError] = useState<string | null>(null);
   const [productInfo, setProductInfo] = useState<{
     title?: string;
     imageUrl?: string;
@@ -26,85 +29,103 @@ export default function AddItemPage() {
     currency?: string;
   }>({});
 
-  const handleUrlChange = async (url: string) => {
-    setFormData({ ...formData, url });
-    
-    if (!url.trim()) {
-      setProductInfo({});
-      return;
-    }
+  // Fetch product info from URL
+  const fetchProductInfo = async (url: string) => {
+    if (!url.trim()) return;
 
-    // Basic URL validation
+    // Validate URL
     try {
       new URL(url);
     } catch {
-      return; // Invalid URL
+      setUrlError("Please enter a valid URL");
+      return;
     }
 
     setProcessingUrl(true);
+    setUrlError(null);
+    setProductInfo({});
+
     try {
-      const result = await processUrl(url);
-      setProductInfo(result.productInfo || {});
-      
-      // Auto-fill name if available
-      if (result.productInfo?.title && !formData.name) {
-        setFormData({ ...formData, url, name: result.productInfo.title });
+      console.log("🔍 Fetching product info for:", url);
+      const result = await scrapeProductUrl(url);
+      console.log("✅ Scrape result:", result);
+
+      if (result.title || result.imageUrl || result.price) {
+        setProductInfo(result);
+
+        // Auto-fill name if not already filled
+        if (result.title && !formData.name) {
+          setFormData((prev) => ({ ...prev, name: result.title || "" }));
+        }
+
+        hapticFeedback.notification("success");
+      } else {
+        setUrlError("Could not find product info. Please fill manually.");
       }
-      
-      hapticFeedback.notification('success');
     } catch (error) {
-      console.error('Error processing URL:', error);
-      // Continue anyway - user can fill manually
+      console.error("❌ Error processing URL:", error);
+      setUrlError("Failed to fetch. Please fill manually.");
     } finally {
       setProcessingUrl(false);
     }
   };
 
+  const handleUrlChange = (url: string) => {
+    setFormData({ ...formData, url });
+    // Clear previous product info when URL changes
+    if (productInfo.title || productInfo.imageUrl) {
+      setProductInfo({});
+    }
+    setUrlError(null);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!id) {
-      showTelegramAlert('Wishlist ID is missing');
+      showTelegramAlert("Wishlist ID is missing");
       return;
     }
 
     if (!formData.name.trim()) {
-      showTelegramAlert('Please enter an item name');
+      showTelegramAlert("Please enter an item name");
       return;
     }
 
     if (!formData.url.trim()) {
-      showTelegramAlert('Please enter a URL');
+      showTelegramAlert("Please enter a URL");
       return;
     }
 
     try {
       setLoading(true);
-      
-      // Process URL to get affiliate link
-      const urlResult = await processUrl(formData.url);
-      
-      const newItem = await addItem(id, {
+
+      // Generate affiliate link if possible
+      const affiliateResult = generateAffiliateLink(formData.url);
+
+      const newItem = await addItemApi(id, {
         wishlistId: id,
         name: formData.name,
         description: formData.description,
-        url: urlResult.affiliateUrl || urlResult.url,
+        url: affiliateResult.affiliateUrl || formData.url,
         originalUrl: formData.url,
-        affiliateUrl: urlResult.hasAffiliate ? urlResult.url : undefined,
+        affiliateUrl: affiliateResult.hasAffiliate
+          ? affiliateResult.affiliateUrl
+          : undefined,
         imageUrl: productInfo.imageUrl,
         price: productInfo.price,
         currency: productInfo.currency,
         priority: formData.priority,
-        status: 'available',
+        status: "available",
       });
 
       addItemToStore(newItem);
-      hapticFeedback.notification('success');
+      hapticFeedback.notification("success");
       navigate(`/wishlists/${id}`);
     } catch (error) {
-      console.error('Error adding item:', error);
-      showTelegramAlert('Failed to add item');
-      hapticFeedback.notification('error');
+      console.error("Error adding item:", error);
+      showTelegramAlert("Failed to add item");
+      hapticFeedback.notification("error");
     } finally {
       setLoading(false);
     }
@@ -131,38 +152,73 @@ export default function AddItemPage() {
             required
           />
 
+          {/* Fetch button - always shows when URL is entered */}
+          {formData.url && !processingUrl && (
+            <button
+              type="button"
+              className="fetch-info-btn"
+              onClick={() => fetchProductInfo(formData.url)}
+            >
+              {productInfo.title ? "🔄 Refetch Info" : "🔍 Fetch Product Info"}
+            </button>
+          )}
+
           {processingUrl && (
             <div className="processing-indicator">
-              🔍 Processing URL and finding affiliate program...
+              🔍 Fetching product info...
             </div>
           )}
 
-          {productInfo.imageUrl && (
-            <div className="product-preview">
-              <img src={productInfo.imageUrl} alt="Product" className="product-image" />
-              {productInfo.price && (
-                <div className="product-price">
-                  {productInfo.currency || '$'}{productInfo.price.toFixed(2)}
+          {urlError && <div className="url-error">⚠️ {urlError}</div>}
+
+          {(productInfo.imageUrl || productInfo.title || productInfo.price) &&
+            !processingUrl && (
+              <div className="product-preview">
+                {productInfo.imageUrl && (
+                  <img
+                    src={productInfo.imageUrl}
+                    alt="Product"
+                    className="product-image"
+                  />
+                )}
+                <div className="product-preview-info">
+                  <span className="product-preview-success">
+                    ✓ Product info loaded
+                  </span>
+                  {productInfo.title && (
+                    <span className="product-preview-title">
+                      {productInfo.title}
+                    </span>
+                  )}
+                  {productInfo.price && (
+                    <div className="product-price">
+                      {productInfo.currency || "$"}
+                      {productInfo.price.toFixed(2)}
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-          )}
+              </div>
+            )}
 
           <Textarea
             label="Description (optional)"
             placeholder="Add any notes about this item..."
             value={formData.description}
-            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+            onChange={(e) =>
+              setFormData({ ...formData, description: e.target.value })
+            }
           />
 
           <div className="input-group">
             <label className="input-label">Priority</label>
             <div className="priority-buttons">
-              {(['low', 'medium', 'high'] as const).map(priority => (
+              {(["low", "medium", "high"] as const).map((priority) => (
                 <button
                   key={priority}
                   type="button"
-                  className={`priority-button ${formData.priority === priority ? 'active' : ''}`}
+                  className={`priority-button ${
+                    formData.priority === priority ? "active" : ""
+                  }`}
                   onClick={() => {
                     setFormData({ ...formData, priority });
                     hapticFeedback.selection();
@@ -175,15 +231,15 @@ export default function AddItemPage() {
           </div>
 
           <div className="form-actions">
-            <Button 
-              type="submit" 
-              fullWidth 
+            <Button
+              type="submit"
+              fullWidth
               size="large"
               loading={processingUrl}
             >
               ➕ Add Item
             </Button>
-            <Button 
+            <Button
               type="button"
               variant="secondary"
               fullWidth
@@ -197,4 +253,3 @@ export default function AddItemPage() {
     </Layout>
   );
 }
-

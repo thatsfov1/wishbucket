@@ -94,7 +94,7 @@
 }
 
 .share-btn.telegram {
-  background: #0088CC;
+  background: var(--coral);
   color: #ffffff;
 }
 
@@ -171,7 +171,9 @@
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .loading-state p {
@@ -330,4 +332,3 @@
   background: var(--coral);
   border-radius: 50%;
 }
-

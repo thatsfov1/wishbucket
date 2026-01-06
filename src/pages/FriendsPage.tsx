@@ -1,16 +1,14 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useStore } from "../store/useStore";
-import { 
-  getFriends, 
-  getFollowers, 
-  searchUsers, 
-  addFriend, 
+import {
+  getFriends,
+  getFollowers,
+  searchUsers,
+  addFriend,
   removeFriend,
   getUserByUsername,
   getReferralStats,
-  applyReferral,
-  checkReferralsTable,
 } from "../services/supabase-api";
 import {
   showTelegramAlert,
@@ -29,15 +27,15 @@ export default function FriendsPage() {
   const [activeTab, setActiveTab] = useState<TabType>("following");
   const [searchQuery, setSearchQuery] = useState("");
   const [usernameInput, setUsernameInput] = useState("");
-  
+
   // Data states
   const [following, setFollowing] = useState<Friend[]>([]);
   const [followers, setFollowers] = useState<Friend[]>([]);
   const [searchResults, setSearchResults] = useState<Friend[]>([]);
-  const [referralStats, setReferralStats] = useState<ReferralStats | null>(null);
+  const [referralStats, setReferralStats] = useState<ReferralStats | null>(
+    null
+  );
   const [isSearching, setIsSearching] = useState(false);
-  const [debugInfo, setDebugInfo] = useState<string>("");
-  const [testReferralCode, setTestReferralCode] = useState("");
 
   // Load initial data
   useEffect(() => {
@@ -88,24 +86,26 @@ export default function FriendsPage() {
     try {
       hapticFeedback.impact("medium");
       await addFriend(userId);
-      
+
       // Update local state
-      setFollowing(prev => {
-        const user = [...searchResults, ...followers].find(u => u.id === userId);
+      setFollowing((prev) => {
+        const user = [...searchResults, ...followers].find(
+          (u) => u.id === userId
+        );
         if (user) {
           return [...prev, { ...user, isFollowing: true }];
         }
         return prev;
       });
-      
-      setSearchResults(prev => prev.map(u => 
-        u.id === userId ? { ...u, isFollowing: true } : u
-      ));
-      
-      setFollowers(prev => prev.map(u => 
-        u.id === userId ? { ...u, isFollowing: true } : u
-      ));
-      
+
+      setSearchResults((prev) =>
+        prev.map((u) => (u.id === userId ? { ...u, isFollowing: true } : u))
+      );
+
+      setFollowers((prev) =>
+        prev.map((u) => (u.id === userId ? { ...u, isFollowing: true } : u))
+      );
+
       hapticFeedback.notification("success");
     } catch (error) {
       console.error("Error following:", error);
@@ -118,18 +118,18 @@ export default function FriendsPage() {
     try {
       hapticFeedback.impact("light");
       await removeFriend(userId);
-      
+
       // Update local state
-      setFollowing(prev => prev.filter(u => u.id !== userId));
-      
-      setSearchResults(prev => prev.map(u => 
-        u.id === userId ? { ...u, isFollowing: false } : u
-      ));
-      
-      setFollowers(prev => prev.map(u => 
-        u.id === userId ? { ...u, isFollowing: false } : u
-      ));
-      
+      setFollowing((prev) => prev.filter((u) => u.id !== userId));
+
+      setSearchResults((prev) =>
+        prev.map((u) => (u.id === userId ? { ...u, isFollowing: false } : u))
+      );
+
+      setFollowers((prev) =>
+        prev.map((u) => (u.id === userId ? { ...u, isFollowing: false } : u))
+      );
+
       hapticFeedback.notification("success");
     } catch (error) {
       console.error("Error unfollowing:", error);
@@ -146,9 +146,11 @@ export default function FriendsPage() {
     try {
       setLoading(true);
       const user = await getUserByUsername(usernameInput);
-      
+
       if (!user) {
-        showTelegramAlert("User not found. Make sure they're using WishBucket!");
+        showTelegramAlert(
+          "User not found. Make sure they're using WishBucket!"
+        );
         return;
       }
 
@@ -173,7 +175,9 @@ export default function FriendsPage() {
     const message = `Join me on WishBucket! Create and share wishlists with friends 🎁`;
     const link = referralStats?.referralLink || "https://t.me/wishbucket_bot";
     openTelegramLink(
-      `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(message)}`
+      `https://t.me/share/url?url=${encodeURIComponent(
+        link
+      )}&text=${encodeURIComponent(message)}`
     );
   };
 
@@ -182,34 +186,6 @@ export default function FriendsPage() {
       navigator.clipboard.writeText(referralStats.referralLink);
       hapticFeedback.notification("success");
       showTelegramAlert("Referral link copied!");
-    }
-  };
-
-  // Debug: Check referrals table
-  const handleCheckReferralsTable = async () => {
-    try {
-      setDebugInfo("Checking referrals table...");
-      const result = await checkReferralsTable();
-      setDebugInfo(JSON.stringify(result, null, 2));
-    } catch (error: any) {
-      setDebugInfo(`Error: ${error?.message || error}`);
-    }
-  };
-
-  // Debug: Test applying referral code
-  const handleTestReferral = async () => {
-    if (!testReferralCode.trim()) {
-      setDebugInfo("Please enter a referral code");
-      return;
-    }
-    try {
-      setDebugInfo(`Testing referral code: ${testReferralCode}...`);
-      const result = await applyReferral(testReferralCode);
-      setDebugInfo(`Success! Result: ${JSON.stringify(result, null, 2)}`);
-      // Reload data
-      loadData();
-    } catch (error: any) {
-      setDebugInfo(`Error applying referral: ${error?.message || error}`);
     }
   };
 
@@ -225,7 +201,7 @@ export default function FriendsPage() {
 
   const renderUserCard = (user: Friend, showFollowBack = false) => (
     <div key={user.id} className="friend-card animate-slide-up">
-      <div 
+      <div
         className="friend-clickable"
         onClick={() => handleViewProfile(user.id)}
       >
@@ -237,7 +213,9 @@ export default function FriendsPage() {
           )}
         </div>
         <div className="friend-info">
-          <h4>{user.firstName} {user.lastName || ""}</h4>
+          <h4>
+            {user.firstName} {user.lastName || ""}
+          </h4>
           {user.username && (
             <span className="friend-username">@{user.username}</span>
           )}
@@ -249,14 +227,20 @@ export default function FriendsPage() {
       {user.isFollowing ? (
         <button
           className="following-btn"
-          onClick={(e) => { e.stopPropagation(); handleUnfollow(user.id); }}
+          onClick={(e) => {
+            e.stopPropagation();
+            handleUnfollow(user.id);
+          }}
         >
           Following
         </button>
       ) : (
         <button
           className="follow-btn"
-          onClick={(e) => { e.stopPropagation(); handleFollow(user.id); }}
+          onClick={(e) => {
+            e.stopPropagation();
+            handleFollow(user.id);
+          }}
         >
           {user.isFollowedBy ? "Follow Back" : "Follow"}
         </button>
@@ -270,7 +254,14 @@ export default function FriendsPage() {
       <header className="friends-header">
         <h1>Friends</h1>
         <button className="invite-btn" onClick={handleShareInvite}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
             <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
             <circle cx="8.5" cy="7" r="4" />
             <line x1="20" y1="8" x2="20" y2="14" />
@@ -279,74 +270,6 @@ export default function FriendsPage() {
           Invite
         </button>
       </header>
-
-      {/* DEBUG: Referral Testing */}
-      <div className="debug-section" style={{ 
-        margin: '16px', 
-        padding: '16px', 
-        background: '#2a2a2a', 
-        borderRadius: '12px',
-        fontSize: '12px'
-      }}>
-        <h4 style={{ marginBottom: '8px', color: '#ff6b6b' }}>🔧 Debug: Referral System</h4>
-        <button 
-          onClick={handleCheckReferralsTable}
-          style={{ 
-            padding: '8px 16px', 
-            marginBottom: '8px', 
-            background: '#444', 
-            border: 'none',
-            borderRadius: '8px',
-            color: 'white',
-            cursor: 'pointer'
-          }}
-        >
-          Check Referrals Table
-        </button>
-        <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
-          <input
-            type="text"
-            placeholder="Enter referral code to test"
-            value={testReferralCode}
-            onChange={(e) => setTestReferralCode(e.target.value.toUpperCase())}
-            style={{ 
-              flex: 1, 
-              padding: '8px', 
-              background: '#333', 
-              border: '1px solid #555',
-              borderRadius: '8px',
-              color: 'white'
-            }}
-          />
-          <button 
-            onClick={handleTestReferral}
-            style={{ 
-              padding: '8px 16px', 
-              background: '#4CAF50', 
-              border: 'none',
-              borderRadius: '8px',
-              color: 'white',
-              cursor: 'pointer'
-            }}
-          >
-            Test Apply
-          </button>
-        </div>
-        {debugInfo && (
-          <pre style={{ 
-            background: '#1a1a1a', 
-            padding: '12px', 
-            borderRadius: '8px',
-            overflow: 'auto',
-            maxHeight: '200px',
-            color: '#0f0',
-            whiteSpace: 'pre-wrap',
-            wordBreak: 'break-all'
-          }}>
-            {debugInfo}
-          </pre>
-        )}
-      </div>
 
       {/* Referral Stats Card */}
       {referralStats && (
@@ -363,21 +286,59 @@ export default function FriendsPage() {
               <span className="stat-value">{referralStats.totalReferrals}</span>
               <span className="stat-label">Referrals</span>
             </div>
-            <div className="stat-item">
-              <span className="stat-value">{referralStats.totalBonusEarned}</span>
-              <span className="stat-label">Points Earned</span>
+            <div
+              className="stat-item stat-item-points"
+              onClick={() => navigate("/market")}
+            >
+              <span className="stat-value">
+                {referralStats.totalBonusEarned}
+              </span>
+              <span className="stat-label">Points 💎</span>
             </div>
           </div>
+
+          {/* Quick Action Buttons */}
+          <div className="referral-quick-actions">
+            <button
+              className="quick-action-btn shop-btn"
+              onClick={() => navigate("/market")}
+            >
+              <span className="btn-icon">🎁</span>
+              <span>Shop</span>
+            </button>
+            <button
+              className="quick-action-btn tasks-btn"
+              onClick={() => navigate("/tasks")}
+            >
+              <span className="btn-icon">⭐</span>
+              <span>Earn</span>
+            </button>
+          </div>
+
           <div className="referral-actions">
             <button className="copy-link-btn" onClick={handleCopyReferralLink}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
                 <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
                 <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
               </svg>
               Copy Link
             </button>
             <button className="share-link-btn" onClick={handleShareInvite}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
                 <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8" />
                 <polyline points="16,6 12,2 8,6" />
                 <line x1="12" y1="2" x2="12" y2="15" />
@@ -431,14 +392,20 @@ export default function FriendsPage() {
               <div className="empty-state">
                 <div className="empty-icon">👥</div>
                 <h3>Not following anyone yet</h3>
-                <p>Find friends to see their wishlists and get notified about their updates!</p>
-                <button className="add-friend-btn" onClick={() => handleTabChange("search")}>
+                <p>
+                  Find friends to see their wishlists and get notified about
+                  their updates!
+                </p>
+                <button
+                  className="add-friend-btn"
+                  onClick={() => handleTabChange("search")}
+                >
                   Find Friends
                 </button>
               </div>
             ) : (
               <div className="friends-list">
-                {following.map(user => renderUserCard(user))}
+                {following.map((user) => renderUserCard(user))}
               </div>
             )}
           </>
@@ -461,7 +428,7 @@ export default function FriendsPage() {
               </div>
             ) : (
               <div className="friends-list">
-                {followers.map(user => renderUserCard(user, true))}
+                {followers.map((user) => renderUserCard(user, true))}
               </div>
             )}
           </>
@@ -479,10 +446,16 @@ export default function FriendsPage() {
                   type="text"
                   placeholder="username"
                   value={usernameInput}
-                  onChange={(e) => setUsernameInput(e.target.value.replace('@', ''))}
-                  onKeyDown={(e) => e.key === 'Enter' && handleAddByUsername()}
+                  onChange={(e) =>
+                    setUsernameInput(e.target.value.replace("@", ""))
+                  }
+                  onKeyDown={(e) => e.key === "Enter" && handleAddByUsername()}
                 />
-                <button className="add-btn" onClick={handleAddByUsername} disabled={isLoading}>
+                <button
+                  className="add-btn"
+                  onClick={handleAddByUsername}
+                  disabled={isLoading}
+                >
                   {isLoading ? "..." : "Add"}
                 </button>
               </div>
@@ -492,7 +465,14 @@ export default function FriendsPage() {
             <div className="search-section">
               <h3>Search Users</h3>
               <div className="search-input-wrapper">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
                   <circle cx="11" cy="11" r="8" />
                   <path d="M21 21l-4.35-4.35" />
                 </svg>
@@ -503,8 +483,18 @@ export default function FriendsPage() {
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
                 {searchQuery && (
-                  <button className="clear-btn" onClick={() => setSearchQuery("")}>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <button
+                    className="clear-btn"
+                    onClick={() => setSearchQuery("")}
+                  >
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    >
                       <line x1="18" y1="6" x2="6" y2="18" />
                       <line x1="6" y1="6" x2="18" y2="18" />
                     </svg>
@@ -523,7 +513,7 @@ export default function FriendsPage() {
               <div className="search-results">
                 <h4>Results</h4>
                 <div className="friends-list">
-                  {searchResults.map(user => renderUserCard(user, true))}
+                  {searchResults.map((user) => renderUserCard(user, true))}
                 </div>
               </div>
             ) : searchQuery.length >= 2 ? (
@@ -538,7 +528,10 @@ export default function FriendsPage() {
               <div className="hint-icon">📱</div>
               <div className="hint-text">
                 <h4>Find from Contacts</h4>
-                <p>Coming soon! We'll help you find friends from your Telegram contacts who use WishBucket.</p>
+                <p>
+                  Coming soon! We'll help you find friends from your Telegram
+                  contacts who use WishBucket.
+                </p>
               </div>
             </div>
           </div>

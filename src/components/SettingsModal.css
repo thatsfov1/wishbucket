@@ -14,8 +14,12 @@
 }
 
 @keyframes fadeOut {
-  from { opacity: 1; }
-  to { opacity: 0; }
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
 }
 
 .settings-modal {
@@ -34,8 +38,12 @@
 }
 
 @keyframes slideDown {
-  from { transform: translateY(0); }
-  to { transform: translateY(100%); }
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(100%);
+  }
 }
 
 .modal-handle {
@@ -171,6 +179,16 @@
   font-size: 18px;
 }
 
+.option-icon.market-icon {
+  background: linear-gradient(135deg, var(--coral) 0%, var(--coral-light) 100%);
+  font-size: 18px;
+}
+
+.option-icon.tasks-icon {
+  background: linear-gradient(135deg, #ffd93d 0%, #ff9e00 100%);
+  font-size: 18px;
+}
+
 .option-label {
   flex: 1;
   font-size: 15px;
@@ -224,7 +242,7 @@
 }
 
 .share-button.telegram {
-  background: #0088CC;
+  background: var(--coral);
   color: #ffffff;
 }
 
@@ -277,4 +295,3 @@
     padding-bottom: calc(32px + env(safe-area-inset-bottom));
   }
 }
-
