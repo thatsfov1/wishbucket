@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import Layout from "../components/Layout";
 import Button from "../components/Button";
@@ -10,10 +10,45 @@ import { generateAffiliateLink } from "../utils/affiliate";
 import { showTelegramAlert, hapticFeedback } from "../utils/telegram";
 import "./AddItemPage.css";
 
+// European and common currencies
+const CURRENCIES = [
+  { code: "USD", symbol: "$", name: "US Dollar" },
+  { code: "EUR", symbol: "€", name: "Euro" },
+  { code: "GBP", symbol: "£", name: "British Pound" },
+  { code: "UAH", symbol: "₴", name: "Ukrainian Hryvnia" },
+  { code: "PLN", symbol: "zł", name: "Polish Złoty" },
+  { code: "CZK", symbol: "Kč", name: "Czech Koruna" },
+  { code: "CHF", symbol: "Fr", name: "Swiss Franc" },
+  { code: "SEK", symbol: "kr", name: "Swedish Krona" },
+  { code: "NOK", symbol: "kr", name: "Norwegian Krone" },
+  { code: "DKK", symbol: "kr", name: "Danish Krone" },
+  { code: "HUF", symbol: "Ft", name: "Hungarian Forint" },
+  { code: "RON", symbol: "lei", name: "Romanian Leu" },
+  { code: "BGN", symbol: "лв", name: "Bulgarian Lev" },
+  { code: "HRK", symbol: "kn", name: "Croatian Kuna" },
+  { code: "RSD", symbol: "дин", name: "Serbian Dinar" },
+  { code: "TRY", symbol: "₺", name: "Turkish Lira" },
+  { code: "RUB", symbol: "₽", name: "Russian Ruble" },
+  { code: "GEL", symbol: "₾", name: "Georgian Lari" },
+  { code: "ISK", symbol: "kr", name: "Icelandic Króna" },
+  { code: "JPY", symbol: "¥", name: "Japanese Yen" },
+  { code: "CNY", symbol: "¥", name: "Chinese Yuan" },
+  { code: "KRW", symbol: "₩", name: "South Korean Won" },
+  { code: "CAD", symbol: "$", name: "Canadian Dollar" },
+  { code: "AUD", symbol: "$", name: "Australian Dollar" },
+];
+
+const getCurrencySymbol = (code: string): string => {
+  const currency = CURRENCIES.find((c) => c.code === code);
+  return currency?.symbol || code;
+};
+
 export default function AddItemPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { setLoading, addItem: addItemToStore } = useStore();
+  const [selectedCurrency, setSelectedCurrency] = useState<string>("USD");
+  const [showCurrencySelector, setShowCurrencySelector] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     description: "",
@@ -27,10 +62,13 @@ export default function AddItemPage() {
     imageUrl?: string;
     price?: number;
     currency?: string;
+    description?: string;
   }>({});
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastScrapedUrlRef = useRef<string>("");
 
   // Fetch product info from URL
-  const fetchProductInfo = async (url: string) => {
+  const fetchProductInfo = useCallback(async (url: string) => {
     if (!url.trim()) return;
 
     // Validate URL
@@ -52,11 +90,19 @@ export default function AddItemPage() {
 
       if (result.title || result.imageUrl || result.price) {
         setProductInfo(result);
+        lastScrapedUrlRef.current = url;
 
-        // Auto-fill name if not already filled
-        if (result.title && !formData.name) {
-          setFormData((prev) => ({ ...prev, name: result.title || "" }));
+        // Set detected currency
+        if (result.currency) {
+          setSelectedCurrency(result.currency);
         }
+
+        // Auto-fill name and description if not already filled
+        setFormData((prev) => ({
+          ...prev,
+          name: prev.name || result.title || "",
+          description: prev.description || result.description || "",
+        }));
 
         hapticFeedback.notification("success");
       } else {
@@ -68,15 +114,45 @@ export default function AddItemPage() {
     } finally {
       setProcessingUrl(false);
     }
-  };
+  }, []);
+
+  // Auto-scrape when URL changes (with debounce)
+  useEffect(() => {
+    const url = formData.url.trim();
+
+    // Clear any pending debounce
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+
+    // Only scrape if URL is valid and different from last scraped
+    if (url && url !== lastScrapedUrlRef.current) {
+      try {
+        new URL(url);
+        // Debounce the scraping to avoid too many requests while typing
+        debounceTimerRef.current = setTimeout(() => {
+          fetchProductInfo(url);
+        }, 500);
+      } catch {
+        // Invalid URL, don't scrape
+      }
+    }
+
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, [formData.url, fetchProductInfo]);
 
   const handleUrlChange = (url: string) => {
-    setFormData({ ...formData, url });
-    // Clear previous product info when URL changes
-    if (productInfo.title || productInfo.imageUrl) {
-      setProductInfo({});
-    }
+    setFormData((prev) => ({ ...prev, url }));
     setUrlError(null);
+    // Only clear product info if URL is completely different (not just being typed)
+    if (!url.trim()) {
+      setProductInfo({});
+      lastScrapedUrlRef.current = "";
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -114,7 +190,7 @@ export default function AddItemPage() {
           : undefined,
         imageUrl: productInfo.imageUrl,
         price: productInfo.price,
-        currency: productInfo.currency,
+        currency: selectedCurrency,
         priority: formData.priority,
         status: "available",
       });
@@ -145,10 +221,28 @@ export default function AddItemPage() {
 
           <Input
             label="Product URL *"
-            placeholder="https://example.com/product"
+            placeholder="Paste a link to auto-fill..."
             type="url"
             value={formData.url}
             onChange={(e) => handleUrlChange(e.target.value)}
+            onPaste={(e: React.ClipboardEvent<HTMLInputElement>) => {
+              // Get pasted text and immediately trigger scrape
+              const pastedText = e.clipboardData.getData("text");
+              if (pastedText) {
+                try {
+                  new URL(pastedText);
+                  // Valid URL pasted - scrape immediately without debounce
+                  setTimeout(() => {
+                    if (debounceTimerRef.current) {
+                      clearTimeout(debounceTimerRef.current);
+                    }
+                    fetchProductInfo(pastedText);
+                  }, 0);
+                } catch {
+                  // Not a valid URL, let normal flow handle it
+                }
+              }
+            }}
             required
           />
 
@@ -192,13 +286,64 @@ export default function AddItemPage() {
                   )}
                   {productInfo.price && (
                     <div className="product-price">
-                      {productInfo.currency || "$"}
+                      {getCurrencySymbol(selectedCurrency)}
                       {productInfo.price.toFixed(2)}
                     </div>
                   )}
                 </div>
               </div>
             )}
+
+          {/* Currency notification & selector */}
+          {productInfo.price && !processingUrl && (
+            <div className="currency-notice">
+              <div className="currency-notice-text">
+                <span className="currency-icon">💱</span>
+                <span>
+                  Currency: <strong>{selectedCurrency}</strong>
+                  {productInfo.currency &&
+                    productInfo.currency !== selectedCurrency && (
+                      <span className="currency-auto-detected">
+                        {" "}
+                        (detected: {productInfo.currency})
+                      </span>
+                    )}
+                </span>
+              </div>
+              <button
+                type="button"
+                className="currency-change-btn"
+                onClick={() => {
+                  setShowCurrencySelector(!showCurrencySelector);
+                  hapticFeedback.selection();
+                }}
+              >
+                {showCurrencySelector ? "Hide" : "Change"}
+              </button>
+            </div>
+          )}
+
+          {showCurrencySelector && (
+            <div className="currency-selector">
+              <div className="currency-grid">
+                {CURRENCIES.map((currency) => (
+                  <button
+                    key={currency.code}
+                    type="button"
+                    className={`currency-option ${selectedCurrency === currency.code ? "active" : ""}`}
+                    onClick={() => {
+                      setSelectedCurrency(currency.code);
+                      setShowCurrencySelector(false);
+                      hapticFeedback.impact("light");
+                    }}
+                  >
+                    <span className="currency-symbol">{currency.symbol}</span>
+                    <span className="currency-code">{currency.code}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           <Textarea
             label="Description (optional)"

@@ -20,7 +20,7 @@ interface ProductInfo {
 /**
  * Extract Open Graph and meta tags from HTML
  */
-function extractMetaTags(html: string): ProductInfo {
+function extractMetaTags(html: string, hostname: string): ProductInfo {
   const result: ProductInfo = {};
 
   // Helper to extract meta content
@@ -63,6 +63,93 @@ function extractMetaTags(html: string): ProductInfo {
     getMeta("description");
   result.imageUrl = getMeta("og:image") || getMeta("twitter:image");
   result.siteName = getMeta("og:site_name");
+
+  // Amazon-specific extraction (Amazon blocks og tags for scrapers)
+  const isAmazon = hostname.includes("amazon");
+  if (isAmazon) {
+    // Try to extract product title from Amazon-specific patterns
+    if (!result.title || result.title.toLowerCase().includes("amazon")) {
+      // Pattern 1: productTitle span
+      const titleMatch = html.match(
+        /<span[^>]+id=["']productTitle["'][^>]*>([^<]+)</i
+      );
+      if (titleMatch) {
+        result.title = titleMatch[1].trim();
+      }
+
+      // Pattern 2: title tag but clean Amazon suffix
+      if (!result.title) {
+        const titleTagMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+        if (titleTagMatch) {
+          let title = titleTagMatch[1].trim();
+          // Remove "Amazon.com: " prefix and " : Amazon..." suffix
+          title = title
+            .replace(/^Amazon\.[^:]+:\s*/i, "")
+            .replace(/\s*[-:|]\s*Amazon\.[^$]+$/i, "")
+            .trim();
+          if (title && !title.toLowerCase().includes("amazon")) {
+            result.title = title;
+          }
+        }
+      }
+
+      // Pattern 3: From JSON-LD
+      const jsonLdMatch = html.match(
+        /<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/i
+      );
+      if (jsonLdMatch && !result.title) {
+        try {
+          const jsonData = JSON.parse(jsonLdMatch[1]);
+          if (jsonData.name) {
+            result.title = jsonData.name;
+          } else if (Array.isArray(jsonData) && jsonData[0]?.name) {
+            result.title = jsonData[0].name;
+          }
+        } catch {
+          // JSON parse failed
+        }
+      }
+    }
+
+    // Amazon image extraction
+    if (!result.imageUrl) {
+      // Try to get main product image
+      const imgMatch = html.match(/["']hiRes["']\s*:\s*["']([^"']+)["']/i);
+      if (imgMatch) {
+        result.imageUrl = imgMatch[1];
+      } else {
+        // Fallback to landingImage
+        const landingMatch = html.match(
+          /id=["']landingImage["'][^>]+src=["']([^"']+)["']/i
+        );
+        if (landingMatch) {
+          result.imageUrl = landingMatch[1];
+        }
+      }
+    }
+
+    // Amazon price extraction
+    if (!result.price) {
+      // Try various Amazon price patterns
+      const pricePatterns = [
+        /"priceAmount":\s*(\d+(?:\.\d{2})?)/,
+        /class="[^"]*a-price-whole[^"]*"[^>]*>(\d+)/,
+        /id="priceblock_ourprice"[^>]*>\s*\$?(\d+(?:\.\d{2})?)/i,
+        /id="priceblock_dealprice"[^>]*>\s*\$?(\d+(?:\.\d{2})?)/i,
+        /"price":\s*"?\$?(\d+(?:\.\d{2})?)"/,
+      ];
+      for (const pattern of pricePatterns) {
+        const match = html.match(pattern);
+        if (match) {
+          const price = parseFloat(match[1]);
+          if (!isNaN(price) && price > 0) {
+            result.price = price;
+            break;
+          }
+        }
+      }
+    }
+  }
 
   // Try to get title from <title> tag if not found
   if (!result.title) {
@@ -182,14 +269,35 @@ serve(async (req: Request) => {
     }
 
     // Fetch the page with a browser-like user agent
+    // Use different headers for Amazon to avoid bot detection
+    const isAmazon = parsedUrl.hostname.includes("amazon");
+    const headers: Record<string, string> = {
+      "User-Agent":
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+      Accept:
+        "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+      "Accept-Language": "en-US,en;q=0.9",
+      "Accept-Encoding": "gzip, deflate, br",
+      "Cache-Control": "no-cache",
+      Pragma: "no-cache",
+      "Sec-Ch-Ua":
+        '"Chromium";v="122", "Not(A:Brand";v="24", "Google Chrome";v="122"',
+      "Sec-Ch-Ua-Mobile": "?0",
+      "Sec-Ch-Ua-Platform": '"macOS"',
+      "Sec-Fetch-Dest": "document",
+      "Sec-Fetch-Mode": "navigate",
+      "Sec-Fetch-Site": "none",
+      "Sec-Fetch-User": "?1",
+      "Upgrade-Insecure-Requests": "1",
+    };
+
+    // For Amazon, add cookie acceptance header
+    if (isAmazon) {
+      headers["Cookie"] = "session-id=000-0000000-0000000";
+    }
+
     const response = await fetch(url, {
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        Accept:
-          "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-        "Accept-Language": "en-US,en;q=0.5",
-      },
+      headers,
       redirect: "follow",
     });
 
@@ -207,11 +315,21 @@ serve(async (req: Request) => {
     }
 
     const html = await response.text();
-    const productInfo = extractMetaTags(html);
+    const productInfo = extractMetaTags(html, parsedUrl.hostname);
 
     // If no title found, use domain name
     if (!productInfo.title) {
       productInfo.title = parsedUrl.hostname.replace("www.", "");
+    }
+
+    // If title is just the domain name, try harder to find a real title
+    const domainName = parsedUrl.hostname
+      .replace("www.", "")
+      .split(".")[0]
+      .toLowerCase();
+    if (productInfo.title && productInfo.title.toLowerCase() === domainName) {
+      // Title is just the domain, clear it and let client handle it
+      productInfo.title = undefined;
     }
 
     // Make image URL absolute if relative

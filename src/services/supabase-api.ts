@@ -117,9 +117,12 @@ export const scrapeProductUrl = async (
   url: string
 ): Promise<ScrapedProductInfo> => {
   try {
+    console.log("🔍 Calling scrape-url function for:", url);
     const { data, error } = await supabase.functions.invoke("scrape-url", {
       body: { url },
     });
+
+    console.log("📦 Raw response:", { data, error });
 
     if (error) {
       console.error("Supabase function error:", error);
@@ -129,14 +132,18 @@ export const scrapeProductUrl = async (
 
     // Handle nested productInfo structure from Edge Function
     const productInfo = data?.productInfo || data;
+    console.log("📦 Extracted productInfo:", productInfo);
 
-    return {
+    const result: ScrapedProductInfo = {
       title: productInfo?.title || undefined,
       imageUrl: productInfo?.imageUrl || undefined,
-      price: productInfo?.price ? parseFloat(productInfo.price) : undefined,
+      price: productInfo?.price ? Number(productInfo.price) : undefined,
       currency: productInfo?.currency || undefined,
       description: productInfo?.description || undefined,
     };
+
+    console.log("✅ Final scrape result:", result);
+    return result;
   } catch (error) {
     console.error("Error scraping URL:", error);
     // Fall back to client-side pattern matching
@@ -152,26 +159,53 @@ const extractFromUrlPattern = (url: string): ScrapedProductInfo => {
   try {
     const urlObj = new URL(url);
     const path = urlObj.pathname;
+    const hostname = urlObj.hostname.toLowerCase();
 
     // Try to extract product name from URL path
     const segments = path.split("/").filter(Boolean);
     let productName = "";
 
-    // Common patterns: /product/product-name, /p/product-name, /item/product-name
-    const productPatterns = ["product", "p", "item", "dp", "pd", "goods"];
-    for (let i = 0; i < segments.length; i++) {
-      if (
-        productPatterns.includes(segments[i].toLowerCase()) &&
-        segments[i + 1]
-      ) {
-        productName = segments[i + 1];
-        break;
+    // Amazon-specific URL parsing
+    // Amazon URLs: /dp/ASIN/product-name or /gp/product/ASIN or /product-name/dp/ASIN
+    if (hostname.includes("amazon")) {
+      // Find the segment after /dp/ or find the product slug before /dp/
+      const dpIndex = segments.findIndex((s) => s === "dp" || s === "gp");
+      if (dpIndex > 0) {
+        // Product name is usually before the /dp/ segment
+        const potentialName = segments[dpIndex - 1];
+        if (potentialName && !/^[A-Z0-9]{10}$/.test(potentialName)) {
+          productName = potentialName;
+        }
       }
-    }
+      // Also try the last segment if it looks like a product name
+      if (!productName && segments.length > 0) {
+        const lastSegment = segments[segments.length - 1];
+        if (
+          lastSegment &&
+          !/^[A-Z0-9]{10}$/.test(lastSegment) &&
+          lastSegment !== "dp" &&
+          lastSegment !== "ref"
+        ) {
+          productName = lastSegment;
+        }
+      }
+    } else {
+      // Common patterns: /product/product-name, /p/product-name, /item/product-name
+      const productPatterns = ["product", "p", "item", "dp", "pd", "goods"];
+      for (let i = 0; i < segments.length; i++) {
+        if (
+          productPatterns.includes(segments[i].toLowerCase()) &&
+          segments[i + 1]
+        ) {
+          productName = segments[i + 1];
+          break;
+        }
+      }
 
-    // If no pattern matched, use last meaningful segment
-    if (!productName && segments.length > 0) {
-      productName = segments[segments.length - 1];
+      // If no pattern matched, use last meaningful segment
+      if (!productName && segments.length > 0) {
+        productName = segments[segments.length - 1];
+      }
     }
 
     // Clean up product name: replace dashes/underscores with spaces, remove IDs
@@ -179,17 +213,27 @@ const extractFromUrlPattern = (url: string): ScrapedProductInfo => {
       productName = productName
         .replace(/[-_]/g, " ")
         .replace(/\.(html|php|aspx?)$/i, "")
+        .replace(/\b[A-Z0-9]{10}\b/g, "") // Remove Amazon ASINs
         .replace(/\b[a-f0-9]{8,}\b/gi, "") // Remove hex IDs
         .replace(/\s+/g, " ")
         .trim();
 
       // Capitalize words
-      productName = productName
-        .split(" ")
-        .map(
-          (word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
-        )
-        .join(" ");
+      if (productName) {
+        productName = productName
+          .split(" ")
+          .filter(Boolean)
+          .map(
+            (word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+          )
+          .join(" ");
+      }
+    }
+
+    // Don't return the domain name as the product name
+    const domainName = hostname.replace("www.", "").split(".")[0].toLowerCase();
+    if (productName && productName.toLowerCase() === domainName) {
+      productName = "";
     }
 
     return {

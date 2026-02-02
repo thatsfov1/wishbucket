@@ -1,35 +1,60 @@
-import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { useStore } from '../store/useStore';
-import { getWishlist, deleteWishlist, getShareLink, addItem } from '../services/supabase-api';
-import { showTelegramConfirm, openTelegramLink, hapticFeedback } from '../utils/telegram';
-import BottomNavBar from '../components/BottomNavBar';
-import AddItemModal from '../components/AddItemModal';
-import './WishlistDetailPage.css';
+import { useEffect, useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { useStore } from "../store/useStore";
+import {
+  getWishlist,
+  deleteWishlist,
+  getShareLink,
+  addItem,
+  deleteItem,
+} from "../services/supabase-api";
+import { openTelegramLink, hapticFeedback } from "../utils/telegram";
+import BottomNavBar from "../components/BottomNavBar";
+import AddItemModal from "../components/AddItemModal";
+import "./WishlistDetailPage.css";
+
+const DELETE_REASONS = [
+  { id: "received", label: "Already received this gift", emoji: "🎁" },
+  { id: "changed_mind", label: "Changed my mind", emoji: "💭" },
+  { id: "found_better", label: "Found something better", emoji: "✨" },
+  { id: "too_expensive", label: "Too pricey for now", emoji: "💸" },
+  { id: "not_available", label: "No longer available", emoji: "❌" },
+  { id: "other", label: "Other reason", emoji: "📝" },
+];
 
 export default function WishlistDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { currentWishlist, setCurrentWishlist, setLoading, isLoading } = useStore();
+  const { currentWishlist, setCurrentWishlist, setLoading, isLoading } =
+    useStore();
   const [showMenu, setShowMenu] = useState(false);
   const [showAddItemModal, setShowAddItemModal] = useState(false);
+  const [deleteItemModal, setDeleteItemModal] = useState<{
+    isOpen: boolean;
+    itemId: string | null;
+    itemName: string;
+  }>({
+    isOpen: false,
+    itemId: null,
+    itemName: "",
+  });
 
   useEffect(() => {
     if (!id) return;
-    
+
     const loadWishlist = async () => {
       try {
         setLoading(true);
         const wishlist = await getWishlist(id);
         setCurrentWishlist(wishlist);
       } catch (error) {
-        console.error('Error loading wishlist:', error);
-        navigate('/wishlists');
+        console.error("Error loading wishlist:", error);
+        navigate("/wishlists");
       } finally {
         setLoading(false);
       }
     };
-    
+
     loadWishlist();
   }, [id, setCurrentWishlist, setLoading, navigate]);
 
@@ -38,24 +63,28 @@ export default function WishlistDetailPage() {
     try {
       hapticFeedback.impact("light");
       const shareLink = await getShareLink(id);
-      openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(shareLink)}&text=${encodeURIComponent(`Check out my wishlist: ${currentWishlist?.name || ''}`)}`);
-      hapticFeedback.notification('success');
+      openTelegramLink(
+        `https://t.me/share/url?url=${encodeURIComponent(shareLink)}&text=${encodeURIComponent(`Check out my wishlist: ${currentWishlist?.name || ""}`)}`,
+      );
+      hapticFeedback.notification("success");
     } catch (error) {
-      console.error('Error sharing wishlist:', error);
+      console.error("Error sharing wishlist:", error);
     }
   };
 
   const handleDelete = async () => {
     if (!id) return;
-    const confirmed = await showTelegramConfirm('Are you sure you want to delete this wishlist?');
+    const confirmed = await showTelegramConfirm(
+      "Are you sure you want to delete this wishlist?",
+    );
     if (!confirmed) return;
 
     try {
       await deleteWishlist(id);
-      hapticFeedback.notification('success');
-      navigate('/wishlists');
+      hapticFeedback.notification("success");
+      navigate("/wishlists");
     } catch (error) {
-      console.error('Error deleting wishlist:', error);
+      console.error("Error deleting wishlist:", error);
     }
   };
 
@@ -74,7 +103,7 @@ export default function WishlistDetailPage() {
       // Add item to all selected wishlists with notifyFollowers flag
       for (const wishlistId of itemData.wishlistIds) {
         await addItem(
-          wishlistId, 
+          wishlistId,
           {
             wishlistId,
             name: itemData.name,
@@ -87,7 +116,7 @@ export default function WishlistDetailPage() {
             priority: "medium",
             status: "available",
           },
-          itemData.notifyFollowers
+          itemData.notifyFollowers,
         );
       }
       // Reload current wishlist if it was in the selected list
@@ -95,10 +124,10 @@ export default function WishlistDetailPage() {
         const wishlist = await getWishlist(id);
         setCurrentWishlist(wishlist);
       }
-      hapticFeedback.notification('success');
+      hapticFeedback.notification("success");
     } catch (error) {
-      console.error('Error adding item:', error);
-      hapticFeedback.notification('error');
+      console.error("Error adding item:", error);
+      hapticFeedback.notification("error");
     } finally {
       setLoading(false);
     }
@@ -109,12 +138,42 @@ export default function WishlistDetailPage() {
     navigate(-1);
   };
 
+  const openDeleteItemModal = (itemId: string, itemName: string) => {
+    hapticFeedback.impact("medium");
+    setDeleteItemModal({ isOpen: true, itemId, itemName });
+  };
+
+  const handleDeleteItem = async (reason: string) => {
+    if (!deleteItemModal.itemId || !id) return;
+
+    try {
+      hapticFeedback.notification("success");
+      await deleteItem(deleteItemModal.itemId);
+      // Reload wishlist to update items
+      const wishlist = await getWishlist(id);
+      setCurrentWishlist(wishlist);
+      setDeleteItemModal({ isOpen: false, itemId: null, itemName: "" });
+    } catch (error) {
+      console.error("Error deleting item:", error);
+      hapticFeedback.notification("error");
+    }
+  };
+
   if (isLoading || !currentWishlist) {
     return (
       <div className="wishlist-detail-container">
         <header className="detail-header">
           <button className="back-btn" onClick={handleBack}>
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
               <path d="M15 18l-6-6 6-6" />
             </svg>
           </button>
@@ -133,12 +192,27 @@ export default function WishlistDetailPage() {
       {/* Header */}
       <header className="detail-header">
         <button className="back-btn" onClick={handleBack}>
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
             <path d="M15 18l-6-6 6-6" />
           </svg>
         </button>
         <h1>{currentWishlist.name}</h1>
-        <button className="menu-btn" onClick={() => { hapticFeedback.impact("light"); setShowMenu(!showMenu); }}>
+        <button
+          className="menu-btn"
+          onClick={() => {
+            hapticFeedback.impact("light");
+            setShowMenu(!showMenu);
+          }}
+        >
           <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
             <circle cx="12" cy="6" r="2" />
             <circle cx="12" cy="12" r="2" />
@@ -152,7 +226,16 @@ export default function WishlistDetailPage() {
         <div className="menu-dropdown" onClick={() => setShowMenu(false)}>
           <div className="menu-content" onClick={(e) => e.stopPropagation()}>
             <button onClick={handleShare}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
                 <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8" />
                 <polyline points="16,6 12,2 8,6" />
                 <line x1="12" y1="2" x2="12" y2="15" />
@@ -160,14 +243,32 @@ export default function WishlistDetailPage() {
               Share Wishlist
             </button>
             <button onClick={() => navigate(`/wishlists/${id}/edit`)}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
                 <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
                 <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
               </svg>
               Edit Wishlist
             </button>
             <button className="danger" onClick={handleDelete}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
                 <polyline points="3,6 5,6 21,6" />
                 <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
                 <line x1="10" y1="11" x2="10" y2="17" />
@@ -187,12 +288,22 @@ export default function WishlistDetailPage() {
         </div>
         <div className="stat-divider" />
         <div className="detail-stat">
-          <span className="stat-value">{currentWishlist.items.filter(i => i.status === 'reserved').length}</span>
+          <span className="stat-value">
+            {
+              currentWishlist.items.filter((i) => i.status === "reserved")
+                .length
+            }
+          </span>
           <span className="stat-label">Reserved</span>
         </div>
         <div className="stat-divider" />
         <div className="detail-stat">
-          <span className="stat-value">{currentWishlist.items.filter(i => i.status === 'purchased').length}</span>
+          <span className="stat-value">
+            {
+              currentWishlist.items.filter((i) => i.status === "purchased")
+                .length
+            }
+          </span>
           <span className="stat-label">Purchased</span>
         </div>
       </div>
@@ -208,11 +319,21 @@ export default function WishlistDetailPage() {
       <div className="items-section">
         <div className="section-header">
           <h2>Items</h2>
-          <button 
+          <button
             className="add-item-btn"
-            onClick={() => { hapticFeedback.impact("medium"); setShowAddItemModal(true); }}
+            onClick={() => {
+              hapticFeedback.impact("medium");
+              setShowAddItemModal(true);
+            }}
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+            >
               <line x1="12" y1="5" x2="12" y2="19" />
               <line x1="5" y1="12" x2="19" y2="12" />
             </svg>
@@ -229,8 +350,8 @@ export default function WishlistDetailPage() {
         ) : (
           <div className="items-list">
             {currentWishlist.items.map((item, index) => (
-              <div 
-                key={item.id} 
+              <div
+                key={item.id}
                 className="item-card animate-slide-up"
                 style={{ animationDelay: `${index * 0.05}s` }}
               >
@@ -247,21 +368,89 @@ export default function WishlistDetailPage() {
                 </div>
                 <div className="item-info">
                   <h3>{item.name}</h3>
-                  {item.description && <p className="item-desc">{item.description}</p>}
+                  {item.description && (
+                    <p className="item-desc">{item.description}</p>
+                  )}
                   {item.price && (
-                    <span className="item-price">{item.currency || '$'}{item.price.toFixed(2)}</span>
+                    <span className="item-price">
+                      {item.currency || "$"}
+                      {item.price.toFixed(2)}
+                    </span>
                   )}
                 </div>
-                <span className={`item-status status-${item.status}`}>
-                  {item.status === 'available' && '✓'}
-                  {item.status === 'reserved' && '⏳'}
-                  {item.status === 'purchased' && '✓✓'}
-                </span>
+                <div className="item-actions">
+                  <span className={`item-status status-${item.status}`}>
+                    {item.status === "available" && "✓"}
+                    {item.status === "reserved" && "⏳"}
+                    {item.status === "purchased" && "✓✓"}
+                  </span>
+                  <button
+                    className="item-delete-btn"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openDeleteItemModal(item.id, item.name);
+                    }}
+                  >
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    >
+                      <polyline points="3,6 5,6 21,6" />
+                      <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
+                    </svg>
+                  </button>
+                </div>
               </div>
             ))}
           </div>
         )}
       </div>
+
+      {/* Delete Item Modal */}
+      {deleteItemModal.isOpen && (
+        <div
+          className="delete-modal-overlay"
+          onClick={() =>
+            setDeleteItemModal({ isOpen: false, itemId: null, itemName: "" })
+          }
+        >
+          <div className="delete-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="delete-modal-header">
+              <span className="delete-modal-icon">🗑️</span>
+              <h3>Remove Item</h3>
+              <p>Why are you removing "{deleteItemModal.itemName}"?</p>
+            </div>
+            <div className="delete-reasons">
+              {DELETE_REASONS.map((reason) => (
+                <button
+                  key={reason.id}
+                  className="delete-reason-btn"
+                  onClick={() => handleDeleteItem(reason.id)}
+                >
+                  <span className="reason-emoji">{reason.emoji}</span>
+                  <span className="reason-label">{reason.label}</span>
+                </button>
+              ))}
+            </div>
+            <button
+              className="delete-cancel-btn"
+              onClick={() =>
+                setDeleteItemModal({
+                  isOpen: false,
+                  itemId: null,
+                  itemName: "",
+                })
+              }
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
 
       <BottomNavBar />
 
