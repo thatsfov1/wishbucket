@@ -28,6 +28,7 @@ import FriendProfilePage from "./pages/FriendProfilePage";
 import MarketPage from "./pages/MarketPage";
 import TasksPage from "./pages/TasksPage";
 import HintsPage from "./pages/HintsPage";
+import EditWishlistPage from "./pages/EditWishlistPage";
 
 function App() {
   const {
@@ -69,7 +70,7 @@ function App() {
             console.log("✅ Referral result:", result);
             if (result.success) {
               console.log(
-                `🎉 Referral applied! Earned ${result.bonus} bonus points`
+                `🎉 Referral applied! Earned ${result.bonus} bonus points`,
               );
               // Refresh profile to get updated bonus
               const updatedProfile = await getUserProfile();
@@ -96,7 +97,7 @@ function App() {
       } catch (error) {
         console.error("Error loading data:", error);
         setError(
-          error instanceof Error ? error.message : "Failed to load data"
+          error instanceof Error ? error.message : "Failed to load data",
         );
       } finally {
         setLoading(false);
@@ -118,6 +119,7 @@ function App() {
         <Route path="/" element={<HomePage />} />
         <Route path="/wishlists" element={<WishlistsPage />} />
         <Route path="/wishlists/:id" element={<WishlistDetailPage />} />
+        <Route path="/wishlists/:id/edit" element={<EditWishlistPage />} />
         <Route path="/wishlists/:id/add-item" element={<AddItemPage />} />
         <Route path="/secret-santa" element={<SecretSantaPage />} />
         <Route path="/profile" element={<ProfilePage />} />

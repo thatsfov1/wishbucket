@@ -28,7 +28,6 @@ const CURRENCIES = [
   { code: "HRK", symbol: "kn", name: "Croatian Kuna" },
   { code: "RSD", symbol: "дин", name: "Serbian Dinar" },
   { code: "TRY", symbol: "₺", name: "Turkish Lira" },
-  { code: "RUB", symbol: "₽", name: "Russian Ruble" },
   { code: "GEL", symbol: "₾", name: "Georgian Lari" },
   { code: "ISK", symbol: "kr", name: "Icelandic Króna" },
   { code: "JPY", symbol: "¥", name: "Japanese Yen" },

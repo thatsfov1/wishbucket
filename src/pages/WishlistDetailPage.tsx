@@ -7,19 +7,25 @@ import {
   getShareLink,
   addItem,
   deleteItem,
+  updateItem,
 } from "../services/supabase-api";
-import { openTelegramLink, hapticFeedback } from "../utils/telegram";
+import {
+  openTelegramLink,
+  hapticFeedback,
+  showTelegramConfirm,
+} from "../utils/telegram";
 import BottomNavBar from "../components/BottomNavBar";
 import AddItemModal from "../components/AddItemModal";
 import "./WishlistDetailPage.css";
 
 const DELETE_REASONS = [
-  { id: "received", label: "Already received this gift", emoji: "🎁" },
-  { id: "changed_mind", label: "Changed my mind", emoji: "💭" },
-  { id: "found_better", label: "Found something better", emoji: "✨" },
-  { id: "too_expensive", label: "Too pricey for now", emoji: "💸" },
-  { id: "not_available", label: "No longer available", emoji: "❌" },
-  { id: "other", label: "Other reason", emoji: "📝" },
+  {
+    id: "received",
+    label: "Yes, I received this gift!",
+    emoji: "🎁",
+    action: "mark_received",
+  },
+  { id: "remove", label: "No, just remove it", emoji: "🗑️", action: "delete" },
 ];
 
 export default function WishlistDetailPage() {
@@ -29,6 +35,10 @@ export default function WishlistDetailPage() {
     useStore();
   const [showMenu, setShowMenu] = useState(false);
   const [showAddItemModal, setShowAddItemModal] = useState(false);
+  const [showReceivedSection, setShowReceivedSection] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<
+    (typeof currentWishlist.items)[0] | null
+  >(null);
   const [deleteItemModal, setDeleteItemModal] = useState<{
     isOpen: boolean;
     itemId: string | null;
@@ -143,18 +153,28 @@ export default function WishlistDetailPage() {
     setDeleteItemModal({ isOpen: true, itemId, itemName });
   };
 
-  const handleDeleteItem = async (reason: string) => {
+  const handleDeleteItem = async (reasonId: string) => {
     if (!deleteItemModal.itemId || !id) return;
 
     try {
-      hapticFeedback.notification("success");
-      await deleteItem(deleteItemModal.itemId);
+      const reason = DELETE_REASONS.find((r) => r.id === reasonId);
+
+      if (reason?.action === "mark_received") {
+        // Mark as purchased/received instead of deleting
+        await updateItem(deleteItemModal.itemId, { status: "purchased" });
+        hapticFeedback.notification("success");
+      } else {
+        // Actually delete the item
+        await deleteItem(deleteItemModal.itemId);
+        hapticFeedback.notification("success");
+      }
+
       // Reload wishlist to update items
       const wishlist = await getWishlist(id);
       setCurrentWishlist(wishlist);
       setDeleteItemModal({ isOpen: false, itemId: null, itemName: "" });
     } catch (error) {
-      console.error("Error deleting item:", error);
+      console.error("Error updating item:", error);
       hapticFeedback.notification("error");
     }
   };
@@ -283,8 +303,13 @@ export default function WishlistDetailPage() {
       {/* Stats */}
       <div className="detail-stats">
         <div className="detail-stat">
-          <span className="stat-value">{currentWishlist.items.length}</span>
-          <span className="stat-label">Items</span>
+          <span className="stat-value">
+            {
+              currentWishlist.items.filter((i) => i.status === "available")
+                .length
+            }
+          </span>
+          <span className="stat-label">Active</span>
         </div>
         <div className="stat-divider" />
         <div className="detail-stat">
@@ -297,14 +322,20 @@ export default function WishlistDetailPage() {
           <span className="stat-label">Reserved</span>
         </div>
         <div className="stat-divider" />
-        <div className="detail-stat">
+        <div
+          className="detail-stat clickable"
+          onClick={() => {
+            hapticFeedback.selection();
+            setShowReceivedSection(!showReceivedSection);
+          }}
+        >
           <span className="stat-value">
             {
               currentWishlist.items.filter((i) => i.status === "purchased")
                 .length
             }
           </span>
-          <span className="stat-label">Purchased</span>
+          <span className="stat-label">Received ⤵</span>
         </div>
       </div>
 
@@ -314,6 +345,53 @@ export default function WishlistDetailPage() {
           <p>{currentWishlist.description}</p>
         </div>
       )}
+
+      {/* Received Items History */}
+      {showReceivedSection &&
+        currentWishlist.items.filter((i) => i.status === "purchased").length >
+          0 && (
+          <div className="received-section">
+            <div className="received-header">
+              <span className="received-icon">🎁</span>
+              <h3>Received Gifts</h3>
+              <button
+                className="close-received-btn"
+                onClick={() => setShowReceivedSection(false)}
+              >
+                ✕
+              </button>
+            </div>
+            <div className="received-list">
+              {currentWishlist.items
+                .filter((i) => i.status === "purchased")
+                .map((item) => (
+                  <div key={item.id} className="received-item">
+                    <div className="received-item-image">
+                      {item.imageUrl ? (
+                        item.imageUrl.length <= 2 ? (
+                          <span>{item.imageUrl}</span>
+                        ) : (
+                          <img src={item.imageUrl} alt={item.name} />
+                        )
+                      ) : (
+                        <span>🎁</span>
+                      )}
+                    </div>
+                    <div className="received-item-info">
+                      <span className="received-item-name">{item.name}</span>
+                      {item.price && (
+                        <span className="received-item-price">
+                          {item.currency || "$"}
+                          {item.price.toFixed(2)}
+                        </span>
+                      )}
+                    </div>
+                    <span className="received-badge">✓ Received</span>
+                  </div>
+                ))}
+            </div>
+          </div>
+        )}
 
       {/* Items Section */}
       <div className="items-section">
@@ -349,66 +427,148 @@ export default function WishlistDetailPage() {
           </div>
         ) : (
           <div className="items-list">
-            {currentWishlist.items.map((item, index) => (
-              <div
-                key={item.id}
-                className="item-card animate-slide-up"
-                style={{ animationDelay: `${index * 0.05}s` }}
-              >
-                <div className="item-image">
-                  {item.imageUrl ? (
-                    item.imageUrl.length <= 2 ? (
-                      <span className="item-emoji">{item.imageUrl}</span>
+            {currentWishlist.items
+              .filter((i) => i.status !== "purchased")
+              .map((item, index) => (
+                <div
+                  key={item.id}
+                  className="item-card animate-slide-up"
+                  style={{ animationDelay: `${index * 0.05}s` }}
+                  onClick={() => {
+                    hapticFeedback.selection();
+                    setSelectedItem(item);
+                  }}
+                >
+                  <div className="item-image">
+                    {item.imageUrl ? (
+                      item.imageUrl.length <= 2 ? (
+                        <span className="item-emoji">{item.imageUrl}</span>
+                      ) : (
+                        <img src={item.imageUrl} alt={item.name} />
+                      )
                     ) : (
-                      <img src={item.imageUrl} alt={item.name} />
-                    )
-                  ) : (
-                    <span className="item-emoji">🎁</span>
-                  )}
-                </div>
-                <div className="item-info">
-                  <h3>{item.name}</h3>
-                  {item.description && (
-                    <p className="item-desc">{item.description}</p>
-                  )}
-                  {item.price && (
-                    <span className="item-price">
-                      {item.currency || "$"}
-                      {item.price.toFixed(2)}
+                      <span className="item-emoji">🎁</span>
+                    )}
+                  </div>
+                  <div className="item-info">
+                    <h3>{item.name}</h3>
+                    {item.description && (
+                      <p className="item-desc">{item.description}</p>
+                    )}
+                    {item.price && (
+                      <span className="item-price">
+                        {item.currency || "$"}
+                        {item.price.toFixed(2)}
+                      </span>
+                    )}
+                  </div>
+                  <div className="item-actions">
+                    <span className={`item-status status-${item.status}`}>
+                      {item.status === "available" && "✓"}
+                      {item.status === "reserved" && "⏳"}
+                      {item.status === "purchased" && "✓✓"}
                     </span>
-                  )}
-                </div>
-                <div className="item-actions">
-                  <span className={`item-status status-${item.status}`}>
-                    {item.status === "available" && "✓"}
-                    {item.status === "reserved" && "⏳"}
-                    {item.status === "purchased" && "✓✓"}
-                  </span>
-                  <button
-                    className="item-delete-btn"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      openDeleteItemModal(item.id, item.name);
-                    }}
-                  >
-                    <svg
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
+                    <button
+                      className="item-delete-btn"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openDeleteItemModal(item.id, item.name);
+                      }}
                     >
-                      <polyline points="3,6 5,6 21,6" />
-                      <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
-                    </svg>
-                  </button>
+                      <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                      >
+                        <polyline points="3,6 5,6 21,6" />
+                        <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
+                      </svg>
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
           </div>
         )}
       </div>
+
+      {/* Item Detail Modal */}
+      {selectedItem && (
+        <div
+          className="item-detail-overlay"
+          onClick={() => setSelectedItem(null)}
+        >
+          <div
+            className="item-detail-modal"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              className="close-detail-btn"
+              onClick={() => setSelectedItem(null)}
+            >
+              ✕
+            </button>
+
+            {selectedItem.imageUrl && selectedItem.imageUrl.length > 2 && (
+              <div className="detail-image-container">
+                <img src={selectedItem.imageUrl} alt={selectedItem.name} />
+              </div>
+            )}
+
+            <div className="detail-content">
+              <h2>{selectedItem.name}</h2>
+
+              {selectedItem.price && (
+                <div className="detail-price">
+                  {selectedItem.currency || "$"}
+                  {selectedItem.price.toFixed(2)}
+                </div>
+              )}
+
+              {selectedItem.description && (
+                <p className="detail-desc">{selectedItem.description}</p>
+              )}
+
+              <div className="detail-meta">
+                <span className={`detail-status status-${selectedItem.status}`}>
+                  {selectedItem.status === "available" && "✓ Available"}
+                  {selectedItem.status === "reserved" && "⏳ Reserved"}
+                  {selectedItem.status === "purchased" && "🎁 Received"}
+                </span>
+                <span className="detail-priority priority-${selectedItem.priority}">
+                  Priority: {selectedItem.priority}
+                </span>
+              </div>
+
+              {selectedItem.url && (
+                <a
+                  href={selectedItem.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="detail-link-btn"
+                  onClick={() => hapticFeedback.impact("light")}
+                >
+                  🔗 View Product
+                </a>
+              )}
+
+              <div className="detail-actions">
+                <button
+                  className="detail-delete-btn"
+                  onClick={() => {
+                    openDeleteItemModal(selectedItem.id, selectedItem.name);
+                    setSelectedItem(null);
+                  }}
+                >
+                  🗑️ Remove Item
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Delete Item Modal */}
       {deleteItemModal.isOpen && (
@@ -420,15 +580,15 @@ export default function WishlistDetailPage() {
         >
           <div className="delete-modal" onClick={(e) => e.stopPropagation()}>
             <div className="delete-modal-header">
-              <span className="delete-modal-icon">🗑️</span>
-              <h3>Remove Item</h3>
-              <p>Why are you removing "{deleteItemModal.itemName}"?</p>
+              <span className="delete-modal-icon">🎁</span>
+              <h3>Did you receive this gift?</h3>
+              <p>"{deleteItemModal.itemName}"</p>
             </div>
             <div className="delete-reasons">
               {DELETE_REASONS.map((reason) => (
                 <button
                   key={reason.id}
-                  className="delete-reason-btn"
+                  className={`delete-reason-btn ${reason.action === "mark_received" ? "received-btn" : ""}`}
                   onClick={() => handleDeleteItem(reason.id)}
                 >
                   <span className="reason-emoji">{reason.emoji}</span>

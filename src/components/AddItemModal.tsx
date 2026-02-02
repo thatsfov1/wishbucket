@@ -69,7 +69,7 @@ export default function AddItemModal({
       setCurrency("$");
       setUrl("");
       setSelectedWishlists(
-        preselectedWishlistId ? [preselectedWishlistId] : []
+        preselectedWishlistId ? [preselectedWishlistId] : [],
       );
       setShowQuickCreate(false);
       setNewWishlistName("");
@@ -165,7 +165,7 @@ export default function AddItemModal({
         setIsScrapingUrl(false);
       }
     },
-    [name, description, price, customImage]
+    [name, description, price, customImage],
   );
 
   // Effect to auto-scrape when URL changes
@@ -247,7 +247,7 @@ export default function AddItemModal({
     setSelectedWishlists((prev) =>
       prev.includes(wishlistId)
         ? prev.filter((id) => id !== wishlistId)
-        : [...prev, wishlistId]
+        : [...prev, wishlistId],
     );
   };
 
