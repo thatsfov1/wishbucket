@@ -7,16 +7,50 @@ import { getWishlist, updateWishlist } from "../services/supabase-api";
 import { showTelegramAlert, hapticFeedback } from "../utils/telegram";
 import "./EditWishlistPage.css";
 
+const COVER_EMOJIS = [
+  "🎁",
+  "🎂",
+  "🎄",
+  "💝",
+  "🌟",
+  "✨",
+  "🎉",
+  "🎊",
+  "💎",
+  "👑",
+  "🦋",
+  "🌸",
+  "🌺",
+  "🌻",
+  "🍀",
+  "🌈",
+  "🏠",
+  "✈️",
+  "🎸",
+  "📚",
+  "🎮",
+  "⚽",
+  "🎨",
+  "🎭",
+  "💄",
+  "👗",
+  "👟",
+  "⌚",
+  "💻",
+  "📱",
+  "🎧",
+  "📷",
+];
+
 export default function EditWishlistPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [selectedEmoji, setSelectedEmoji] = useState("🎁");
   const [formData, setFormData] = useState({
     name: "",
     description: "",
-    imageUrl: "",
-    eventDate: "",
     isPublic: true,
   });
 
@@ -30,10 +64,12 @@ export default function EditWishlistPage() {
         setFormData({
           name: wishlist.name,
           description: wishlist.description || "",
-          imageUrl: wishlist.imageUrl || "",
-          eventDate: wishlist.eventDate || "",
           isPublic: wishlist.isPublic,
         });
+        // Try to extract emoji from existing imageUrl if it looks like an emoji
+        if (wishlist.imageUrl && COVER_EMOJIS.includes(wishlist.imageUrl)) {
+          setSelectedEmoji(wishlist.imageUrl);
+        }
       } catch (error) {
         console.error("Error loading wishlist:", error);
         showTelegramAlert("Failed to load wishlist");
@@ -61,8 +97,6 @@ export default function EditWishlistPage() {
       await updateWishlist(id, {
         name: formData.name,
         description: formData.description,
-        imageUrl: formData.imageUrl || undefined,
-        eventDate: formData.eventDate || undefined,
         isPublic: formData.isPublic,
       });
       hapticFeedback.notification("success");
@@ -108,24 +142,24 @@ export default function EditWishlistPage() {
             }
           />
 
-          <Input
-            label="Cover Image URL"
-            placeholder="https://..."
-            type="url"
-            value={formData.imageUrl}
-            onChange={(e) =>
-              setFormData({ ...formData, imageUrl: e.target.value })
-            }
-          />
-
-          <Input
-            label="Event Date"
-            type="date"
-            value={formData.eventDate}
-            onChange={(e) =>
-              setFormData({ ...formData, eventDate: e.target.value })
-            }
-          />
+          <div className="emoji-picker-section">
+            <label className="emoji-picker-label">Cover Icon</label>
+            <div className="emoji-grid">
+              {COVER_EMOJIS.map((emoji) => (
+                <button
+                  key={emoji}
+                  type="button"
+                  className={`emoji-option ${selectedEmoji === emoji ? "selected" : ""}`}
+                  onClick={() => {
+                    hapticFeedback.selection();
+                    setSelectedEmoji(emoji);
+                  }}
+                >
+                  {emoji}
+                </button>
+              ))}
+            </div>
+          </div>
 
           <div className="visibility-toggle">
             <div className="toggle-info">
