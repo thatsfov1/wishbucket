@@ -26,7 +26,7 @@ const AFFILIATE_PROGRAMS: AffiliateProgram[] = [
     domain: "amazon.com",
     programName: "Amazon Associates",
     referralParam: "tag",
-    referralId: "YOUR_AMAZON_TAG",
+    referralId: "kulikovskyi-20",
     isActive: true,
   },
   {

@@ -1,14 +1,19 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { 
-  getUserById, 
-  getUserPublicWishlists, 
-  addFriend, 
+import {
+  getUserById,
+  getUserPublicWishlists,
+  addFriend,
   removeFriend,
   reserveItem,
   purchaseItem,
 } from "../services/supabase-api";
-import { hapticFeedback, showTelegramAlert, showTelegramConfirm, getTelegramUserId } from "../utils/telegram";
+import {
+  hapticFeedback,
+  showTelegramAlert,
+  showTelegramConfirm,
+  getTelegramUserId,
+} from "../utils/telegram";
 import { Friend, Wishlist, WishlistItem } from "../types";
 import BottomNavBar from "../components/BottomNavBar";
 import "./FriendProfilePage.css";
@@ -17,10 +22,12 @@ export default function FriendProfilePage() {
   const { userId } = useParams<{ userId: string }>();
   const navigate = useNavigate();
   const currentUserId = getTelegramUserId();
-  
+
   const [user, setUser] = useState<Friend | null>(null);
   const [wishlists, setWishlists] = useState<Wishlist[]>([]);
-  const [selectedWishlist, setSelectedWishlist] = useState<Wishlist | null>(null);
+  const [selectedWishlist, setSelectedWishlist] = useState<Wishlist | null>(
+    null,
+  );
   const [isLoading, setIsLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
@@ -33,15 +40,15 @@ export default function FriendProfilePage() {
     try {
       setIsLoading(true);
       const targetUserId = parseInt(userId!);
-      
+
       const [userData, wishlistsData] = await Promise.all([
         getUserById(targetUserId),
         getUserPublicWishlists(targetUserId),
       ]);
-      
+
       setUser(userData);
       setWishlists(wishlistsData);
-      
+
       if (wishlistsData.length > 0) {
         setSelectedWishlist(wishlistsData[0]);
       }
@@ -60,11 +67,11 @@ export default function FriendProfilePage() {
 
   const handleFollow = async () => {
     if (!user) return;
-    
+
     try {
       setActionLoading("follow");
       hapticFeedback.impact("medium");
-      
+
       if (user.isFollowing) {
         await removeFriend(user.id);
         setUser({ ...user, isFollowing: false });
@@ -72,7 +79,7 @@ export default function FriendProfilePage() {
         await addFriend(user.id);
         setUser({ ...user, isFollowing: true });
       }
-      
+
       hapticFeedback.notification("success");
     } catch (error) {
       console.error("Error toggling follow:", error);
@@ -83,33 +90,39 @@ export default function FriendProfilePage() {
   };
 
   const handleReserveItem = async (item: WishlistItem) => {
-    if (item.status !== 'available') {
+    if (item.status !== "available") {
       showTelegramAlert("This item is already reserved or purchased");
       return;
     }
 
     const confirmed = await showTelegramConfirm(
-      `Reserve "${item.name}" as a gift for ${user?.firstName}?`
+      `Reserve "${item.name}" as a gift for ${user?.firstName}?`,
     );
-    
+
     if (!confirmed) return;
 
     try {
       setActionLoading(item.id);
       hapticFeedback.impact("medium");
-      
+
       await reserveItem(item.id);
-      
+
       // Update local state
       if (selectedWishlist) {
         setSelectedWishlist({
           ...selectedWishlist,
-          items: selectedWishlist.items.map(i => 
-            i.id === item.id ? { ...i, status: 'reserved', reservedBy: currentUserId || undefined } : i
+          items: selectedWishlist.items.map((i) =>
+            i.id === item.id
+              ? {
+                  ...i,
+                  status: "reserved",
+                  reservedBy: currentUserId || undefined,
+                }
+              : i,
           ),
         });
       }
-      
+
       hapticFeedback.notification("success");
       showTelegramAlert("Item reserved! They won't see who reserved it.");
     } catch (error) {
@@ -123,27 +136,33 @@ export default function FriendProfilePage() {
 
   const handleMarkPurchased = async (item: WishlistItem) => {
     const confirmed = await showTelegramConfirm(
-      `Mark "${item.name}" as purchased/gifted?`
+      `Mark "${item.name}" as purchased/gifted?`,
     );
-    
+
     if (!confirmed) return;
 
     try {
       setActionLoading(item.id);
       hapticFeedback.impact("medium");
-      
+
       await purchaseItem(item.id);
-      
+
       // Update local state
       if (selectedWishlist) {
         setSelectedWishlist({
           ...selectedWishlist,
-          items: selectedWishlist.items.map(i => 
-            i.id === item.id ? { ...i, status: 'purchased', purchasedBy: currentUserId || undefined } : i
+          items: selectedWishlist.items.map((i) =>
+            i.id === item.id
+              ? {
+                  ...i,
+                  status: "purchased",
+                  purchasedBy: currentUserId || undefined,
+                }
+              : i,
           ),
         });
       }
-      
+
       hapticFeedback.notification("success");
       showTelegramAlert("Marked as gifted! 🎁");
     } catch (error) {
@@ -155,10 +174,10 @@ export default function FriendProfilePage() {
   };
 
   const getItemStatusBadge = (item: WishlistItem) => {
-    if (item.status === 'reserved') {
+    if (item.status === "reserved") {
       return <span className="status-badge reserved">Reserved</span>;
     }
-    if (item.status === 'purchased') {
+    if (item.status === "purchased") {
       return <span className="status-badge purchased">Gifted ✓</span>;
     }
     return null;
@@ -171,7 +190,14 @@ export default function FriendProfilePage() {
       <div className="friend-profile-container">
         <header className="profile-header">
           <button className="back-btn" onClick={handleBack}>
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
               <path d="M15 18l-6-6 6-6" />
             </svg>
           </button>
@@ -191,7 +217,14 @@ export default function FriendProfilePage() {
       <div className="friend-profile-container">
         <header className="profile-header">
           <button className="back-btn" onClick={handleBack}>
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
               <path d="M15 18l-6-6 6-6" />
             </svg>
           </button>
@@ -212,7 +245,14 @@ export default function FriendProfilePage() {
       {/* Header */}
       <header className="profile-header">
         <button className="back-btn" onClick={handleBack}>
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <svg
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
             <path d="M15 18l-6-6 6-6" />
           </svg>
         </button>
@@ -228,9 +268,11 @@ export default function FriendProfilePage() {
             <span>{user.firstName[0]?.toUpperCase()}</span>
           )}
         </div>
-        <h2>{user.firstName} {user.lastName || ""}</h2>
+        <h2>
+          {user.firstName} {user.lastName || ""}
+        </h2>
         {user.username && <p className="username">@{user.username}</p>}
-        
+
         <div className="user-stats">
           <div className="stat">
             <span className="stat-value">{wishlists.length}</span>
@@ -242,14 +284,18 @@ export default function FriendProfilePage() {
           </div>
         </div>
 
-        <button 
+        <button
           className={`follow-action-btn ${user.isFollowing ? "following" : ""}`}
           onClick={handleFollow}
           disabled={actionLoading === "follow"}
         >
-          {actionLoading === "follow" ? "..." : user.isFollowing ? "Following" : "Follow"}
+          {actionLoading === "follow"
+            ? "..."
+            : user.isFollowing
+              ? "Following"
+              : "Follow"}
         </button>
-        
+
         {user.isFollowedBy && !user.isFollowing && (
           <span className="follows-you-text">Follows you</span>
         )}
@@ -265,11 +311,14 @@ export default function FriendProfilePage() {
         <>
           {/* Wishlist Tabs */}
           <div className="wishlist-tabs">
-            {wishlists.map(wishlist => (
+            {wishlists.map((wishlist) => (
               <button
                 key={wishlist.id}
                 className={`wishlist-tab ${selectedWishlist?.id === wishlist.id ? "active" : ""}`}
-                onClick={() => { setSelectedWishlist(wishlist); hapticFeedback.selection(); }}
+                onClick={() => {
+                  setSelectedWishlist(wishlist);
+                  hapticFeedback.selection();
+                }}
               >
                 {wishlist.isDefault ? "⭐" : "📝"} {wishlist.name}
                 <span className="tab-count">{wishlist.items.length}</span>
@@ -287,23 +336,24 @@ export default function FriendProfilePage() {
               ) : (
                 <div className="items-list">
                   {selectedWishlist.items.map((item, index) => (
-                    <div 
-                      key={item.id} 
-                      className={`item-card ${item.status !== 'available' ? 'item-taken' : ''}`}
+                    <div
+                      key={item.id}
+                      className={`item-card ${item.status !== "available" ? "item-taken" : ""}`}
                       style={{ animationDelay: `${index * 0.05}s` }}
                     >
                       <div className="item-image">
                         {item.imageUrl ? (
-                          item.imageUrl.length <= 2 ? (
-                            <span className="item-emoji">{item.imageUrl}</span>
-                          ) : (
+                          item.imageUrl.startsWith("http") ||
+                          item.imageUrl.startsWith("data:") ? (
                             <img src={item.imageUrl} alt={item.name} />
+                          ) : (
+                            <span className="item-emoji">{item.imageUrl}</span>
                           )
                         ) : (
                           <span className="item-emoji">🎁</span>
                         )}
                       </div>
-                      
+
                       <div className="item-content">
                         <div className="item-header">
                           <h4>{item.name}</h4>
@@ -313,21 +363,25 @@ export default function FriendProfilePage() {
                           <p className="item-description">{item.description}</p>
                         )}
                         {item.price && (
-                          <span className="item-price">{item.currency || '$'}{item.price.toFixed(2)}</span>
+                          <span className="item-price">
+                            {item.currency || "$"}
+                            {item.price.toFixed(2)}
+                          </span>
                         )}
                       </div>
 
                       <div className="item-actions">
-                        {item.status === 'available' ? (
-                          <button 
+                        {item.status === "available" ? (
+                          <button
                             className="reserve-btn"
                             onClick={() => handleReserveItem(item)}
                             disabled={actionLoading === item.id}
                           >
                             {actionLoading === item.id ? "..." : "Reserve"}
                           </button>
-                        ) : item.status === 'reserved' && item.reservedBy === currentUserId ? (
-                          <button 
+                        ) : item.status === "reserved" &&
+                          item.reservedBy === currentUserId ? (
+                          <button
                             className="gifted-btn"
                             onClick={() => handleMarkPurchased(item)}
                             disabled={actionLoading === item.id}
@@ -336,19 +390,28 @@ export default function FriendProfilePage() {
                           </button>
                         ) : (
                           <span className="taken-label">
-                            {item.status === 'purchased' ? "Gifted" : "Reserved"}
+                            {item.status === "purchased"
+                              ? "Gifted"
+                              : "Reserved"}
                           </span>
                         )}
-                        
+
                         {item.url && (
-                          <a 
-                            href={item.url} 
-                            target="_blank" 
+                          <a
+                            href={item.url}
+                            target="_blank"
                             rel="noopener noreferrer"
                             className="buy-link"
                             onClick={() => hapticFeedback.impact("light")}
                           >
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <svg
+                              width="16"
+                              height="16"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                            >
                               <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6" />
                               <polyline points="15,3 21,3 21,9" />
                               <line x1="10" y1="14" x2="21" y2="3" />
@@ -369,5 +432,3 @@ export default function FriendProfilePage() {
     </div>
   );
 }
-
-

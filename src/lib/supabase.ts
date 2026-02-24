@@ -1,6 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
 
-// Отримуємо URL та ключ з змінних оточення
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
@@ -10,18 +9,15 @@ if (!supabaseUrl || !supabaseAnonKey) {
   );
 }
 
-// Створюємо клієнт Supabase без строгих типів для гнучкості
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const supabase: any = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
-    persistSession: false, // Не зберігаємо сесію в localStorage для Telegram WebApp
+    persistSession: false,
     autoRefreshToken: false,
   },
 });
 
-// Допоміжна функція для отримання поточного користувача з Telegram
 export const getCurrentUserId = (): number | null => {
-  // Отримуємо user_id з Telegram WebApp initData
   if (typeof window !== "undefined" && window.Telegram?.WebApp) {
     const user = window.Telegram.WebApp.initDataUnsafe?.user;
     return user?.id || null;
@@ -29,10 +25,4 @@ export const getCurrentUserId = (): number | null => {
   return null;
 };
 
-// Допоміжна функція для встановлення користувача в Supabase
-// Використовується для RLS (Row Level Security)
-export const setSupabaseUser = async (userId: number) => {
-  // Для Telegram WebApp ми використовуємо custom auth
-  // Встановлюємо user через service role або через custom JWT
-  // Це потрібно налаштувати в Supabase Auth settings
-};
+export const setSupabaseUser = async (userId: number) => {};

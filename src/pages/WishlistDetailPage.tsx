@@ -368,10 +368,11 @@ export default function WishlistDetailPage() {
                   <div key={item.id} className="received-item">
                     <div className="received-item-image">
                       {item.imageUrl ? (
-                        item.imageUrl.length <= 2 ? (
-                          <span>{item.imageUrl}</span>
-                        ) : (
+                        item.imageUrl.startsWith("http") ||
+                        item.imageUrl.startsWith("data:") ? (
                           <img src={item.imageUrl} alt={item.name} />
+                        ) : (
+                          <span>{item.imageUrl}</span>
                         )
                       ) : (
                         <span>🎁</span>
@@ -441,10 +442,11 @@ export default function WishlistDetailPage() {
                 >
                   <div className="item-image">
                     {item.imageUrl ? (
-                      item.imageUrl.length <= 2 ? (
-                        <span className="item-emoji">{item.imageUrl}</span>
-                      ) : (
+                      item.imageUrl.startsWith("http") ||
+                      item.imageUrl.startsWith("data:") ? (
                         <img src={item.imageUrl} alt={item.name} />
+                      ) : (
+                        <span className="item-emoji">{item.imageUrl}</span>
                       )
                     ) : (
                       <span className="item-emoji">🎁</span>
@@ -511,11 +513,13 @@ export default function WishlistDetailPage() {
               ✕
             </button>
 
-            {selectedItem.imageUrl && selectedItem.imageUrl.length > 2 && (
-              <div className="detail-image-container">
-                <img src={selectedItem.imageUrl} alt={selectedItem.name} />
-              </div>
-            )}
+            {selectedItem.imageUrl &&
+              (selectedItem.imageUrl.startsWith("http") ||
+                selectedItem.imageUrl.startsWith("data:")) && (
+                <div className="detail-image-container">
+                  <img src={selectedItem.imageUrl} alt={selectedItem.name} />
+                </div>
+              )}
 
             <div className="detail-content">
               <h2>{selectedItem.name}</h2>
