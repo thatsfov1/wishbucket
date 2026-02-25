@@ -19,7 +19,6 @@ import { AffiliateProgram } from "../types";
 // Known affiliate programs with their referral parameters
 // Focused on: Worldwide platforms + Telegram-popular regions (Ukraine, India, Russia, CIS, Middle East)
 const AFFILIATE_PROGRAMS: AffiliateProgram[] = [
-
   {
     domain: "amazon.com",
     programName: "Amazon Associates",
@@ -286,28 +285,47 @@ export const extractDomain = (url: string): string | null => {
 
 // Find affiliate program for a domain
 export const findAffiliateProgram = (
-  domain: string
+  domain: string,
 ): AffiliateProgram | null => {
   return (
     AFFILIATE_PROGRAMS.find(
-      (program) => domain.includes(program.domain) && program.isActive
+      (program) => domain.includes(program.domain) && program.isActive,
     ) || null
   );
 };
 
-// Add affiliate parameters to URL
-export const addAffiliateLink = (
-  url: string,
-  affiliateProgram: AffiliateProgram
-): string => {
+const cleanAmazonUrl = (url: string): string => {
   try {
     const urlObj = new URL(url);
+    const hostname = urlObj.hostname.toLowerCase();
+
+    if (!hostname.includes("amazon")) return url;
+
+    const asinMatch = urlObj.pathname.match(
+      /\/(?:dp|gp\/product)\/([A-Z0-9]{10})/,
+    );
+    if (asinMatch) {
+      return `${urlObj.origin}/dp/${asinMatch[1]}`;
+    }
+
+    return url;
+  } catch {
+    return url;
+  }
+};
+
+export const addAffiliateLink = (
+  url: string,
+  affiliateProgram: AffiliateProgram,
+): string => {
+  try {
+    const cleanUrl = url.includes("amazon") ? cleanAmazonUrl(url) : url;
+    const urlObj = new URL(cleanUrl);
     const param = affiliateProgram.referralParam;
     const id = affiliateProgram.referralId;
 
-    // Check if parameter already exists
     if (urlObj.searchParams.has(param)) {
-      return url; // Already has affiliate link
+      return url;
     }
 
     urlObj.searchParams.set(param, id);
@@ -318,7 +336,7 @@ export const addAffiliateLink = (
 };
 
 export const processAffiliateLink = (
-  url: string
+  url: string,
 ): { url: string; hasAffiliate: boolean; programName?: string } => {
   const domain = extractDomain(url);
   if (!domain) {
@@ -339,16 +357,16 @@ export const processAffiliateLink = (
 };
 
 export const generateAffiliateLink = (
-  url: string
+  url: string,
 ): { affiliateUrl: string; hasAffiliate: boolean; programName?: string } => {
   const result = processAffiliateLink(url);
 
   console.log("🔗 Affiliate check:", {
-      originalUrl: url,
-      affiliateUrl: result.url,
-      hasAffiliate: result.hasAffiliate,
-      programName: result.programName,
-    });
+    originalUrl: url,
+    affiliateUrl: result.url,
+    hasAffiliate: result.hasAffiliate,
+    programName: result.programName,
+  });
   return {
     affiliateUrl: result.url,
     hasAffiliate: result.hasAffiliate,
@@ -357,7 +375,7 @@ export const generateAffiliateLink = (
 };
 
 export const parseProductInfo = async (
-  _url: string
+  _url: string,
 ): Promise<{
   title?: string;
   imageUrl?: string;

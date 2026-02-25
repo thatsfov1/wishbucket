@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import Layout from "../components/Layout";
 import Button from "../components/Button";
@@ -7,11 +7,16 @@ import { getWishlist, updateWishlist } from "../services/supabase-api";
 import { showTelegramAlert, hapticFeedback } from "../utils/telegram";
 import "./EditWishlistPage.css";
 
+const defaultImages = ["🎁", "🎂", "🎄", "💝", "🎉", "✨", "🌟", "💫"];
+
 export default function EditWishlistPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [selectedEmoji, setSelectedEmoji] = useState("");
+  const [customImage, setCustomImage] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [formData, setFormData] = useState({
     name: "",
     description: "",
@@ -27,10 +32,22 @@ export default function EditWishlistPage() {
       try {
         setLoading(true);
         const wishlist = await getWishlist(id);
+        const img = wishlist.imageUrl || "";
+        // Detect if imageUrl is an emoji or a real image URL
+        if (img && !img.startsWith("http") && !img.startsWith("data:")) {
+          setSelectedEmoji(img);
+          setCustomImage(null);
+        } else if (img) {
+          setCustomImage(img);
+          setSelectedEmoji("");
+        } else {
+          setSelectedEmoji("🎁");
+          setCustomImage(null);
+        }
         setFormData({
           name: wishlist.name,
           description: wishlist.description || "",
-          imageUrl: wishlist.imageUrl || "",
+          imageUrl: img,
           eventDate: wishlist.eventDate || "",
           isPublic: wishlist.isPublic,
         });
@@ -61,7 +78,7 @@ export default function EditWishlistPage() {
       await updateWishlist(id, {
         name: formData.name,
         description: formData.description,
-        imageUrl: formData.imageUrl || undefined,
+        imageUrl: customImage || selectedEmoji || undefined,
         eventDate: formData.eventDate || undefined,
         isPublic: formData.isPublic,
       });
@@ -108,15 +125,83 @@ export default function EditWishlistPage() {
             }
           />
 
-          <Input
-            label="Cover Image URL"
-            placeholder="https://..."
-            type="url"
-            value={formData.imageUrl}
-            onChange={(e) =>
-              setFormData({ ...formData, imageUrl: e.target.value })
-            }
-          />
+          {/* Cover Image */}
+          <div className="form-section">
+            <label className="form-label">Cover Image</label>
+            <div className="image-selection">
+              <button
+                type="button"
+                className={`image-preview ${customImage ? "has-image" : ""}`}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                {customImage ? (
+                  <img src={customImage} alt="Cover" />
+                ) : selectedEmoji ? (
+                  <span className="preview-emoji">{selectedEmoji}</span>
+                ) : (
+                  <svg
+                    width="24"
+                    height="24"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                    <circle cx="8.5" cy="8.5" r="1.5" />
+                    <polyline points="21,15 16,10 5,21" />
+                  </svg>
+                )}
+                <div className="upload-overlay">
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="17,8 12,3 7,8" />
+                    <line x1="12" y1="3" x2="12" y2="15" />
+                  </svg>
+                </div>
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                      setCustomImage(event.target?.result as string);
+                      setSelectedEmoji("");
+                    };
+                    reader.readAsDataURL(file);
+                  }
+                }}
+                style={{ display: "none" }}
+              />
+              <div className="emoji-options">
+                {defaultImages.map((emoji) => (
+                  <button
+                    key={emoji}
+                    type="button"
+                    className={`emoji-btn ${selectedEmoji === emoji && !customImage ? "selected" : ""}`}
+                    onClick={() => {
+                      hapticFeedback.selection();
+                      setSelectedEmoji(emoji);
+                      setCustomImage(null);
+                    }}
+                  >
+                    {emoji}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
 
           <Input
             label="Event Date"

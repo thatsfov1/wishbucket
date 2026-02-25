@@ -37,7 +37,7 @@ const generateReferralCode = (): string => {
  */
 const mapUserToProfile = (
   user: any,
-  telegramUser: TelegramUser | null
+  telegramUser: TelegramUser | null,
 ): UserProfile => {
   return {
     userId: user.user_id,
@@ -114,7 +114,7 @@ export interface ScrapedProductInfo {
  * Uses the Supabase Edge Function for server-side scraping
  */
 export const scrapeProductUrl = async (
-  url: string
+  url: string,
 ): Promise<ScrapedProductInfo> => {
   try {
     console.log("🔍 Calling scrape-url function for:", url);
@@ -224,7 +224,8 @@ const extractFromUrlPattern = (url: string): ScrapedProductInfo => {
           .split(" ")
           .filter(Boolean)
           .map(
-            (word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+            (word) =>
+              word.charAt(0).toUpperCase() + word.slice(1).toLowerCase(),
           )
           .join(" ");
       }
@@ -307,7 +308,7 @@ export const getUserProfile = async (): Promise<UserProfile> => {
  * Оновлює профіль користувача
  */
 export const updateUserProfile = async (
-  updates: Partial<UserProfile>
+  updates: Partial<UserProfile>,
 ): Promise<UserProfile> => {
   const userId = getCurrentUserId();
   if (!userId) {
@@ -462,7 +463,7 @@ export const addFriend = async (friendId: number): Promise<void> => {
       isFollowBack
         ? `${userName} followed you back!`
         : `${userName} started following you`,
-      { followerId: userId, isFollowBack }
+      { followerId: userId, isFollowBack },
     );
   } catch (e) {
     console.error("Failed to send follow notification:", e);
@@ -509,7 +510,7 @@ export const getFriends = async (): Promise<Friend[]> => {
         user_id,
         telegram_data
       )
-    `
+    `,
     )
     .eq("user_id", userId);
 
@@ -564,7 +565,7 @@ export const getFollowers = async (): Promise<Friend[]> => {
         user_id,
         telegram_data
       )
-    `
+    `,
     )
     .eq("friend_id", userId);
 
@@ -671,7 +672,7 @@ export const searchUsers = async (query: string): Promise<Friend[]> => {
  * Знаходить користувачів за Telegram user_ids (для контактів)
  */
 export const findUsersByTelegramIds = async (
-  telegramIds: number[]
+  telegramIds: number[],
 ): Promise<Friend[]> => {
   const userId = getCurrentUserId();
   if (!userId) {
@@ -731,7 +732,7 @@ export const findUsersByTelegramIds = async (
  * Отримує профіль користувача за ID
  */
 export const getUserById = async (
-  targetUserId: number
+  targetUserId: number,
 ): Promise<Friend | null> => {
   const userId = getCurrentUserId();
   if (!userId) {
@@ -784,7 +785,7 @@ export const getUserById = async (
  * Отримує публічні wishlists користувача
  */
 export const getUserPublicWishlists = async (
-  targetUserId: number
+  targetUserId: number,
 ): Promise<Wishlist[]> => {
   const { data: wishlists, error } = await supabase
     .from("wishlists")
@@ -807,7 +808,7 @@ export const getUserPublicWishlists = async (
         .order("created_at", { ascending: false });
 
       return mapWishlist(wishlist, items || []);
-    })
+    }),
   );
 
   return wishlistsWithItems;
@@ -817,7 +818,7 @@ export const getUserPublicWishlists = async (
  * Отримує профіль користувача за username
  */
 export const getUserByUsername = async (
-  username: string
+  username: string,
 ): Promise<Friend | null> => {
   const userId = getCurrentUserId();
   if (!userId) {
@@ -912,7 +913,7 @@ export const getWishlists = async (): Promise<Wishlist[]> => {
         .order("created_at", { ascending: false });
 
       return mapWishlist(wishlist, items || []);
-    })
+    }),
   );
 
   return wishlistsWithItems;
@@ -952,7 +953,7 @@ const notifyFollowers = async (
   type: NotificationType,
   title: string,
   message: string,
-  data?: Record<string, any>
+  data?: Record<string, any>,
 ): Promise<void> => {
   const userId = getCurrentUserId();
   if (!userId) return;
@@ -969,8 +970,8 @@ const notifyFollowers = async (
     // Create notification for each follower
     await Promise.all(
       followers.map((f) =>
-        createNotification(f.user_id, type, title, message, data)
-      )
+        createNotification(f.user_id, type, title, message, data),
+      ),
     );
   } catch (e) {
     console.error("Failed to notify followers:", e);
@@ -979,7 +980,7 @@ const notifyFollowers = async (
 
 export const createWishlist = async (
   wishlist: Omit<Wishlist, "id" | "createdAt" | "updatedAt" | "items">,
-  notifyFollowersFlag = true
+  notifyFollowersFlag = true,
 ): Promise<Wishlist> => {
   const userId = getCurrentUserId();
   if (!userId) {
@@ -1022,7 +1023,7 @@ export const createWishlist = async (
       "wishlist_shared",
       "📝 New Wishlist!",
       `${userName} created a new wishlist: "${wishlist.name}"`,
-      { wishlistId: data.id, userId }
+      { wishlistId: data.id, userId },
     );
   }
 
@@ -1034,13 +1035,16 @@ export const createWishlist = async (
  */
 export const updateWishlist = async (
   wishlistId: string,
-  updates: Partial<Wishlist>
+  updates: Partial<Wishlist>,
 ): Promise<Wishlist> => {
   const updateData: any = {};
 
   if (updates.name !== undefined) updateData.name = updates.name;
   if (updates.description !== undefined)
     updateData.description = updates.description;
+  if (updates.imageUrl !== undefined) updateData.image_url = updates.imageUrl;
+  if (updates.eventDate !== undefined)
+    updateData.event_date = updates.eventDate;
   if (updates.isPublic !== undefined) updateData.is_public = updates.isPublic;
   if (updates.isDefault !== undefined) {
     updateData.is_default = updates.isDefault;
@@ -1104,7 +1108,7 @@ export const getShareLink = async (wishlistId: string): Promise<string> => {
 export const addItem = async (
   wishlistId: string,
   item: Omit<WishlistItem, "id" | "createdAt" | "updatedAt">,
-  notifyFollowersFlag = true
+  notifyFollowersFlag = true,
 ): Promise<WishlistItem> => {
   const userId = getCurrentUserId();
 
@@ -1147,7 +1151,7 @@ export const addItem = async (
           "friend_added_item",
           "✨ New Item Added!",
           `${userName} added "${item.name}" to their wishlist "${wishlist.name}"`,
-          { wishlistId, itemId: data.id, userId }
+          { wishlistId, itemId: data.id, userId },
         );
       }
     } catch (e) {
@@ -1163,7 +1167,7 @@ export const addItem = async (
  */
 export const updateItem = async (
   itemId: string,
-  updates: Partial<WishlistItem>
+  updates: Partial<WishlistItem>,
 ): Promise<WishlistItem> => {
   const updateData: any = {};
 
@@ -1250,7 +1254,7 @@ export const purchaseItem = async (itemId: string): Promise<WishlistItem> => {
  * Примітка: Це має бути реалізовано на бекенді або через Supabase Edge Function
  */
 export const processUrl = async (
-  url: string
+  url: string,
 ): Promise<{
   url: string;
   affiliateUrl: string;
@@ -1296,10 +1300,10 @@ export const getSecretSantas = async (): Promise<SecretSanta[]> => {
       `
       *,
       secret_santa_participants (*)
-    `
+    `,
     )
     .or(
-      `organizer_id.eq.${userId},secret_santa_participants.user_id.eq.${userId}`
+      `organizer_id.eq.${userId},secret_santa_participants.user_id.eq.${userId}`,
     )
     .order("created_at", { ascending: false });
 
@@ -1315,7 +1319,7 @@ export const getSecretSantas = async (): Promise<SecretSanta[]> => {
  * Створює Secret Santa подію
  */
 export const createSecretSanta = async (
-  santa: Omit<SecretSanta, "id" | "createdAt">
+  santa: Omit<SecretSanta, "id" | "createdAt">,
 ): Promise<SecretSanta> => {
   const userId = getCurrentUserId();
   if (!userId) {
@@ -1347,7 +1351,7 @@ export const createSecretSanta = async (
  * Приєднується до Secret Santa
  */
 export const joinSecretSanta = async (
-  santaId: string
+  santaId: string,
 ): Promise<SecretSanta> => {
   const userId = getCurrentUserId();
   if (!userId) {
@@ -1364,7 +1368,7 @@ export const joinSecretSanta = async (
   }
 
   return getSecretSantas().then(
-    (santas) => santas.find((s) => s.id === santaId)!
+    (santas) => santas.find((s) => s.id === santaId)!,
   );
 };
 
@@ -1372,7 +1376,7 @@ export const joinSecretSanta = async (
  * Розігрує імена для Secret Santa
  */
 export const drawSecretSanta = async (
-  santaId: string
+  santaId: string,
 ): Promise<SecretSanta> => {
   // TODO: Реалізувати логіку розіграшу
   // Це має бути зроблено через Supabase Edge Function для безпеки
@@ -1388,7 +1392,7 @@ export const drawSecretSanta = async (
  */
 export const createCrowdfunding = async (
   itemId: string,
-  targetAmount: number
+  targetAmount: number,
 ): Promise<WishlistItem> => {
   const { data, error } = await supabase
     .from("crowdfunding")
@@ -1424,7 +1428,7 @@ export const createCrowdfunding = async (
  */
 export const contributeToCrowdfunding = async (
   itemId: string,
-  amount: number
+  amount: number,
 ): Promise<WishlistItem> => {
   const userId = getCurrentUserId();
   if (!userId) {
@@ -1531,7 +1535,7 @@ export const getBirthdayReminders = async (): Promise<BirthdayReminder[]> => {
     const thisYearBirthday = new Date(
       now.getFullYear(),
       birthday.getMonth(),
-      birthday.getDate()
+      birthday.getDate(),
     );
 
     // Якщо день народження вже пройшов цього року, беремо наступний рік
@@ -1540,7 +1544,7 @@ export const getBirthdayReminders = async (): Promise<BirthdayReminder[]> => {
     }
 
     const daysUntil = Math.ceil(
-      (thisYearBirthday.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
+      (thisYearBirthday.getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
     );
 
     if (daysUntil <= 7) {
@@ -1601,7 +1605,7 @@ export const getNotifications = async (): Promise<Notification[]> => {
  * Позначає нотифікацію як прочитану
  */
 export const markNotificationRead = async (
-  notificationId: string
+  notificationId: string,
 ): Promise<void> => {
   const { error } = await supabase
     .from("notifications")
@@ -1663,7 +1667,7 @@ export const createNotification = async (
   type: NotificationType,
   title: string,
   message: string,
-  data?: Record<string, any>
+  data?: Record<string, any>,
 ): Promise<void> => {
   const { error } = await supabase.from("notifications").insert({
     user_id: targetUserId,
@@ -1729,7 +1733,7 @@ export const getReferralStats = async (): Promise<ReferralStats> => {
 
   const totalBonusEarned = (referrals || []).reduce(
     (sum, r) => sum + (r.bonus_earned || 0),
-    0
+    0,
   );
 
   return {
@@ -1845,7 +1849,7 @@ export const getReferrals = async (): Promise<Referral[]> => {
       referred_user:users!referrals_referred_user_id_fkey (
         telegram_data
       )
-    `
+    `,
     )
     .eq("referrer_id", userId)
     .order("created_at", { ascending: false });
@@ -1880,7 +1884,7 @@ export const getReferrals = async (): Promise<Referral[]> => {
  * Застосовує реферальний код при реєстрації
  */
 export const applyReferral = async (
-  referralCode: string
+  referralCode: string,
 ): Promise<{ success: boolean; bonus: number }> => {
   console.log("🔄 applyReferral called with code:", referralCode);
 
@@ -1984,7 +1988,7 @@ export const applyReferral = async (
     referrer.user_id,
     "referral_signup",
     "🎉 New Referral!",
-    `Someone joined using your referral code! You earned ${bonusForReferrer} bonus points.`
+    `Someone joined using your referral code! You earned ${bonusForReferrer} bonus points.`,
   );
 
   return {
@@ -2079,7 +2083,7 @@ export const getHintsGroupedByPerson = async (): Promise<
  */
 export const updateHintStatus = async (
   hintId: string,
-  status: "active" | "purchased" | "archived"
+  status: "active" | "purchased" | "archived",
 ): Promise<void> => {
   const userId = getCurrentUserId();
   if (!userId) throw new Error("Not authenticated");
@@ -2100,7 +2104,7 @@ export const updateHintStatus = async (
  */
 export const updateHintNotes = async (
   hintId: string,
-  notes: string
+  notes: string,
 ): Promise<void> => {
   const userId = getCurrentUserId();
   if (!userId) throw new Error("Not authenticated");
@@ -2170,7 +2174,7 @@ export const resendHintToChat = async (hintId: string): Promise<boolean> => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ hintId, userId }),
-    }
+    },
   );
 
   if (!response.ok) {

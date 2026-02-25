@@ -10,7 +10,6 @@ import { generateAffiliateLink } from "../utils/affiliate";
 import { showTelegramAlert, hapticFeedback } from "../utils/telegram";
 import "./AddItemPage.css";
 
-// European and common currencies
 const CURRENCIES = [
   { code: "USD", symbol: "$", name: "US Dollar" },
   { code: "EUR", symbol: "€", name: "Euro" },
@@ -40,6 +39,25 @@ const CURRENCIES = [
 const getCurrencySymbol = (code: string): string => {
   const currency = CURRENCIES.find((c) => c.code === code);
   return currency?.symbol || code;
+};
+
+const sanitizeUrl = (url: string): string => {
+  const trimmed = url.trim();
+  if (!trimmed) return trimmed;
+
+  const encodedIndex = trimmed.search(/https?%3A%2F%2F/i);
+  if (encodedIndex > 0) {
+    console.log("🧹 Cut URL-encoded duplicate:", trimmed.substring(0, encodedIndex));
+    return trimmed.substring(0, encodedIndex);
+  }
+
+  const secondHttp = trimmed.indexOf("http", 1);
+  if (secondHttp > 0 && /https?:\/\//.test(trimmed.substring(secondHttp))) {
+    console.log("🧹 Cut literal duplicate:", trimmed.substring(0, secondHttp));
+    return trimmed.substring(0, secondHttp);
+  }
+
+  return trimmed;
 };
 
 export default function AddItemPage() {
@@ -117,7 +135,14 @@ export default function AddItemPage() {
 
   // Auto-scrape when URL changes (with debounce)
   useEffect(() => {
-    const url = formData.url.trim();
+    const url = sanitizeUrl(formData.url);
+
+    // If sanitization changed the URL, update state and bail
+    // (the effect will re-run with the cleaned value)
+    if (url !== formData.url) {
+      setFormData((prev) => ({ ...prev, url }));
+      return;
+    }
 
     // Clear any pending debounce
     if (debounceTimerRef.current) {
@@ -128,6 +153,8 @@ export default function AddItemPage() {
     if (url && url !== lastScrapedUrlRef.current) {
       try {
         new URL(url);
+        // Lock immediately so duplicate triggers are blocked
+        lastScrapedUrlRef.current = url;
         // Debounce the scraping to avoid too many requests while typing
         debounceTimerRef.current = setTimeout(() => {
           fetchProductInfo(url);
@@ -145,10 +172,12 @@ export default function AddItemPage() {
   }, [formData.url, fetchProductInfo]);
 
   const handleUrlChange = (url: string) => {
-    setFormData((prev) => ({ ...prev, url }));
+    // Fix doubled URLs from Telegram WebView paste behavior
+    const cleaned = sanitizeUrl(url);
+    setFormData((prev) => ({ ...prev, url: cleaned }));
     setUrlError(null);
     // Only clear product info if URL is completely different (not just being typed)
-    if (!url.trim()) {
+    if (!cleaned.trim()) {
       setProductInfo({});
       lastScrapedUrlRef.current = "";
     }
@@ -176,14 +205,16 @@ export default function AddItemPage() {
       setLoading(true);
 
       // Generate affiliate link if possible
-      const affiliateResult = generateAffiliateLink(formData.url);
+      const cleanUrl = sanitizeUrl(formData.url);
+      console.log("🧹 Submit URL:", { raw: formData.url, clean: cleanUrl });
+      const affiliateResult = generateAffiliateLink(cleanUrl);
 
       const newItem = await addItemApi(id, {
         wishlistId: id,
         name: formData.name,
         description: formData.description,
-        url: affiliateResult.affiliateUrl || formData.url,
-        originalUrl: formData.url,
+        url: affiliateResult.affiliateUrl || cleanUrl,
+        originalUrl: cleanUrl,
         affiliateUrl: affiliateResult.hasAffiliate
           ? affiliateResult.affiliateUrl
           : undefined,
@@ -224,24 +255,6 @@ export default function AddItemPage() {
             type="url"
             value={formData.url}
             onChange={(e) => handleUrlChange(e.target.value)}
-            onPaste={(e: React.ClipboardEvent<HTMLInputElement>) => {
-              // Get pasted text and immediately trigger scrape
-              const pastedText = e.clipboardData.getData("text");
-              if (pastedText) {
-                try {
-                  new URL(pastedText);
-                  // Valid URL pasted - scrape immediately without debounce
-                  setTimeout(() => {
-                    if (debounceTimerRef.current) {
-                      clearTimeout(debounceTimerRef.current);
-                    }
-                    fetchProductInfo(pastedText);
-                  }, 0);
-                } catch {
-                  // Not a valid URL, let normal flow handle it
-                }
-              }
-            }}
             required
           />
 
