@@ -1,4 +1,5 @@
 import { TelegramUser } from "../types";
+import { getMockUser } from "./telegram-mock";
 
 declare global {
   interface Window {
@@ -123,7 +124,10 @@ export const initTelegram = () => {
 };
 
 export const getTelegramUser = (): TelegramUser | null => {
-  return window.Telegram?.WebApp?.initDataUnsafe?.user || null;
+  const tgUser = (window as any).Telegram?.WebApp?.initDataUnsafe?.user;
+  if (tgUser) return tgUser;
+
+  return getMockUser();
 };
 
 export const getTelegramUserId = (): number | null => {

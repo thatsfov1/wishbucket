@@ -19,9 +19,7 @@ import { AffiliateProgram } from "../types";
 // Known affiliate programs with their referral parameters
 // Focused on: Worldwide platforms + Telegram-popular regions (Ukraine, India, Russia, CIS, Middle East)
 const AFFILIATE_PROGRAMS: AffiliateProgram[] = [
-  // ============================================
-  // GLOBAL MARKETPLACES
-  // ============================================
+
   {
     domain: "amazon.com",
     programName: "Amazon Associates",
@@ -319,7 +317,6 @@ export const addAffiliateLink = (
   }
 };
 
-// Process URL and add affiliate link if applicable
 export const processAffiliateLink = (
   url: string
 ): { url: string; hasAffiliate: boolean; programName?: string } => {
@@ -341,11 +338,17 @@ export const processAffiliateLink = (
   };
 };
 
-// Generate affiliate link - alias for convenience
 export const generateAffiliateLink = (
   url: string
 ): { affiliateUrl: string; hasAffiliate: boolean; programName?: string } => {
   const result = processAffiliateLink(url);
+
+  console.log("🔗 Affiliate check:", {
+      originalUrl: url,
+      affiliateUrl: result.url,
+      hasAffiliate: result.hasAffiliate,
+      programName: result.programName,
+    });
   return {
     affiliateUrl: result.url,
     hasAffiliate: result.hasAffiliate,
@@ -353,7 +356,6 @@ export const generateAffiliateLink = (
   };
 };
 
-// Parse product information from URL (basic implementation)
 export const parseProductInfo = async (
   _url: string
 ): Promise<{
@@ -362,7 +364,5 @@ export const parseProductInfo = async (
   price?: number;
   currency?: string;
 }> => {
-  // This would typically call a backend service to scrape the page
-  // For now, return empty object - backend should handle this
   return {};
 };

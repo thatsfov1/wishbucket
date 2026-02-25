@@ -206,7 +206,6 @@ export default function HomePage() {
             <button onClick={() => window.location.reload()}>Try Again</button>
           </div>
         ) : wishlists.length === 0 ? (
-          /* Create Wishlist Card */
           <div
             className="create-wishlist-section animate-slide-up"
             style={{ animationDelay: "0.1s" }}
@@ -244,7 +243,6 @@ export default function HomePage() {
             </div>
           </div>
         ) : (
-          /* Wishlists Grid */
           <div
             className="wishlists-section animate-slide-up"
             style={{ animationDelay: "0.1s" }}

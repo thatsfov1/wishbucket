@@ -991,6 +991,11 @@ electron-to-chromium@^1.5.263:
   resolved "https://registry.yarnpkg.com/electron-to-chromium/-/electron-to-chromium-1.5.302.tgz#032a5802b31f7119269959c69fe2015d8dad5edb"
   integrity sha512-sM6HAN2LyK82IyPBpznDRqlTQAtuSaO+ShzFiWTvoMJLHyZ+Y39r8VMfHzwbU8MVBzQ4Wdn85+wlZl2TLGIlwg==
 
+eruda@^3.4.3:
+  version "3.4.3"
+  resolved "https://registry.yarnpkg.com/eruda/-/eruda-3.4.3.tgz#70cb99022c0f1115160030f3d357d029074051fa"
+  integrity sha512-J2TsF4dXSspOXev5bJ6mljv0dRrxj21wklrDzbvPmYaEmVoC+2psylyRi70nUPFh1mTQfIBsSusUtAMZtUN+/w==
+
 es-define-property@^1.0.1:
   version "1.0.1"
   resolved "https://registry.yarnpkg.com/es-define-property/-/es-define-property-1.0.1.tgz#983eb2f9a6724e9303f61addf011c72e09e0b0fa"
