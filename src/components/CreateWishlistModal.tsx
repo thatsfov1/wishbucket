@@ -195,7 +195,9 @@ export default function CreateWishlistModal({
             type="date"
             className="form-input"
             value={eventDate}
+            placeholder="ddd"
             onChange={(e) => setEventDate(e.target.value)}
+  
           />
         </div>
 

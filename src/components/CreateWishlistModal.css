@@ -16,8 +16,12 @@
 }
 
 @keyframes fadeOut {
-  from { opacity: 1; }
-  to { opacity: 0; }
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
 }
 
 .create-wishlist-modal {
@@ -36,8 +40,12 @@
 }
 
 @keyframes slideDown {
-  from { transform: translateY(0); }
-  to { transform: translateY(100%); }
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(100%);
+  }
 }
 
 .modal-handle {
@@ -181,6 +189,10 @@
   font-size: 15px;
   color: var(--text-primary);
   transition: all 0.2s ease;
+  box-sizing: border-box;
+  -webkit-appearance: none;
+  appearance: none;
+  min-height: 51px;
 }
 
 .form-input::placeholder {
@@ -419,4 +431,3 @@
     padding-bottom: calc(32px + env(safe-area-inset-bottom));
   }
 }
-
