@@ -361,12 +361,6 @@ export const generateAffiliateLink = (
 ): { affiliateUrl: string; hasAffiliate: boolean; programName?: string } => {
   const result = processAffiliateLink(url);
 
-  console.log("🔗 Affiliate check:", {
-    originalUrl: url,
-    affiliateUrl: result.url,
-    hasAffiliate: result.hasAffiliate,
-    programName: result.programName,
-  });
   return {
     affiliateUrl: result.url,
     hasAffiliate: result.hasAffiliate,

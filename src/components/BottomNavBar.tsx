@@ -4,6 +4,7 @@ import { hapticFeedback } from "../utils/telegram";
 import AddItemModal from "./AddItemModal";
 import { useStore } from "../store/useStore";
 import { addItem, getWishlists } from "../services/supabase-api";
+import { generateAffiliateLink } from "../utils/affiliate";
 import "./BottomNavBar.css";
 
 interface NavItem {
@@ -143,6 +144,12 @@ export default function BottomNavBar() {
     notifyFollowers: boolean;
   }) => {
     try {
+      const cleanUrl = itemData.url?.trim() || "";
+      const affiliateResult = cleanUrl
+        ? generateAffiliateLink(cleanUrl)
+        : { affiliateUrl: cleanUrl, hasAffiliate: false as const };
+      const finalUrl = affiliateResult.affiliateUrl || cleanUrl;
+
       // Add item to all selected wishlists with notifyFollowers flag
       for (const wishlistId of itemData.wishlistIds) {
         await addItem(
@@ -151,8 +158,11 @@ export default function BottomNavBar() {
             wishlistId,
             name: itemData.name,
             description: itemData.description,
-            url: itemData.url || "",
-            originalUrl: itemData.url || "",
+            url: finalUrl,
+            originalUrl: cleanUrl,
+            affiliateUrl: affiliateResult.hasAffiliate
+              ? affiliateResult.affiliateUrl
+              : undefined,
             imageUrl: itemData.imageUrl,
             price: itemData.price,
             currency: itemData.currency,

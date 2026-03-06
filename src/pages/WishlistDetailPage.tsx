@@ -16,6 +16,7 @@ import {
 } from "../utils/telegram";
 import BottomNavBar from "../components/BottomNavBar";
 import AddItemModal from "../components/AddItemModal";
+import { generateAffiliateLink } from "../utils/affiliate";
 import "./WishlistDetailPage.css";
 
 const DELETE_REASONS = [
@@ -110,6 +111,12 @@ export default function WishlistDetailPage() {
   }) => {
     try {
       setLoading(true);
+      const cleanUrl = itemData.url?.trim() || "";
+      const affiliateResult = cleanUrl
+        ? generateAffiliateLink(cleanUrl)
+        : { affiliateUrl: cleanUrl, hasAffiliate: false as const };
+      const finalUrl = affiliateResult.affiliateUrl || cleanUrl;
+
       // Add item to all selected wishlists with notifyFollowers flag
       for (const wishlistId of itemData.wishlistIds) {
         await addItem(
@@ -118,8 +125,11 @@ export default function WishlistDetailPage() {
             wishlistId,
             name: itemData.name,
             description: itemData.description,
-            url: itemData.url || "",
-            originalUrl: itemData.url || "",
+            url: finalUrl,
+            originalUrl: cleanUrl,
+            affiliateUrl: affiliateResult.hasAffiliate
+              ? affiliateResult.affiliateUrl
+              : undefined,
             imageUrl: itemData.imageUrl,
             price: itemData.price,
             currency: itemData.currency,
