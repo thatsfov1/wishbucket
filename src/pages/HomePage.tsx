@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useStore } from "../store/useStore";
 import { getTelegramUser, hapticFeedback } from "../utils/telegram";
@@ -12,7 +12,25 @@ import {
 import BottomNavBar from "../components/BottomNavBar";
 import SettingsModal from "../components/SettingsModal";
 import CreateWishlistModal from "../components/CreateWishlistModal";
+import LevelBadge from "../components/LevelBadge";
+import LevelBoardModal from "../components/LevelBoardModal";
+import { getUserLevel, getWishlistLimit } from "../config/levels";
 import "./HomePage.css";
+
+const COMPLETED_TASKS_KEY = "wb_completed_tasks";
+
+function loadCompletedTasks(): string[] {
+  try {
+    const raw = localStorage.getItem(COMPLETED_TASKS_KEY);
+    return raw ? (JSON.parse(raw) as string[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveCompletedTasks(ids: string[]): void {
+  localStorage.setItem(COMPLETED_TASKS_KEY, JSON.stringify(ids));
+}
 
 export default function HomePage() {
   const navigate = useNavigate();
@@ -23,18 +41,24 @@ export default function HomePage() {
     setWishlists,
     setLoading,
     isLoading,
-    unreadNotificationsCount,
     setUnreadNotificationsCount,
   } = useStore();
   const telegramUser = getTelegramUser();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [levelBoardOpen, setLevelBoardOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [friendsCount, setFriendsCount] = useState(0);
   const [followersCount, setFollowersCount] = useState(0);
+  const [completedTaskIds, setCompletedTaskIds] =
+    useState<string[]>(loadCompletedTasks);
 
   const firstName = telegramUser?.first_name || "Guest";
   const photoUrl = telegramUser?.photo_url;
+
+  const referrals = userProfile?.referrals ?? 0;
+  const currentLevel = getUserLevel(referrals, completedTaskIds);
+  const wishlistLimit = getWishlistLimit(referrals, completedTaskIds);
 
   // Load data on mount
   useEffect(() => {
@@ -88,8 +112,37 @@ export default function HomePage() {
 
   const handleOpenCreateModal = () => {
     hapticFeedback.impact("medium");
+    // Enforce wishlist limit (-1 = unlimited)
+    if (wishlistLimit !== -1 && wishlists.length >= wishlistLimit) {
+      hapticFeedback.notification("warning");
+      setLevelBoardOpen(true);
+      return;
+    }
     setCreateModalOpen(true);
   };
+
+  const handleMarkChannelDone = useCallback((channelId: string) => {
+    setCompletedTaskIds((prev) => {
+      if (prev.includes(channelId)) return prev;
+      const updated = [...prev, channelId];
+      saveCompletedTasks(updated);
+      return updated;
+    });
+  }, []);
+
+  const handleInviteFriends = useCallback(() => {
+    const botUsername = "WishBucketBot"; // update to your actual bot username
+    const userId = telegramUser?.id ?? 0;
+    const shareText = `🎁 Join me on WishBucket – the best wishlist app for Telegram!`;
+    const botUrl = `https://t.me/${botUsername}/wishbucket?startapp=ref_${userId}`;
+    const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(botUrl)}&text=${encodeURIComponent(shareText)}`;
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (window as any).Telegram?.WebApp?.openTelegramLink(shareUrl);
+    } catch {
+      window.open(shareUrl, "_blank");
+    }
+  }, [telegramUser?.id]);
 
   const handleCreateWishlist = async (wishlistData: {
     name: string;
@@ -145,32 +198,13 @@ export default function HomePage() {
           <span className="greeting-label">Welcome back</span>
           <h1 className="greeting-name">{firstName} 👋</h1>
         </div>
-        <button
-          className="notification-btn"
-          onClick={() => navigate("/notifications")}
-        >
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-            <path
-              d="M12 2.5c-3.58 0-6.5 2.92-6.5 6.5v4.47c0 .24-.04.47-.11.7l-.73 2.18c-.22.66.28 1.35.98 1.35h12.72c.7 0 1.2-.69.98-1.35l-.73-2.18a1.75 1.75 0 01-.11-.7V9c0-3.58-2.92-6.5-6.5-6.5z"
-              stroke="currentColor"
-              strokeWidth="1.8"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-            <path
-              d="M9 19.3c.32 1.16 1.39 2 2.67 2h.66c1.28 0 2.35-.84 2.67-2"
-              stroke="currentColor"
-              strokeWidth="1.8"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-          {unreadNotificationsCount > 0 && (
-            <span className="notification-badge">
-              {unreadNotificationsCount > 9 ? "9+" : unreadNotificationsCount}
-            </span>
-          )}
-        </button>
+        <LevelBadge
+          currentLevel={currentLevel}
+          onClick={() => {
+            hapticFeedback.impact("light");
+            setLevelBoardOpen(true);
+          }}
+        />
       </header>
 
       {/* Stats */}
@@ -367,6 +401,22 @@ export default function HomePage() {
         isOpen={createModalOpen}
         onClose={() => setCreateModalOpen(false)}
         onCreateWishlist={handleCreateWishlist}
+        isImageUploadLocked={currentLevel.level < 1}
+        onUnlockRequest={() => {
+          setCreateModalOpen(false);
+          setLevelBoardOpen(true);
+        }}
+      />
+
+      {/* Level Board Modal */}
+      <LevelBoardModal
+        isOpen={levelBoardOpen}
+        onClose={() => setLevelBoardOpen(false)}
+        currentLevel={currentLevel}
+        referrals={referrals}
+        completedTaskIds={completedTaskIds}
+        onMarkChannelDone={handleMarkChannelDone}
+        onInviteFriends={handleInviteFriends}
       />
     </div>
   );

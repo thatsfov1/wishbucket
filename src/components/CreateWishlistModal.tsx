@@ -13,16 +13,20 @@ interface CreateWishlistModalProps {
     isPublic: boolean;
     notifyFollowers: boolean;
   }) => void;
+  /** Level 0 users cannot upload a custom photo */
+  isImageUploadLocked?: boolean;
+  /** Called when the locked upload area is tapped */
+  onUnlockRequest?: () => void;
 }
 
-const defaultImages = [
-  "🎁", "🎂", "🎄", "💝", "🎉", "✨", "🌟", "💫"
-];
+const defaultImages = ["🎁", "🎂", "🎄", "💝", "🎉", "✨", "🌟", "💫"];
 
-export default function CreateWishlistModal({ 
-  isOpen, 
-  onClose, 
-  onCreateWishlist 
+export default function CreateWishlistModal({
+  isOpen,
+  onClose,
+  onCreateWishlist,
+  isImageUploadLocked = false,
+  onUnlockRequest,
 }: CreateWishlistModalProps) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -68,7 +72,7 @@ export default function CreateWishlistModal({
       hapticFeedback.notification("error");
       return;
     }
-    
+
     hapticFeedback.notification("success");
     onCreateWishlist({
       name: name.trim(),
@@ -102,13 +106,16 @@ export default function CreateWishlistModal({
   if (!isOpen && !isClosing) return null;
 
   return (
-    <div className={`modal-overlay ${isClosing ? "closing" : ""}`} onClick={handleClose}>
-      <div 
-        className={`create-wishlist-modal ${isClosing ? "closing" : ""}`} 
+    <div
+      className={`modal-overlay ${isClosing ? "closing" : ""}`}
+      onClick={handleClose}
+    >
+      <div
+        className={`create-wishlist-modal ${isClosing ? "closing" : ""}`}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="modal-handle" />
-        
+
         <div className="modal-header">
           <h2>Create Wishlist</h2>
           <p>Set up your new wishlist</p>
@@ -118,33 +125,61 @@ export default function CreateWishlistModal({
         <div className="form-section">
           <label className="form-label">Cover Image</label>
           <div className="image-selection">
-            <button 
-              className={`image-preview ${customImage ? "has-image" : ""}`}
-              onClick={() => fileInputRef.current?.click()}
+            <button
+              className={`image-preview ${customImage ? "has-image" : ""} ${isImageUploadLocked ? "locked" : ""}`}
+              onClick={() => {
+                if (isImageUploadLocked) {
+                  hapticFeedback.impact("medium");
+                  onUnlockRequest?.();
+                } else {
+                  fileInputRef.current?.click();
+                }
+              }}
             >
               {customImage ? (
                 <img src={customImage} alt="Cover" />
               ) : selectedEmoji ? (
                 <span className="preview-emoji">{selectedEmoji}</span>
               ) : (
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <svg
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
                   <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
                   <circle cx="8.5" cy="8.5" r="1.5" />
                   <polyline points="21,15 16,10 5,21" />
                 </svg>
               )}
-              <div className="upload-overlay">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                  <polyline points="17,8 12,3 7,8" />
-                  <line x1="12" y1="3" x2="12" y2="15" />
-                </svg>
-              </div>
+              {isImageUploadLocked ? (
+                <div className="upload-overlay locked-overlay">
+                  <span className="lock-icon">🔒</span>
+                  <span className="lock-label">Level 1</span>
+                </div>
+              ) : (
+                <div className="upload-overlay">
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="17,8 12,3 7,8" />
+                    <line x1="12" y1="3" x2="12" y2="15" />
+                  </svg>
+                </div>
+              )}
             </button>
-            <input 
+            <input
               ref={fileInputRef}
-              type="file" 
-              accept="image/*" 
+              type="file"
+              accept="image/*"
               onChange={handleImageUpload}
               style={{ display: "none" }}
             />
@@ -177,7 +212,9 @@ export default function CreateWishlistModal({
 
         {/* Description */}
         <div className="form-section">
-          <label className="form-label">Description <span className="optional">(optional)</span></label>
+          <label className="form-label">
+            Description <span className="optional">(optional)</span>
+          </label>
           <textarea
             className="form-textarea"
             placeholder="Add a description for your wishlist..."
@@ -190,14 +227,15 @@ export default function CreateWishlistModal({
 
         {/* Event Date */}
         <div className="form-section">
-          <label className="form-label">Event Date <span className="optional">(optional)</span></label>
+          <label className="form-label">
+            Event Date <span className="optional">(optional)</span>
+          </label>
           <input
             type="date"
             className="form-input"
             value={eventDate}
             placeholder="ddd"
             onChange={(e) => setEventDate(e.target.value)}
-  
           />
         </div>
 
@@ -207,10 +245,20 @@ export default function CreateWishlistModal({
           <div className="privacy-options">
             <button
               className={`privacy-btn ${isPublic ? "selected" : ""}`}
-              onClick={() => { setIsPublic(true); hapticFeedback.selection(); }}
+              onClick={() => {
+                setIsPublic(true);
+                hapticFeedback.selection();
+              }}
             >
               <div className="privacy-icon public">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
                   <circle cx="12" cy="12" r="10" />
                   <line x1="2" y1="12" x2="22" y2="12" />
                   <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
@@ -224,10 +272,20 @@ export default function CreateWishlistModal({
             </button>
             <button
               className={`privacy-btn ${!isPublic ? "selected" : ""}`}
-              onClick={() => { setIsPublic(false); hapticFeedback.selection(); }}
+              onClick={() => {
+                setIsPublic(false);
+                hapticFeedback.selection();
+              }}
             >
               <div className="privacy-icon private">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
                   <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
                   <path d="M7 11V7a5 5 0 0 1 10 0v4" />
                 </svg>
@@ -246,20 +304,32 @@ export default function CreateWishlistModal({
           <div className="form-section notify-section">
             <div className="notify-toggle">
               <div className="notify-info">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                >
                   <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" />
                   <path d="M13.73 21a2 2 0 01-3.46 0" />
                 </svg>
                 <span>Notify friends & followers</span>
               </div>
-              <button 
+              <button
                 className={`toggle-switch ${notifyFollowers ? "active" : ""}`}
-                onClick={() => { setNotifyFollowers(!notifyFollowers); hapticFeedback.selection(); }}
+                onClick={() => {
+                  setNotifyFollowers(!notifyFollowers);
+                  hapticFeedback.selection();
+                }}
               >
                 <div className="toggle-thumb" />
               </button>
             </div>
-            <p className="notify-hint">Your followers will be notified about this new wishlist</p>
+            <p className="notify-hint">
+              Your followers will be notified about this new wishlist
+            </p>
           </div>
         )}
 
@@ -268,8 +338,8 @@ export default function CreateWishlistModal({
           <button className="cancel-btn" onClick={handleClose}>
             Cancel
           </button>
-          <button 
-            className="create-btn" 
+          <button
+            className="create-btn"
             onClick={handleCreate}
             disabled={!name.trim()}
           >

@@ -5,6 +5,8 @@ import Button from "../components/Button";
 import { Input, Textarea } from "../components/Input";
 import { getWishlist, updateWishlist } from "../services/supabase-api";
 import { showTelegramAlert, hapticFeedback } from "../utils/telegram";
+import { useStore } from "../store/useStore";
+import { getUserLevel } from "../config/levels";
 import "./EditWishlistPage.css";
 
 const defaultImages = ["🎁", "🎂", "🎄", "💝", "🎉", "✨", "🌟", "💫"];
@@ -12,6 +14,22 @@ const defaultImages = ["🎁", "🎂", "🎄", "💝", "🎉", "✨", "🌟", "�
 export default function EditWishlistPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { userProfile } = useStore();
+
+  // Compute level for image upload gate
+  const completedTaskIds: string[] = (() => {
+    try {
+      return JSON.parse(
+        localStorage.getItem("wb_completed_tasks") ?? "[]",
+      ) as string[];
+    } catch {
+      return [];
+    }
+  })();
+  const referrals = userProfile?.referrals ?? 0;
+  const isImageUploadLocked =
+    getUserLevel(referrals, completedTaskIds).level < 1;
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [selectedEmoji, setSelectedEmoji] = useState("");
@@ -131,8 +149,17 @@ export default function EditWishlistPage() {
             <div className="image-selection">
               <button
                 type="button"
-                className={`image-preview ${customImage ? "has-image" : ""}`}
-                onClick={() => fileInputRef.current?.click()}
+                className={`image-preview ${customImage ? "has-image" : ""} ${isImageUploadLocked ? "locked" : ""}`}
+                onClick={() => {
+                  if (isImageUploadLocked) {
+                    hapticFeedback.impact("medium");
+                    showTelegramAlert(
+                      "Reach Level 1 to upload custom images! Invite 3 friends and follow our channel.",
+                    );
+                  } else {
+                    fileInputRef.current?.click();
+                  }
+                }}
               >
                 {customImage ? (
                   <img src={customImage} alt="Cover" />
@@ -152,25 +179,33 @@ export default function EditWishlistPage() {
                     <polyline points="21,15 16,10 5,21" />
                   </svg>
                 )}
-                <div className="upload-overlay">
-                  <svg
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                  >
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                    <polyline points="17,8 12,3 7,8" />
-                    <line x1="12" y1="3" x2="12" y2="15" />
-                  </svg>
-                </div>
+                {isImageUploadLocked ? (
+                  <div className="upload-overlay locked-overlay">
+                    <span className="lock-icon">🔒</span>
+                    <span className="lock-label">Level 1</span>
+                  </div>
+                ) : (
+                  <div className="upload-overlay">
+                    <svg
+                      width="20"
+                      height="20"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    >
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                      <polyline points="17,8 12,3 7,8" />
+                      <line x1="12" y1="3" x2="12" y2="15" />
+                    </svg>
+                  </div>
+                )}
               </button>
               <input
                 ref={fileInputRef}
                 type="file"
                 accept="image/*"
+                disabled={isImageUploadLocked}
                 onChange={(e) => {
                   const file = e.target.files?.[0];
                   if (file) {

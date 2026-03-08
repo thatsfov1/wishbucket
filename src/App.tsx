@@ -23,7 +23,6 @@ import FriendsPage from "./pages/FriendsPage";
 import CrowdfundingPage from "./pages/CrowdfundingPage";
 import InspirationPage from "./pages/InspirationPage";
 import FindGiftPage from "./pages/FindGiftPage";
-import NotificationsPage from "./pages/NotificationsPage";
 import FriendProfilePage from "./pages/FriendProfilePage";
 import MarketPage from "./pages/MarketPage";
 import TasksPage from "./pages/TasksPage";
@@ -128,7 +127,6 @@ function App() {
         <Route path="/crowdfunding" element={<CrowdfundingPage />} />
         <Route path="/inspiration" element={<InspirationPage />} />
         <Route path="/find-gift" element={<FindGiftPage />} />
-        <Route path="/notifications" element={<NotificationsPage />} />
         <Route path="/market" element={<MarketPage />} />
         <Route path="/tasks" element={<TasksPage />} />
         <Route path="/hints" element={<HintsPage />} />

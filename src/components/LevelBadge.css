@@ -1,0 +1,41 @@
+.level-badge-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px 6px 8px;
+  border-radius: 20px;
+  border: none;
+  background: linear-gradient(
+    135deg,
+    var(--level-color-start),
+    var(--level-color-end)
+  );
+  cursor: pointer;
+  box-shadow: 0 4px 14px var(--level-glow, rgba(250, 112, 112, 0.3));
+  transition:
+    transform 0.25s var(--spring),
+    box-shadow 0.25s ease;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.level-badge-btn:hover {
+  transform: scale(1.06);
+  box-shadow: 0 6px 18px var(--level-glow, rgba(250, 112, 112, 0.4));
+}
+
+.level-badge-btn:active {
+  transform: scale(0.94);
+}
+
+.level-badge-emoji {
+  font-size: 16px;
+  line-height: 1;
+}
+
+.level-badge-number {
+  font-size: 13px;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: 0.3px;
+}

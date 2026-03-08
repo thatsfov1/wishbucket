@@ -1,0 +1,580 @@
+/* =============================================
+   Level Board Modal – Overlay & Sheet
+   ============================================= */
+
+.lbm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: flex-end;
+  animation: lbm-fade-in 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes lbm-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.lbm-sheet {
+  width: 100%;
+  max-height: 92vh;
+  background: var(--bg-secondary);
+  border-radius: 28px 28px 0 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  /* iOS-native bottom-sheet feel: fast out, slow deceleration */
+  animation: lbm-slide-up 0.42s cubic-bezier(0.32, 0.72, 0, 1);
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: env(safe-area-inset-bottom, 24px);
+  will-change: transform;
+}
+
+@keyframes lbm-slide-up {
+  from {
+    transform: translateY(100%);
+    opacity: 0.6;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* =============================================
+   Drag Handle – now sits inside .lbm-hero
+   ============================================= */
+
+.lbm-drag-handle {
+  width: 36px;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.4);
+  margin: 10px auto 6px;
+}
+
+/* =============================================
+   Hero Section
+   ============================================= */
+
+.lbm-hero {
+  position: relative;
+  padding: 0 20px 32px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  border-radius: 28px 28px 0 0;
+}
+
+.lbm-close {
+  position: absolute;
+  top: 14px;
+  right: 16px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.22);
+  color: #ffffff;
+  font-size: 15px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    background 0.2s ease,
+    transform 0.2s ease;
+}
+
+.lbm-close:hover {
+  background: rgba(255, 255, 255, 0.35);
+}
+.lbm-close:active {
+  transform: scale(0.9);
+}
+
+.lbm-level-circle {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.22);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 4px;
+  animation: lbm-pop 0.5s cubic-bezier(0.34, 1.42, 0.64, 1) 0.18s both;
+}
+
+@keyframes lbm-pop {
+  from {
+    transform: translateY(10px) scale(0.78);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+.lbm-level-num {
+  font-size: 34px;
+  font-weight: 800;
+  color: #ffffff;
+  line-height: 1;
+}
+
+.lbm-level-name {
+  font-size: 22px;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0;
+  animation: lbm-fade-up 0.4s cubic-bezier(0.16, 1, 0.3, 1) 0.28s both;
+}
+
+.lbm-level-desc {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.78);
+  margin: 0;
+  animation: lbm-fade-up 0.4s cubic-bezier(0.16, 1, 0.3, 1) 0.34s both;
+}
+
+/* =============================================
+   Body – staggered entrance
+   ============================================= */
+
+.lbm-body {
+  padding: 20px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Each direct child fades up with a stagger */
+.lbm-body--animate > * {
+  animation: lbm-fade-up 0.38s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.lbm-body--animate > *:nth-child(1) {
+  animation-delay: 0.22s;
+}
+.lbm-body--animate > *:nth-child(2) {
+  animation-delay: 0.29s;
+}
+.lbm-body--animate > *:nth-child(3) {
+  animation-delay: 0.36s;
+}
+.lbm-body--animate > *:nth-child(4) {
+  animation-delay: 0.43s;
+}
+.lbm-body--animate > *:nth-child(5) {
+  animation-delay: 0.5s;
+}
+
+@keyframes lbm-fade-up {
+  from {
+    transform: translateY(14px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* =============================================
+   Level Journey Row
+   ============================================= */
+
+.lbm-journey {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  padding: 0 8px;
+}
+
+.lbm-journey-step {
+  display: flex;
+  align-items: center;
+  flex: 1;
+}
+
+.lbm-journey-step:last-child {
+  flex: none;
+}
+
+.lbm-journey-dot {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: var(--bg-tertiary);
+  border: 2px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-muted);
+  flex-shrink: 0;
+  transition: all 0.3s ease;
+}
+
+.lbm-journey-dot.done {
+  border-color: transparent;
+  color: #ffffff;
+}
+
+.lbm-journey-dot.active {
+  box-shadow:
+    0 0 0 3px rgba(255, 255, 255, 0.8),
+    0 4px 12px rgba(0, 0, 0, 0.12);
+  transform: scale(1.12);
+}
+
+.lbm-journey-line {
+  flex: 1;
+  height: 3px;
+  background: var(--bg-tertiary);
+  transition: background 0.3s ease;
+}
+
+.lbm-journey-line.done {
+  background: var(--accent-primary);
+}
+
+/* =============================================
+   Wishlist Limit Banner
+   ============================================= */
+
+.lbm-limit-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: var(--border-radius);
+  border: 1.5px solid;
+  transition: all 0.2s ease;
+}
+
+.lbm-limit-icon {
+  font-size: 22px;
+  flex-shrink: 0;
+}
+
+.lbm-limit-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.lbm-limit-text strong {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.lbm-limit-text span {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.lbm-limit-badge {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+
+/* =============================================
+   Perks Section
+   ============================================= */
+
+.lbm-perks-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.lbm-perks-section--next {
+  opacity: 0.78;
+}
+
+.lbm-perks-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  margin: 0;
+}
+
+.lbm-perks-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.lbm-perk-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 11px;
+  border-radius: 20px;
+  border: 1.5px solid;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.lbm-perk-chip--locked {
+  background: var(--bg-tertiary) !important;
+  color: var(--text-muted) !important;
+  border-color: var(--border-color) !important;
+}
+
+/* =============================================
+   Progress Section
+   ============================================= */
+
+.lbm-progress-section {
+  background: var(--bg-primary);
+  border-radius: var(--border-radius);
+  padding: 14px 16px;
+}
+
+.lbm-progress-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.lbm-progress-pct {
+  font-weight: 700;
+}
+
+.lbm-progress-track {
+  width: 100%;
+  height: 9px;
+  background: var(--bg-tertiary);
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.lbm-progress-fill {
+  height: 100%;
+  border-radius: 5px;
+  transition: width 1s cubic-bezier(0.16, 1, 0.3, 1);
+  min-width: 5px;
+}
+
+/* =============================================
+   Tasks Section
+   ============================================= */
+
+.lbm-tasks-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.lbm-tasks-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 4px;
+}
+
+.lbm-task-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--bg-primary);
+  border-radius: var(--border-radius);
+  padding: 13px 14px;
+  transition: opacity 0.2s ease;
+}
+
+.lbm-task-card.done {
+  opacity: 0.6;
+}
+
+.lbm-task-icon {
+  font-size: 22px;
+  flex-shrink: 0;
+}
+
+.lbm-task-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.lbm-task-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.lbm-task-sub-label {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* Referral mini progress bar */
+.lbm-task-sub-track {
+  width: 100%;
+  height: 4px;
+  background: var(--bg-tertiary);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.lbm-task-sub-fill {
+  height: 100%;
+  border-radius: 2px;
+  min-width: 3px;
+  transition: width 0.9s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.lbm-task-progress-text {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.lbm-task-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-end;
+  flex-shrink: 0;
+}
+
+.lbm-task-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 7px 14px;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+  color: #ffffff;
+  text-decoration: none;
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s var(--spring);
+  flex-shrink: 0;
+}
+
+.lbm-task-action:hover {
+  opacity: 0.88;
+}
+.lbm-task-action:active {
+  transform: scale(0.93);
+}
+
+.lbm-task-check {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--success);
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* =============================================
+   Invite CTA Button
+   ============================================= */
+
+.lbm-invite-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 15px;
+  border-radius: var(--border-radius);
+  border: none;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 700;
+  color: #ffffff;
+  margin-top: 4px;
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s var(--spring);
+  box-shadow: 0 4px 16px rgba(250, 112, 112, 0.3);
+}
+
+.lbm-invite-btn:hover {
+  opacity: 0.9;
+}
+.lbm-invite-btn:active {
+  transform: scale(0.97);
+}
+
+/* =============================================
+   Max Level Banner
+   ============================================= */
+
+.lbm-max-level {
+  text-align: center;
+  padding: 24px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.lbm-max-crown {
+  font-size: 52px;
+  animation: lbm-crown-float 2.4s ease-in-out infinite alternate;
+}
+
+@keyframes lbm-crown-float {
+  from {
+    transform: translateY(0) scale(1);
+  }
+  to {
+    transform: translateY(-9px) scale(1.06);
+  }
+}
+
+.lbm-max-level h3 {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.lbm-max-level p {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin: 0;
+  max-width: 260px;
+}

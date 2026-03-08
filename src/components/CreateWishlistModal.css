@@ -152,6 +152,41 @@
   opacity: 1;
 }
 
+/* Locked state – level 0 users can't upload a custom image */
+.image-preview.locked {
+  cursor: pointer;
+  border-color: var(--text-muted);
+  opacity: 0.82;
+}
+
+.locked-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.52);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  opacity: 1 !important;
+  border-radius: inherit;
+}
+
+.lock-icon {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.lock-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.2);
+  padding: 2px 8px;
+  border-radius: 8px;
+  letter-spacing: 0.4px;
+}
+
 .emoji-options {
   display: flex;
   flex-wrap: wrap;
