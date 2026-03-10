@@ -1,9 +1,11 @@
 .findgift-container {
   min-height: 100vh;
   background: var(--bg-primary);
-  padding: 20px 16px;
-  padding-bottom: 100px;
-  transition: background-color var(--transition-normal), color var(--transition-normal);
+  padding: calc(20px + var(--safe-top)) 16px 20px;
+  padding-bottom: calc(100px + var(--safe-bottom));
+  transition:
+    background-color var(--transition-normal),
+    color var(--transition-normal);
 }
 
 /* Header */

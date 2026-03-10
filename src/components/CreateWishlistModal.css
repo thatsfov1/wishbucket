@@ -30,7 +30,7 @@
   max-height: 90vh;
   background: var(--bg-secondary);
   border-radius: 24px 24px 0 0;
-  padding: 12px 20px 32px;
+  padding: 12px 20px calc(32px + var(--safe-bottom));
   overflow-y: auto;
   animation: slideUp 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
 }
@@ -461,8 +461,4 @@
 }
 
 /* Safe area */
-@supports (padding-bottom: env(safe-area-inset-bottom)) {
-  .create-wishlist-modal {
-    padding-bottom: calc(32px + env(safe-area-inset-bottom));
-  }
 }

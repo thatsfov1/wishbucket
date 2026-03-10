@@ -1,8 +1,8 @@
 .home-container {
   min-height: 100vh;
   background: var(--bg-primary);
-  padding: 20px 16px;
-  padding-bottom: 100px;
+  padding: calc(20px + var(--safe-top)) 16px 20px;
+  padding-bottom: calc(100px + var(--safe-bottom));
   transition: background var(--transition-normal);
 }
 
@@ -25,7 +25,9 @@
   justify-content: center;
   overflow: hidden;
   cursor: pointer;
-  transition: transform 0.3s var(--spring), box-shadow 0.3s ease;
+  transition:
+    transform 0.3s var(--spring),
+    box-shadow 0.3s ease;
   box-shadow: 0 4px 12px rgba(250, 112, 112, 0.25);
 }
 
@@ -188,7 +190,9 @@
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .loading-state p {

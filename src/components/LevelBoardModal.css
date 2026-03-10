@@ -33,7 +33,7 @@
   /* iOS-native bottom-sheet feel: fast out, slow deceleration */
   animation: lbm-slide-up 0.42s cubic-bezier(0.32, 0.72, 0, 1);
   -webkit-overflow-scrolling: touch;
-  padding-bottom: env(safe-area-inset-bottom, 24px);
+  padding-bottom: calc(24px + var(--safe-bottom));
   will-change: transform;
 }
 

@@ -5,6 +5,10 @@
 }
 
 :root {
+  /* Safe Area Insets for Telegram Mini Apps and iOS */
+  --safe-top: var(--tg-content-safe-area-inset-top, var(--tg-safe-area-inset-top, env(safe-area-inset-top, 0px)));
+  --safe-bottom: var(--tg-safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
+  
   /* New Color Palette */
   --coral: #FA7070;
   --coral-light: #FF9B9B;
@@ -241,8 +245,4 @@ img {
 }
 
 /* Safe area padding */
-@supports (padding-bottom: env(safe-area-inset-bottom)) {
-  .safe-area-bottom {
-    padding-bottom: env(safe-area-inset-bottom);
-  }
 }
