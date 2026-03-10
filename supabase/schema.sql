@@ -255,3 +255,29 @@ ALTER TABLE secret_santa_participants DISABLE ROW LEVEL SECURITY;
 -- Кінець схеми
 -- ============================================
 
+
+-- ============================================
+-- ОПТИМІЗАЦІЯ ПРОДУКТИВНОСТІ: ІНДЕКСИ ТА ВІДГУКИ (VIEWS)
+-- ============================================
+
+-- 1. Індекс для швидкого пошуку користувачів за username в JSONB
+CREATE INDEX IF NOT EXISTS idx_users_telegram_username ON users ((lower(telegram_data->>'username')));
+
+-- 2. В'юшка для швидкого доступу до публічних профілів та пошуку
+CREATE OR REPLACE VIEW public_user_profiles AS
+SELECT 
+  user_id,
+  telegram_data,
+  lower(telegram_data->>'username') as username,
+  telegram_data->>'first_name' as first_name,
+  telegram_data->>'last_name' as last_name,
+  created_at
+FROM users;
+
+
+-- 3. Composite індекс для wishlist_items (wishlist_id та created_at) для прискорення сортування елементів в API
+CREATE INDEX IF NOT EXISTS idx_items_wishlist_created ON wishlist_items(wishlist_id, created_at DESC);
+
+-- 4. Composite індекс для wishlists (user_id та created_at)
+CREATE INDEX IF NOT EXISTS idx_wishlists_user_created ON wishlists(user_id, created_at DESC);
+

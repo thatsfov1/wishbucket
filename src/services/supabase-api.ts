@@ -615,11 +615,14 @@ export const searchUsers = async (query: string): Promise<Friend[]> => {
 
   const searchTerm = query.toLowerCase().trim();
 
-  // Search users by username in telegram_data
+  // Search users by username using our optimized view
   const { data: users, error } = await supabase
-    .from("users")
+    .from("public_user_profiles")
     .select("user_id, telegram_data")
     .neq("user_id", userId)
+    .or(
+      `username.ilike.%${searchTerm}%,first_name.ilike.%${searchTerm}%,last_name.ilike.%${searchTerm}%`,
+    )
     .limit(20);
 
   if (error) {
@@ -642,30 +645,24 @@ export const searchUsers = async (query: string): Promise<Friend[]> => {
 
   const followerIds = new Set(followers?.map((f) => f.user_id) || []);
 
-  // Filter and map users
-  return (users || [])
-    .map((u) => {
-      const telegramData =
-        typeof u.telegram_data === "string"
-          ? JSON.parse(u.telegram_data)
-          : u.telegram_data;
+  // Filter and map users (already filtered by db)
+  return (users || []).map((u) => {
+    const telegramData =
+      typeof u.telegram_data === "string"
+        ? JSON.parse(u.telegram_data)
+        : u.telegram_data;
 
-      return {
-        id: u.user_id,
-        firstName: telegramData.first_name,
-        lastName: telegramData.last_name,
-        username: telegramData.username,
-        photoUrl: telegramData.photo_url,
-        isFollowing: followingIds.has(u.user_id),
-        isFollowedBy: followerIds.has(u.user_id),
-        addedAt: "",
-      };
-    })
-    .filter((u) => {
-      const fullName = `${u.firstName} ${u.lastName || ""}`.toLowerCase();
-      const username = (u.username || "").toLowerCase();
-      return fullName.includes(searchTerm) || username.includes(searchTerm);
-    });
+    return {
+      id: u.user_id,
+      firstName: telegramData.first_name,
+      lastName: telegramData.last_name,
+      username: telegramData.username,
+      photoUrl: telegramData.photo_url,
+      isFollowing: followingIds.has(u.user_id),
+      isFollowedBy: followerIds.has(u.user_id),
+      addedAt: "",
+    };
+  });
 };
 
 /**
@@ -789,7 +786,12 @@ export const getUserPublicWishlists = async (
 ): Promise<Wishlist[]> => {
   const { data: wishlists, error } = await supabase
     .from("wishlists")
-    .select("*")
+    .select(
+      `
+      *,
+      wishlist_items (*)
+    `,
+    )
     .eq("user_id", targetUserId)
     .eq("is_public", true)
     .order("created_at", { ascending: false });
@@ -799,19 +801,13 @@ export const getUserPublicWishlists = async (
   }
 
   // Load items for each wishlist
-  const wishlistsWithItems = await Promise.all(
-    (wishlists || []).map(async (wishlist) => {
-      const { data: items } = await supabase
-        .from("wishlist_items")
-        .select("*")
-        .eq("wishlist_id", wishlist.id)
-        .order("created_at", { ascending: false });
-
-      return mapWishlist(wishlist, items || []);
-    }),
-  );
-
-  return wishlistsWithItems;
+  return (wishlists || []).map((wishlist) => {
+    const items = (wishlist.wishlist_items || []).sort(
+      (a: any, b: any) =>
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+    );
+    return mapWishlist(wishlist, items);
+  });
 };
 
 /**
@@ -825,26 +821,20 @@ export const getUserByUsername = async (
     throw new Error("User not authenticated");
   }
 
-  // Search for user by username in telegram_data
-  const { data: users, error } = await supabase
-    .from("users")
-    .select("user_id, telegram_data")
-    .neq("user_id", userId);
+  const cleanUsername = username.toLowerCase().replace("@", "");
 
-  if (error) {
+  // Search using the fast view
+  const { data: user, error } = await supabase
+    .from("public_user_profiles")
+    .select("user_id, telegram_data")
+    .eq("username", cleanUsername)
+    .neq("user_id", userId)
+    .single();
+
+  if (error && error.code !== "PGRST116") {
+    // Ignore 'not found'
     throw new Error(`Failed to find user: ${error.message}`);
   }
-
-  const user = users?.find((u) => {
-    const telegramData =
-      typeof u.telegram_data === "string"
-        ? JSON.parse(u.telegram_data)
-        : u.telegram_data;
-    return (
-      telegramData.username?.toLowerCase() ===
-      username.toLowerCase().replace("@", "")
-    );
-  });
 
   if (!user) return null;
 
@@ -893,9 +883,15 @@ export const getWishlists = async (): Promise<Wishlist[]> => {
     throw new Error("User not authenticated");
   }
 
+  // Оптимізований запит за допомогою JOIN, завантажує wishlists та їх items за один раз
   const { data: wishlists, error } = await supabase
     .from("wishlists")
-    .select("*")
+    .select(
+      `
+      *,
+      wishlist_items (*)
+    `,
+    )
     .eq("user_id", userId)
     .order("created_at", { ascending: false });
 
@@ -903,20 +899,15 @@ export const getWishlists = async (): Promise<Wishlist[]> => {
     throw new Error(`Failed to fetch wishlists: ${error.message}`);
   }
 
-  // Завантажуємо items для кожного wishlist
-  const wishlistsWithItems = await Promise.all(
-    (wishlists || []).map(async (wishlist) => {
-      const { data: items } = await supabase
-        .from("wishlist_items")
-        .select("*")
-        .eq("wishlist_id", wishlist.id)
-        .order("created_at", { ascending: false });
-
-      return mapWishlist(wishlist, items || []);
-    }),
-  );
-
-  return wishlistsWithItems;
+  // Форматуємо результати
+  return (wishlists || []).map((wishlist) => {
+    // Сортуємо вкладені items за датою
+    const items = (wishlist.wishlist_items || []).sort(
+      (a: any, b: any) =>
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+    );
+    return mapWishlist(wishlist, items);
+  });
 };
 
 /**
@@ -925,7 +916,12 @@ export const getWishlists = async (): Promise<Wishlist[]> => {
 export const getWishlist = async (wishlistId: string): Promise<Wishlist> => {
   const { data: wishlist, error } = await supabase
     .from("wishlists")
-    .select("*")
+    .select(
+      `
+      *,
+      wishlist_items (*)
+    `,
+    )
     .eq("id", wishlistId)
     .single();
 
@@ -933,14 +929,12 @@ export const getWishlist = async (wishlistId: string): Promise<Wishlist> => {
     throw new Error(`Failed to fetch wishlist: ${error.message}`);
   }
 
-  // Завантажуємо items
-  const { data: items } = await supabase
-    .from("wishlist_items")
-    .select("*")
-    .eq("wishlist_id", wishlistId)
-    .order("created_at", { ascending: false });
+  const items = (wishlist.wishlist_items || []).sort(
+    (a: any, b: any) =>
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+  );
 
-  return mapWishlist(wishlist, items || []);
+  return mapWishlist(wishlist, items);
 };
 
 /**
