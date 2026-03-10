@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Level, getLevelProgress, LEVELS } from "../config/levels";
 import "./LevelBoardModal.css";
 
@@ -21,6 +21,9 @@ export default function LevelBoardModal({
   onMarkChannelDone,
   onInviteFriends,
 }: LevelBoardModalProps) {
+  const [clickedTasks, setClickedTasks] = useState<Record<string, boolean>>({});
+  const [loadingTasks, setLoadingTasks] = useState<Record<string, boolean>>({});
+
   const nextLevel =
     currentLevel.level < LEVELS.length - 1
       ? LEVELS[currentLevel.level + 1]
@@ -265,38 +268,68 @@ export default function LevelBoardModal({
                   );
                 }
 
-                if (req.type === "follow_channel") {
-                  const done = completedTaskIds.includes(req.channelId ?? "");
+                if (req.type === "social_task") {
+                  const taskId = req.taskId ?? "";
+                  const done = completedTaskIds.includes(taskId);
+                  const isClicked = clickedTasks[taskId];
+                  const isLoading = loadingTasks[taskId];
+
+                  const handleSocialClick = () => {
+                    if (req.platform === "twitter") {
+                      setTimeout(() => {
+                        onMarkChannelDone(taskId);
+                      }, 2000);
+                    } else if (req.platform === "telegram") {
+                      // Mark as clicked to show the Check button
+                      setClickedTasks((prev) => ({ ...prev, [taskId]: true }));
+                    }
+                  };
+
+                  const handleCheckClick = () => {
+                    setLoadingTasks((prev) => ({ ...prev, [taskId]: true }));
+                    // Simulate backend check
+                    setTimeout(() => {
+                      setLoadingTasks((prev) => ({ ...prev, [taskId]: false }));
+                      onMarkChannelDone(taskId);
+                    }, 1500);
+                  };
+
                   return (
                     <div
                       key={idx}
                       className={`lbm-task-card ${done ? "done" : ""}`}
                     >
-                      <div className="lbm-task-icon">📢</div>
+                      <div className="lbm-task-icon">
+                        {req.platform === "twitter" ? "🐦" : "📢"}
+                      </div>
                       <div className="lbm-task-info">
                         <span className="lbm-task-label">{req.label}</span>
-                        <span className="lbm-task-sub-label">
-                          {req.channelName}
-                        </span>
+                        <span className="lbm-task-sub-label">{req.name}</span>
                       </div>
                       {done ? (
                         <div className="lbm-task-check">✓</div>
+                      ) : isClicked && req.platform === "telegram" ? (
+                        <div className="lbm-task-actions">
+                          <button
+                            className="lbm-task-action"
+                            style={{ background: heroGradient }}
+                            onClick={handleCheckClick}
+                            disabled={isLoading}
+                          >
+                            {isLoading ? "Checking..." : "Check"}
+                          </button>
+                        </div>
                       ) : (
                         <div className="lbm-task-actions">
                           <a
                             className="lbm-task-action"
                             style={{ background: heroGradient }}
-                            href={`https://t.me/${req.channelUsername}`}
+                            href={req.url}
                             target="_blank"
                             rel="noreferrer"
-                            onClick={() =>
-                              setTimeout(
-                                () => onMarkChannelDone(req.channelId ?? ""),
-                                3000,
-                              )
-                            }
+                            onClick={handleSocialClick}
                           >
-                            Follow
+                            {req.platform === "twitter" ? "Follow" : "Join"}
                           </a>
                         </div>
                       )}

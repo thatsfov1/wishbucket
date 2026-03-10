@@ -14,16 +14,17 @@
  *  Level 3 (Legend)    → Unlimited    (invite 25 friends + follow all channels)
  */
 
-export type RequirementType = "referrals" | "follow_channel";
+export type RequirementType = "referrals" | "social_task";
 
 export interface LevelRequirement {
   type: RequirementType;
   /** For referral type: number of friends required */
   count?: number;
-  /** For follow_channel type: matches the task id from tasks.ts */
-  channelId?: string;
-  channelUsername?: string;
-  channelName?: string;
+  /** For social_task type */
+  taskId?: string;
+  platform?: "twitter" | "telegram";
+  url?: string;
+  name?: string;
   label: string;
 }
 
@@ -72,11 +73,12 @@ export const LEVELS: Level[] = [
     requirements: [
       { type: "referrals", count: 3, label: "Invite 3 friends" },
       {
-        type: "follow_channel",
-        channelId: "channel_wishbucket",
-        channelUsername: "wishbucket_channel",
-        channelName: "WishBucket Channel",
-        label: "Follow @wishbucket_channel",
+        type: "social_task",
+        taskId: "twitter_dev",
+        platform: "twitter",
+        url: "https://x.com/thatsfov2",
+        name: "Developer on X",
+        label: "Follow on X",
       },
     ],
     description: "Growing your circle",
@@ -93,18 +95,12 @@ export const LEVELS: Level[] = [
     requirements: [
       { type: "referrals", count: 10, label: "Invite 10 friends" },
       {
-        type: "follow_channel",
-        channelId: "channel_wishbucket",
-        channelUsername: "wishbucket_channel",
-        channelName: "WishBucket Channel",
-        label: "Follow @wishbucket_channel",
-      },
-      {
-        type: "follow_channel",
-        channelId: "channel_wishbucket_news",
-        channelUsername: "wishbucket_news",
-        channelName: "WishBucket News",
-        label: "Follow @wishbucket_news",
+        type: "social_task",
+        taskId: "telegram_channel_1",
+        platform: "telegram",
+        url: "", // Easy to change later
+        name: "Telegram Channel",
+        label: "Follow Channel",
       },
     ],
     description: "A true wishlist enthusiast",
@@ -121,18 +117,12 @@ export const LEVELS: Level[] = [
     requirements: [
       { type: "referrals", count: 25, label: "Invite 25 friends" },
       {
-        type: "follow_channel",
-        channelId: "channel_wishbucket",
-        channelUsername: "wishbucket_channel",
-        channelName: "WishBucket Channel",
-        label: "Follow @wishbucket_channel",
-      },
-      {
-        type: "follow_channel",
-        channelId: "channel_wishbucket_news",
-        channelUsername: "wishbucket_news",
-        channelName: "WishBucket News",
-        label: "Follow @wishbucket_news",
+        type: "social_task",
+        taskId: "telegram_channel_2",
+        platform: "telegram",
+        url: "", // Easy to change later
+        name: "Telegram Community",
+        label: "Follow Community",
       },
     ],
     description: "The ultimate wishlist master",
@@ -165,8 +155,8 @@ export const getUserLevel = (
       if (req.type === "referrals") {
         return referrals >= (req.count ?? 0);
       }
-      if (req.type === "follow_channel") {
-        return completedTaskIds.includes(req.channelId ?? "");
+      if (req.type === "social_task") {
+        return completedTaskIds.includes(req.taskId ?? "");
       }
       return false;
     });
@@ -207,8 +197,8 @@ export const getLevelProgress = (
     if (req.type === "referrals") {
       // fractional progress counts for referrals
       met += Math.min(referrals / (req.count ?? 1), 1);
-    } else if (req.type === "follow_channel") {
-      if (completedTaskIds.includes(req.channelId ?? "")) {
+    } else if (req.type === "social_task") {
+      if (completedTaskIds.includes(req.taskId ?? "")) {
         met += 1;
       }
     }
