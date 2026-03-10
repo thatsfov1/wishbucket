@@ -28,6 +28,7 @@ import MarketPage from "./pages/MarketPage";
 import TasksPage from "./pages/TasksPage";
 import HintsPage from "./pages/HintsPage";
 import EditWishlistPage from "./pages/EditWishlistPage";
+import DocsPage from "./pages/DocsPage";
 
 function App() {
   const {
@@ -130,6 +131,7 @@ function App() {
         <Route path="/market" element={<MarketPage />} />
         <Route path="/tasks" element={<TasksPage />} />
         <Route path="/hints" element={<HintsPage />} />
+        <Route path="/docs" element={<DocsPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>

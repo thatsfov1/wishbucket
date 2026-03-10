@@ -52,13 +52,19 @@ interface TelegramMessage {
 interface TelegramUpdate {
   update_id: number;
   message?: TelegramMessage;
+  callback_query?: {
+    id: string;
+    from: TelegramUser;
+    message?: TelegramMessage;
+    data?: string;
+  };
 }
 
 // Send message to Telegram
 async function sendTelegramMessage(
   chatId: number,
   text: string,
-  replyMarkup?: object
+  replyMarkup?: object,
 ) {
   const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
   const body: any = {
@@ -99,7 +105,7 @@ async function ensureUser(telegramUser: TelegramUser) {
 // Find user by username or name
 async function findUserByInfo(
   username?: string,
-  name?: string
+  name?: string,
 ): Promise<number | null> {
   if (username) {
     const { data } = await supabase
@@ -151,7 +157,7 @@ function getMediaFileId(message: TelegramMessage): string | null {
   if (message.photo) {
     // Get largest photo
     const largest = message.photo.reduce((prev, curr) =>
-      curr.width > prev.width ? curr : prev
+      curr.width > prev.width ? curr : prev,
     );
     return largest.file_id;
   }
@@ -190,33 +196,222 @@ function getForwardedFromName(message: TelegramMessage): {
   return { name: "Unknown" };
 }
 
-// Handle /start command
+// Answer callback query (removes loading state)
+async function answerCallbackQuery(callbackQueryId: string, text?: string) {
+  const url = `https://api.telegram.org/bot${BOT_TOKEN}/answerCallbackQuery`;
+  await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ callback_query_id: callbackQueryId, text }),
+  });
+}
+
+// Edit an existing message
+async function editTelegramMessage(
+  chatId: number,
+  messageId: number,
+  text: string,
+  replyMarkup?: object,
+) {
+  const url = `https://api.telegram.org/bot${BOT_TOKEN}/editMessageText`;
+  const body: any = {
+    chat_id: chatId,
+    message_id: messageId,
+    text,
+    parse_mode: "HTML",
+  };
+  if (replyMarkup) {
+    body.reply_markup = replyMarkup;
+  }
+  await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+// ============================================
+// /start — Welcome Screen
+// ============================================
 async function handleStartCommand(message: TelegramMessage) {
   const userId = await ensureUser(message.from);
+  const firstName = message.from.first_name || "there";
 
-  await sendTelegramMessage(
-    message.chat.id,
-    `👋 <b>Welcome to WishBucket!</b>\n\n` +
-      `I help you remember gift ideas from your chats.\n\n` +
-      `<b>How to use:</b>\n` +
-      `1️⃣ When someone mentions they want something, <b>forward that message to me</b>\n` +
-      `2️⃣ I'll save it as a gift hint for that person\n` +
-      `3️⃣ Open the app to see all your saved hints\n\n` +
-      `💡 <b>Supported:</b> Text, photos, voice messages, videos\n\n` +
-      `Forward a message now to get started!`,
-    {
-      inline_keyboard: [
-        [
-          {
-            text: "📱 Open WishBucket",
-            web_app: {
-              url: Deno.env.get("WEBAPP_URL") || "https://your-app.com",
-            },
+  const text =
+    `👋 <b>Hey ${firstName}! Welcome to WishBucket</b>\n\n` +
+    `🎁 <b>WishBucket</b> is your personal wishlist assistant inside Telegram.\n\n` +
+    `Here's what you can do:\n` +
+    `• Create and share wishlists with friends\n` +
+    `• Forward messages to save gift hints\n` +
+    `• Discover what your friends want\n` +
+    `• Organize secret santa events\n\n` +
+    `Choose an option below to get started 👇`;
+
+  await sendTelegramMessage(message.chat.id, text, {
+    inline_keyboard: [
+      [
+        {
+          text: "🚀 Open WishBucket",
+          web_app: {
+            url: Deno.env.get("WEBAPP_URL") || "https://your-app.com",
           },
-        ],
+        },
       ],
+      [
+        { text: "📖 Instructions", callback_data: "instructions" },
+        { text: "🌍 Language", callback_data: "choose_language" },
+      ],
+      [{ text: "💡 How Hints Work", callback_data: "hints_info" }],
+    ],
+  });
+}
+
+// ============================================
+// Callback Query Handlers
+// ============================================
+async function handleCallbackQuery(
+  callbackQueryId: string,
+  data: string,
+  chatId: number,
+  messageId: number,
+  from: TelegramUser,
+) {
+  switch (data) {
+    case "instructions": {
+      const webappUrl = Deno.env.get("WEBAPP_URL") || "https://your-app.com";
+      const text =
+        `📖 <b>Instructions</b>\n\n` +
+        `Read the full guide on how to use WishBucket:`;
+
+      await editTelegramMessage(chatId, messageId, text, {
+        inline_keyboard: [
+          [
+            {
+              text: "📖 Open Instructions",
+              url: `${webappUrl}/docs`,
+            },
+          ],
+          [{ text: "⬅️ Back", callback_data: "back_to_start" }],
+        ],
+      });
+      await answerCallbackQuery(callbackQueryId);
+      break;
     }
-  );
+
+    case "choose_language": {
+      const text =
+        `🌍 <b>Choose your language</b>\n\n` +
+        `Select your preferred language:`;
+
+      await editTelegramMessage(chatId, messageId, text, {
+        inline_keyboard: [
+          [
+            { text: "🇬🇧 English", callback_data: "lang_en" },
+            { text: "🇵🇱 Polski", callback_data: "lang_pl" },
+          ],
+          [
+            { text: "🇺🇦 Українська", callback_data: "lang_uk" },
+            { text: "🇷🇺 Русский", callback_data: "lang_ru" },
+          ],
+          [{ text: "⬅️ Back", callback_data: "back_to_start" }],
+        ],
+      });
+      await answerCallbackQuery(callbackQueryId);
+      break;
+    }
+
+    case "lang_en":
+    case "lang_pl":
+    case "lang_uk":
+    case "lang_ru": {
+      const langNames: Record<string, string> = {
+        lang_en: "English 🇬🇧",
+        lang_pl: "Polski 🇵🇱",
+        lang_uk: "Українська 🇺🇦",
+        lang_ru: "Русский 🇷🇺",
+      };
+      // TODO: persist language preference to DB
+      await answerCallbackQuery(
+        callbackQueryId,
+        `✅ ${langNames[data]} selected`,
+      );
+
+      const text =
+        `✅ Language set to <b>${langNames[data]}</b>\n\n` +
+        `You can change it anytime from this menu.`;
+
+      await editTelegramMessage(chatId, messageId, text, {
+        inline_keyboard: [
+          [{ text: "⬅️ Back to menu", callback_data: "back_to_start" }],
+        ],
+      });
+      break;
+    }
+
+    case "hints_info": {
+      const text =
+        `💡 <b>How Gift Hints Work</b>\n\n` +
+        `When someone in a chat says they want something — forward that message to me!\n\n` +
+        `<b>Steps:</b>\n` +
+        `1️⃣ See someone mention a wish in a chat\n` +
+        `2️⃣ Long-press the message → Forward → send to this bot\n` +
+        `3️⃣ I'll save it as a gift hint with the sender's name\n\n` +
+        `<b>Supported formats:</b> Text, photos, voice, video, documents\n\n` +
+        `Open the app to browse all your saved hints anytime 📱`;
+
+      await editTelegramMessage(chatId, messageId, text, {
+        inline_keyboard: [
+          [
+            {
+              text: "📱 Open WishBucket",
+              web_app: {
+                url: Deno.env.get("WEBAPP_URL") || "https://your-app.com",
+              },
+            },
+          ],
+          [{ text: "⬅️ Back", callback_data: "back_to_start" }],
+        ],
+      });
+      await answerCallbackQuery(callbackQueryId);
+      break;
+    }
+
+    case "back_to_start": {
+      const firstName = from.first_name || "there";
+      const text =
+        `👋 <b>Hey ${firstName}! Welcome to WishBucket</b>\n\n` +
+        `🎁 <b>WishBucket</b> is your personal wishlist assistant inside Telegram.\n\n` +
+        `Here's what you can do:\n` +
+        `• Create and share wishlists with friends\n` +
+        `• Forward messages to save gift hints\n` +
+        `• Discover what your friends want\n` +
+        `• Organize secret santa events\n\n` +
+        `Choose an option below to get started 👇`;
+
+      await editTelegramMessage(chatId, messageId, text, {
+        inline_keyboard: [
+          [
+            {
+              text: "🚀 Open WishBucket",
+              web_app: {
+                url: Deno.env.get("WEBAPP_URL") || "https://your-app.com",
+              },
+            },
+          ],
+          [
+            { text: "📖 Instructions", callback_data: "instructions" },
+            { text: "🌍 Language", callback_data: "choose_language" },
+          ],
+          [{ text: "💡 How Hints Work", callback_data: "hints_info" }],
+        ],
+      });
+      await answerCallbackQuery(callbackQueryId);
+      break;
+    }
+
+    default:
+      await answerCallbackQuery(callbackQueryId);
+  }
 }
 
 // Handle /hints command - show recent hints
@@ -235,7 +430,7 @@ async function handleHintsCommand(message: TelegramMessage) {
     await sendTelegramMessage(
       message.chat.id,
       `📭 You don't have any saved hints yet.\n\n` +
-        `Forward a message from a chat to save a gift idea!`
+        `Forward a message from a chat to save a gift idea!`,
     );
     return;
   }
@@ -302,7 +497,7 @@ async function handleForwardedMessage(message: TelegramMessage) {
     console.error("Error saving hint:", error);
     await sendTelegramMessage(
       message.chat.id,
-      `❌ Sorry, couldn't save this hint. Please try again.`
+      `❌ Sorry, couldn't save this hint. Please try again.`,
     );
     return;
   }
@@ -328,7 +523,7 @@ async function handleForwardedMessage(message: TelegramMessage) {
           },
         ],
       ],
-    }
+    },
   );
 }
 
@@ -349,7 +544,7 @@ async function handleRegularMessage(message: TelegramMessage) {
           },
         ],
       ],
-    }
+    },
   );
 }
 
@@ -363,6 +558,21 @@ Deno.serve(async (req: Request) => {
   try {
     const update: TelegramUpdate = await req.json();
     const message = update.message;
+    const callbackQuery = update.callback_query;
+
+    // Handle callback queries (button presses)
+    if (callbackQuery && callbackQuery.data && callbackQuery.message) {
+      await handleCallbackQuery(
+        callbackQuery.id,
+        callbackQuery.data,
+        callbackQuery.message.chat.id,
+        callbackQuery.message.message_id,
+        callbackQuery.from,
+      );
+      return new Response(JSON.stringify({ ok: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     if (!message) {
       return new Response(JSON.stringify({ ok: true }), {

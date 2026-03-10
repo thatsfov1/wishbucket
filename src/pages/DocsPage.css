@@ -1,0 +1,29 @@
+.docs-container {
+  min-height: 100vh;
+  background: var(--bg-primary);
+  padding: calc(20px + var(--safe-top)) 16px 40px;
+}
+
+.docs-header {
+  margin-bottom: 32px;
+}
+
+.docs-header h1 {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.docs-content {
+  background: var(--bg-card);
+  border-radius: var(--border-radius);
+  padding: 24px;
+  box-shadow: var(--shadow-card);
+}
+
+.docs-placeholder {
+  font-size: 16px;
+  color: var(--text-secondary);
+  text-align: center;
+  padding: 40px 0;
+}
