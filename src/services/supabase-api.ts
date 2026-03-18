@@ -305,6 +305,88 @@ export const getUserProfile = async (): Promise<UserProfile> => {
 };
 
 /**
+ * Returns completed social task ids used by level progression.
+ * Falls back to empty array if the table is not deployed yet.
+ */
+export const getCompletedSocialTasks = async (): Promise<string[]> => {
+  const userId = getCurrentUserId();
+  if (!userId) {
+    return [];
+  }
+
+  const { data, error } = await supabase
+    .from("user_social_tasks")
+    .select("task_id")
+    .eq("user_id", userId);
+
+  if (error) {
+    console.warn("Failed to load completed social tasks:", error.message);
+    return [];
+  }
+
+  return (data ?? []).map((row: { task_id: string }) => row.task_id);
+};
+
+/**
+ * Marks one social task as completed for the current user.
+ */
+export const markSocialTaskCompleted = async (
+  taskId: string,
+): Promise<void> => {
+  const userId = getCurrentUserId();
+  if (!userId) {
+    throw new Error("User not authenticated");
+  }
+
+  const { error } = await supabase.from("user_social_tasks").upsert(
+    {
+      user_id: userId,
+      task_id: taskId,
+      completed_at: new Date().toISOString(),
+    },
+    {
+      onConflict: "user_id,task_id",
+      ignoreDuplicates: true,
+    },
+  );
+
+  if (error) {
+    throw new Error(`Failed to save social task completion: ${error.message}`);
+  }
+};
+
+/**
+ * Syncs multiple task ids to Supabase and returns merged server state.
+ */
+export const syncCompletedSocialTasks = async (
+  taskIds: string[],
+): Promise<string[]> => {
+  const userId = getCurrentUserId();
+  if (!userId) {
+    return taskIds;
+  }
+
+  if (taskIds.length > 0) {
+    const rows = taskIds.map((taskId) => ({
+      user_id: userId,
+      task_id: taskId,
+      completed_at: new Date().toISOString(),
+    }));
+
+    const { error } = await supabase.from("user_social_tasks").upsert(rows, {
+      onConflict: "user_id,task_id",
+      ignoreDuplicates: true,
+    });
+
+    if (error) {
+      console.warn("Failed to sync social tasks:", error.message);
+    }
+  }
+
+  return getCompletedSocialTasks();
+};
+
+/**
  * Оновлює профіль користувача
  */
 export const updateUserProfile = async (
