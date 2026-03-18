@@ -292,7 +292,7 @@ async function handleCallbackQuery(
           [
             {
               text: "📖 Open Instructions",
-              url: `${WEBAPP_URL}/docs`,
+              url: "https://telegra.ph/wishbucket-quick-guide-03-18",
             },
           ],
           [{ text: "⬅️ Back", callback_data: "back_to_start" }],
