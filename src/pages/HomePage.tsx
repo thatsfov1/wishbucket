@@ -8,28 +8,38 @@ import {
   getUnreadNotificationsCount,
   getFriends,
   getFollowers,
+  getCompletedSocialTasks,
+  markSocialTaskCompleted,
+  syncCompletedSocialTasks,
 } from "../services/supabase-api";
 import BottomNavBar from "../components/BottomNavBar";
 import SettingsModal from "../components/SettingsModal";
 import CreateWishlistModal from "../components/CreateWishlistModal";
 import LevelBadge from "../components/LevelBadge";
 import LevelBoardModal from "../components/LevelBoardModal";
-import { getUserLevel, getWishlistLimit } from "../config/levels";
+import { LEVELS, getUserLevel, getWishlistLimit } from "../config/levels";
 import "./HomePage.css";
 
 const COMPLETED_TASKS_KEY = "wb_completed_tasks";
 
-function loadCompletedTasks(): string[] {
+function getCompletedTasksStorageKey(userId?: number): string {
+  return `${COMPLETED_TASKS_KEY}_${userId ?? "anon"}`;
+}
+
+function loadCompletedTasks(userId?: number): string[] {
   try {
-    const raw = localStorage.getItem(COMPLETED_TASKS_KEY);
+    const raw = localStorage.getItem(getCompletedTasksStorageKey(userId));
     return raw ? (JSON.parse(raw) as string[]) : [];
   } catch {
     return [];
   }
 }
 
-function saveCompletedTasks(ids: string[]): void {
-  localStorage.setItem(COMPLETED_TASKS_KEY, JSON.stringify(ids));
+function saveCompletedTasks(ids: string[], userId?: number): void {
+  localStorage.setItem(
+    getCompletedTasksStorageKey(userId),
+    JSON.stringify(ids),
+  );
 }
 
 export default function HomePage() {
@@ -50,15 +60,21 @@ export default function HomePage() {
   const [error, setError] = useState<string | null>(null);
   const [friendsCount, setFriendsCount] = useState(0);
   const [followersCount, setFollowersCount] = useState(0);
-  const [completedTaskIds, setCompletedTaskIds] =
-    useState<string[]>(loadCompletedTasks);
+  const [completedTaskIds, setCompletedTaskIds] = useState<string[]>([]);
+  const [isLevelLoading, setIsLevelLoading] = useState(true);
 
   const firstName = telegramUser?.first_name || "Guest";
   const photoUrl = telegramUser?.photo_url;
 
   const referrals = userProfile?.referrals ?? 0;
-  const currentLevel = getUserLevel(referrals, completedTaskIds);
-  const wishlistLimit = getWishlistLimit(referrals, completedTaskIds);
+  const currentLevel =
+    !isLevelLoading && userProfile
+      ? getUserLevel(referrals, completedTaskIds)
+      : null;
+  const resolvedLevel = currentLevel ?? LEVELS[0];
+  const wishlistLimit = currentLevel
+    ? getWishlistLimit(referrals, completedTaskIds)
+    : LEVELS[0].wishlistLimit;
 
   // Load data on mount
   useEffect(() => {
@@ -75,6 +91,21 @@ export default function HomePage() {
             getFollowers(),
           ]);
 
+        const localTasks = loadCompletedTasks(telegramUser?.id);
+        const remoteTasks = await getCompletedSocialTasks();
+        const mergedTasks = Array.from(
+          new Set([...remoteTasks, ...localTasks]),
+        );
+
+        setCompletedTaskIds(mergedTasks);
+        saveCompletedTasks(mergedTasks, telegramUser?.id);
+
+        if (mergedTasks.length !== remoteTasks.length) {
+          const syncedTasks = await syncCompletedSocialTasks(mergedTasks);
+          setCompletedTaskIds(syncedTasks);
+          saveCompletedTasks(syncedTasks, telegramUser?.id);
+        }
+
         setWishlists(wishlistsData);
         setUnreadNotificationsCount(notifCount);
         setFriendsCount(friendsData.length);
@@ -90,6 +121,7 @@ export default function HomePage() {
         }
       } finally {
         setLoading(false);
+        setIsLevelLoading(false);
       }
     };
 
@@ -112,6 +144,10 @@ export default function HomePage() {
 
   const handleOpenCreateModal = () => {
     hapticFeedback.impact("medium");
+    if (isLevelLoading) {
+      return;
+    }
+
     // Enforce wishlist limit (-1 = unlimited)
     if (wishlistLimit !== -1 && wishlists.length >= wishlistLimit) {
       hapticFeedback.notification("warning");
@@ -121,14 +157,23 @@ export default function HomePage() {
     setCreateModalOpen(true);
   };
 
-  const handleMarkChannelDone = useCallback((channelId: string) => {
-    setCompletedTaskIds((prev) => {
-      if (prev.includes(channelId)) return prev;
-      const updated = [...prev, channelId];
-      saveCompletedTasks(updated);
-      return updated;
-    });
-  }, []);
+  const handleMarkChannelDone = useCallback(
+    (channelId: string) => {
+      setCompletedTaskIds((prev) => {
+        if (prev.includes(channelId)) return prev;
+        const updated = [...prev, channelId];
+
+        saveCompletedTasks(updated, telegramUser?.id);
+
+        markSocialTaskCompleted(channelId).catch((err) => {
+          console.warn("Failed to save completed task to server:", err);
+        });
+
+        return updated;
+      });
+    },
+    [telegramUser?.id],
+  );
 
   const handleInviteFriends = useCallback(() => {
     const botUsername = "WishBucketBot"; // update to your actual bot username
@@ -199,8 +244,10 @@ export default function HomePage() {
           <h1 className="greeting-name">{firstName} 👋</h1>
         </div>
         <LevelBadge
-          currentLevel={currentLevel}
+          currentLevel={resolvedLevel}
+          isLoading={isLevelLoading || !userProfile}
           onClick={() => {
+            if (isLevelLoading || !userProfile) return;
             hapticFeedback.impact("light");
             setLevelBoardOpen(true);
           }}
@@ -401,7 +448,7 @@ export default function HomePage() {
         isOpen={createModalOpen}
         onClose={() => setCreateModalOpen(false)}
         onCreateWishlist={handleCreateWishlist}
-        isImageUploadLocked={currentLevel.level < 1}
+        isImageUploadLocked={resolvedLevel.level < 1}
         onUnlockRequest={() => {
           setCreateModalOpen(false);
           setLevelBoardOpen(true);
@@ -412,7 +459,7 @@ export default function HomePage() {
       <LevelBoardModal
         isOpen={levelBoardOpen}
         onClose={() => setLevelBoardOpen(false)}
-        currentLevel={currentLevel}
+        currentLevel={resolvedLevel}
         referrals={referrals}
         completedTaskIds={completedTaskIds}
         onMarkChannelDone={handleMarkChannelDone}
