@@ -8,11 +8,22 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-const supabaseUrl = Deno.env.get("PROJECT_URL")!;
-const supabaseServiceKey = Deno.env.get("SERVICE_ROLE_KEY")!;
+const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? Deno.env.get("PROJECT_URL");
+const supabaseServiceKey =
+  Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? Deno.env.get("SERVICE_ROLE_KEY");
+
+if (!supabaseUrl || !supabaseServiceKey) {
+  throw new Error(
+    "Missing Supabase env vars. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.",
+  );
+}
+
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-const BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN")!;
+const BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN");
+if (!BOT_TOKEN) {
+  throw new Error("Missing TELEGRAM_BOT_TOKEN env var.");
+}
 
 interface ResendRequest {
   hintId: string;
@@ -38,7 +49,7 @@ async function sendMedia(
   chatId: number,
   type: string,
   fileId: string,
-  caption?: string
+  caption?: string,
 ) {
   let method = "sendDocument";
   let bodyKey = "document";
@@ -92,7 +103,7 @@ Deno.serve(async (req: Request) => {
         {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
+        },
       );
     }
 

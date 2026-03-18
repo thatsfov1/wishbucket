@@ -10,12 +10,25 @@ const corsHeaders = {
 };
 
 // Initialize Supabase client
-const supabaseUrl = Deno.env.get("PROJECT_URL")!;
-const supabaseServiceKey = Deno.env.get("SERVICE_ROLE_KEY")!;
+const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? Deno.env.get("PROJECT_URL");
+const supabaseServiceKey =
+  Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? Deno.env.get("SERVICE_ROLE_KEY");
+
+if (!supabaseUrl || !supabaseServiceKey) {
+  throw new Error(
+    "Missing Supabase env vars. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.",
+  );
+}
+
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 // Telegram Bot Token
-const BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN")!;
+const BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN");
+if (!BOT_TOKEN) {
+  throw new Error("Missing TELEGRAM_BOT_TOKEN env var.");
+}
+
+const WEBAPP_URL = Deno.env.get("WEBAPP_URL") || "https://your-app.com";
 
 interface TelegramUser {
   id: number;
@@ -102,17 +115,9 @@ async function ensureUser(telegramUser: TelegramUser) {
   return telegramUser.id;
 }
 
-// Find user by username or name
-async function findUserByInfo(
-  username?: string,
-  name?: string,
-): Promise<number | null> {
+// Find user by username
+async function findUserByInfo(username?: string): Promise<number | null> {
   if (username) {
-    const { data } = await supabase
-      .from("users")
-      .select("user_id, telegram_data")
-      .single();
-
     // Search in telegram_data for matching username
     const { data: users } = await supabase
       .from("users")
@@ -253,7 +258,7 @@ async function handleStartCommand(message: TelegramMessage) {
         {
           text: "🚀 Open WishBucket",
           web_app: {
-            url: Deno.env.get("WEBAPP_URL") || "https://your-app.com",
+            url: WEBAPP_URL,
           },
         },
       ],
@@ -278,7 +283,6 @@ async function handleCallbackQuery(
 ) {
   switch (data) {
     case "instructions": {
-      const webappUrl = Deno.env.get("WEBAPP_URL") || "https://your-app.com";
       const text =
         `📖 <b>Instructions</b>\n\n` +
         `Read the full guide on how to use WishBucket:`;
@@ -288,7 +292,7 @@ async function handleCallbackQuery(
           [
             {
               text: "📖 Open Instructions",
-              url: `${webappUrl}/docs`,
+              url: `${WEBAPP_URL}/docs`,
             },
           ],
           [{ text: "⬅️ Back", callback_data: "back_to_start" }],
@@ -365,7 +369,7 @@ async function handleCallbackQuery(
             {
               text: "📱 Open WishBucket",
               web_app: {
-                url: Deno.env.get("WEBAPP_URL") || "https://your-app.com",
+                url: WEBAPP_URL,
               },
             },
           ],
@@ -394,7 +398,7 @@ async function handleCallbackQuery(
             {
               text: "🚀 Open WishBucket",
               web_app: {
-                url: Deno.env.get("WEBAPP_URL") || "https://your-app.com",
+                url: WEBAPP_URL,
               },
             },
           ],
@@ -450,7 +454,7 @@ async function handleHintsCommand(message: TelegramMessage) {
         {
           text: "📱 Open WishBucket",
           web_app: {
-            url: Deno.env.get("WEBAPP_URL") || "https://your-app.com",
+            url: WEBAPP_URL,
           },
         },
       ],
@@ -518,13 +522,34 @@ async function handleForwardedMessage(message: TelegramMessage) {
           {
             text: "📱 View Hints",
             web_app: {
-              url: Deno.env.get("WEBAPP_URL") || "https://your-app.com",
+              url: WEBAPP_URL,
             },
           },
         ],
       ],
     },
   );
+}
+
+// Handle /instructions and /help command
+async function handleInstructionsCommand(message: TelegramMessage) {
+  const text =
+    `📖 <b>WishBucket Instructions</b>\n\n` +
+    `Read the full guide on how to use WishBucket and gift hints:`;
+
+  await sendTelegramMessage(message.chat.id, text, {
+    inline_keyboard: [
+      [{ text: "📖 Open Instructions", url: `${WEBAPP_URL}/docs` }],
+      [
+        {
+          text: "📱 Open WishBucket",
+          web_app: {
+            url: WEBAPP_URL,
+          },
+        },
+      ],
+    ],
+  });
 }
 
 // Handle regular (non-forwarded) message
@@ -539,7 +564,7 @@ async function handleRegularMessage(message: TelegramMessage) {
           {
             text: "📱 Open WishBucket",
             web_app: {
-              url: Deno.env.get("WEBAPP_URL") || "https://your-app.com",
+              url: WEBAPP_URL,
             },
           },
         ],
@@ -585,6 +610,11 @@ Deno.serve(async (req: Request) => {
       await handleStartCommand(message);
     } else if (message.text?.startsWith("/hints")) {
       await handleHintsCommand(message);
+    } else if (
+      message.text?.startsWith("/instructions") ||
+      message.text?.startsWith("/help")
+    ) {
+      await handleInstructionsCommand(message);
     }
     // Handle forwarded messages
     else if (

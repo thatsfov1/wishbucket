@@ -13,6 +13,7 @@ This document describes the database tables needed for the WishBucket applicatio
 ## Core Tables
 
 ### Users Table
+
 ```sql
 CREATE TABLE users (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -34,6 +35,7 @@ CREATE INDEX idx_users_referral_code ON users(referral_code);
 ```
 
 ### Wishlists Table
+
 ```sql
 CREATE TABLE wishlists (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -52,6 +54,7 @@ CREATE INDEX idx_wishlists_user_id ON wishlists(user_id);
 ```
 
 ### Wishlist Items Table
+
 ```sql
 CREATE TABLE wishlist_items (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -80,6 +83,7 @@ CREATE INDEX idx_wishlist_items_wishlist_id ON wishlist_items(wishlist_id);
 ## Friends & Social Tables
 
 ### Friends Table (Following relationship)
+
 ```sql
 CREATE TABLE friends (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -96,6 +100,7 @@ CREATE INDEX idx_friends_friend_id ON friends(friend_id);
 ---
 
 ## Notifications Table
+
 ```sql
 CREATE TABLE notifications (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -115,6 +120,7 @@ CREATE INDEX idx_notifications_read ON notifications(user_id, read);
 ---
 
 ## Referrals Table
+
 ```sql
 CREATE TABLE referrals (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -131,6 +137,7 @@ CREATE INDEX idx_referrals_referrer_id ON referrals(referrer_id);
 ---
 
 ## Secret Santa Tables
+
 ```sql
 CREATE TABLE secret_santa (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -159,6 +166,7 @@ CREATE TABLE secret_santa_participants (
 ---
 
 ## Crowdfunding Tables
+
 ```sql
 CREATE TABLE crowdfunding (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -259,19 +267,70 @@ The function is located at: `supabase/functions/send-telegram-notification/index
 
 ## Bot Setup for Notifications
 
-1. Create your bot with [@BotFather](https://t.me/BotFather) on Telegram
-2. Get your bot token
-3. Set the bot token in Supabase:
-   - Go to Supabase Dashboard
-   - Navigate to Settings > Edge Functions
-   - Add secret: `TELEGRAM_BOT_TOKEN` = your token
+1. Create two bots with [@BotFather](https://t.me/BotFather): one main and one dev.
+2. In Supabase Dashboard, open Settings > Edge Functions > Secrets.
+3. Required secrets (works with your current naming):
 
-4. Configure webhook (optional, for bot commands):
+- `TELEGRAM_BOT_TOKEN` = token used by runtime functions
+- `WEBAPP_URL` = Mini App URL
+- `SUPABASE_SERVICE_ROLE_KEY` = service role key (for DB writes from edge functions)
+- `SUPABASE_URL` = your project URL
+
+4. Optional secrets (only if you want explicit split by target):
+
+- `TELEGRAM_BOT_TOKEN_MAIN`
+- `TELEGRAM_BOT_TOKEN_DEV`
+- `WEBAPP_URL_MAIN`
+- `WEBAPP_URL_DEV`
+- If these are absent, setup falls back to `TELEGRAM_BOT_TOKEN` and `WEBAPP_URL`.
+
+5. Optional hardening secrets:
+   - `TELEGRAM_SETUP_SECRET` = secret required to invoke setup function
+   - `TELEGRAM_WEBHOOK_SECRET_TOKEN` = Telegram webhook signature token
+
+6. Deploy Telegram edge functions:
+
 ```bash
-curl -X POST "https://api.telegram.org/bot<YOUR_BOT_TOKEN>/setWebhook" \
-  -H "Content-Type: application/json" \
-  -d '{"url": "https://<your-project>.supabase.co/functions/v1/telegram-webhook"}'
+supabase functions deploy telegram-webhook --no-verify-jwt
+supabase functions deploy setup-telegram-bot --no-verify-jwt
 ```
+
+7. Configure the main bot (hosted, no local process needed):
+
+```bash
+curl -X POST "https://<your-project>.supabase.co/functions/v1/setup-telegram-bot" \
+  -H "Content-Type: application/json" \
+  -H "x-setup-secret: <TELEGRAM_SETUP_SECRET>" \
+  -d '{"target":"main","dropPendingUpdates":false}'
+```
+
+8. Configure the dev bot (same endpoint):
+
+```bash
+curl -X POST "https://<your-project>.supabase.co/functions/v1/setup-telegram-bot" \
+  -H "Content-Type: application/json" \
+  -H "x-setup-secret: <TELEGRAM_SETUP_SECRET>" \
+  -d '{"target":"dev","dropPendingUpdates":true}'
+```
+
+Use step 8 only for a dedicated dev/staging Supabase project. For your production project, configure only `target: "main"`.
+
+Secret cleanup notes:
+
+- `PROJECT_URL` is legacy and can be removed after all functions are redeployed with current code.
+- `SERVICE_ROLE_KEY` is legacy and can be removed after all functions are redeployed with current code.
+- `SUPABASE_ANON_KEY` and `SUPABASE_DB_URL` are not used by these Telegram edge functions.
+
+The setup function configures:
+
+- Telegram slash commands: `/start`, `/hints`, `/instructions`, `/help`
+- Menu button that opens your Mini App
+- Webhook to `https://<your-project>.supabase.co/functions/v1/telegram-webhook`
+
+Function files:
+
+- `supabase/functions/telegram-webhook/index.ts`
+- `supabase/functions/setup-telegram-bot/index.ts`
 
 ---
 
@@ -288,4 +347,3 @@ VALUES (123456789, '{"first_name": "Test", "username": "testuser"}', 'TEST1234')
 INSERT INTO notifications (user_id, type, title, message)
 VALUES (123456789, 'new_follower', 'New Follower!', 'Someone started following you');
 ```
-
