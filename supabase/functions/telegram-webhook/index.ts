@@ -28,7 +28,271 @@ if (!BOT_TOKEN) {
   throw new Error("Missing TELEGRAM_BOT_TOKEN env var.");
 }
 
-const WEBAPP_URL = Deno.env.get("WEBAPP_URL") || "https://your-app.com";
+const WEBAPP_URL = Deno.env.get("WEBAPP_URL");
+const DOCS_URL_EN = "https://telegra.ph/wishbucket-quick-guide-03-18";
+const DOCS_URL_UK = "https://telegra.ph/wishbucket-shvidkij-gajd-03-18";
+const DOCS_URL_RU = "https://telegra.ph/wishbucket-bystryj-gajd-03-18";
+
+type LanguageCode = "en" | "uk" | "ru";
+const DEFAULT_LANGUAGE: LanguageCode = "en";
+
+const I18N = {
+  en: {
+    languageName: "English",
+    greeting: (firstName: string) =>
+      `👋 <b>Hey ${firstName}!</b>\n\nChoose your language to continue:`,
+    chooseLanguageTitle: `🌍 <b>Choose your language</b>`,
+    chooseLanguageBody: `Pick one language for bot messages:`,
+    languageSet: (name: string) =>
+      `✅ Language set to <b>${name}</b>. You can change it anytime.`,
+    welcomeMenu: (firstName: string) =>
+      `👋 <b>Hey ${firstName}! Welcome to wishbucket</b>\n\n` +
+      `🎁 <b>wishbucket</b> is your personal wishlist assistant inside Telegram.\n\n` +
+      `Here's what you can do:\n` +
+      `• Create and edit wishlists\n` +
+      `• Add items manually or by pasting product links\n` +
+      `• Forward messages to save gift hints\n` +
+      `• Discover what your friends want\n\n` +
+      `Choose an option below 👇`,
+    instructionsTitle: `📖 <b>Instructions</b>\n\nRead the full guide here:`,
+    hintsTitle:
+      `💡 <b>How Gift Hints Work</b>\n\n` +
+      `When someone in a chat says they want something, forward that message to me.\n\n` +
+      `<b>Steps:</b>\n` +
+      `1️⃣ See someone mention a wish in chat\n` +
+      `2️⃣ Long-press the message -> Forward -> send to this bot\n` +
+      `3️⃣ I save it as a gift hint with sender details\n\n` +
+      `<b>Supported formats:</b> text, photos, voice, video, documents\n\n` +
+      `Open the app to browse all saved hints 📱`,
+    noHints: `📭 You don't have any saved hints yet.\n\nForward a message from a chat to save a gift idea!`,
+    hintsHeader: `🎁 <b>Your Recent Gift Hints:</b>\n\n`,
+    hintsFooter: `\n📱 Open the app to see all hints and manage them.`,
+    hintSaved: (
+      forwardName: string,
+      previewText: string,
+      isLong: boolean,
+      mediaLabel: string,
+    ) =>
+      `✅ <b>Gift hint saved!</b>\n\n` +
+      `👤 <b>From:</b> ${forwardName}\n` +
+      `💬 <b>Hint:</b> ${previewText}${isLong ? "..." : ""}${mediaLabel}\n\n` +
+      `You can view all hints in the app.`,
+    regularTip:
+      `💡 <b>Tip:</b> To save a gift hint, <b>forward a message</b> from your chat!\n\n` +
+      `When someone says they want something, just forward that message to me and I'll remember it for you.`,
+    buttons: {
+      openApp: "🚀 Open wishbucket",
+      instructions: "📖 Instructions",
+      language: "Language",
+      hintsInfo: "💡 How Hints Work",
+      openInstructions: "📖 Open Instructions",
+      back: "⬅️ Back",
+      viewHints: "📱 View Hints",
+      openWishbucket: "📱 Open wishbucket",
+    },
+  },
+  uk: {
+    languageName: "Українська",
+    greeting: (firstName: string) =>
+      `👋 <b>Привіт, ${firstName}!</b>\n\nОберіть мову для продовження:`,
+    chooseLanguageTitle: `🌍 <b>Оберіть мову</b>`,
+    chooseLanguageBody: `Виберіть мову повідомлень бота:`,
+    languageSet: (name: string) =>
+      `✅ Мову змінено на <b>${name}</b>. Її можна змінити будь-коли.`,
+    welcomeMenu: (firstName: string) =>
+      `👋 <b>Привіт, ${firstName}! Ласкаво просимо у wishbucket</b>\n\n` +
+      `🎁 <b>wishbucket</b> — ваш помічник для вішлістів у Telegram.\n\n` +
+      `Що тут можна робити:\n` +
+      `• Створювати та редагувати вішлісти\n` +
+      `• Додавати товари вручну або вставляти посилання\n` +
+      `• Пересилати повідомлення і зберігати gift hints\n` +
+      `• Дивитися, що хочуть друзі\n\n` +
+      `Оберіть дію нижче 👇`,
+    instructionsTitle: `📖 <b>Інструкція</b>\n\nПовний гайд тут:`,
+    hintsTitle:
+      `💡 <b>Як працюють gift hints</b>\n\n` +
+      `Коли хтось у чаті пише, що хоче отримати, перешліть це повідомлення мені.\n\n` +
+      `<b>Кроки:</b>\n` +
+      `1️⃣ Побачили бажання у чаті\n` +
+      `2️⃣ Затисніть повідомлення -> Переслати -> надішліть цьому боту\n` +
+      `3️⃣ Я збережу це як hint з даними відправника\n\n` +
+      `<b>Формати:</b> текст, фото, голосові, відео, документи\n\n` +
+      `Відкрийте застосунок, щоб переглянути всі hints 📱`,
+    noHints: `📭 У вас поки немає збережених hints.\n\nПерешліть повідомлення з чату, щоб зберегти ідею подарунка!`,
+    hintsHeader: `🎁 <b>Ваші останні gift hints:</b>\n\n`,
+    hintsFooter: `\n📱 Відкрийте застосунок, щоб переглянути й керувати hints.`,
+    hintSaved: (
+      forwardName: string,
+      previewText: string,
+      isLong: boolean,
+      mediaLabel: string,
+    ) =>
+      `✅ <b>Gift hint збережено!</b>\n\n` +
+      `👤 <b>Від:</b> ${forwardName}\n` +
+      `💬 <b>Hint:</b> ${previewText}${isLong ? "..." : ""}${mediaLabel}\n\n` +
+      `Ви можете переглянути всі hints у застосунку.`,
+    regularTip:
+      `💡 <b>Порада:</b> щоб зберегти gift hint, <b>перешліть повідомлення</b> з чату!\n\n` +
+      `Коли хтось каже, чого хоче, просто перешліть це повідомлення мені.`,
+    buttons: {
+      openApp: "🚀 Відкрити wishbucket",
+      instructions: "📖 Інструкція",
+      language: "Мова",
+      hintsInfo: "💡 Як працюють hints",
+      openInstructions: "📖 Відкрити інструкцію",
+      back: "⬅️ Назад",
+      viewHints: "📱 Переглянути hints",
+      openWishbucket: "📱 Відкрити wishbucket",
+    },
+  },
+  ru: {
+    languageName: "Русский",
+    greeting: (firstName: string) =>
+      `👋 <b>Привет, ${firstName}!</b>\n\nВыберите язык для продолжения:`,
+    chooseLanguageTitle: `🌍 <b>Выберите язык</b>`,
+    chooseLanguageBody: `Выберите язык сообщений бота:`,
+    languageSet: (name: string) =>
+      `✅ Язык изменен на <b>${name}</b>. Его можно поменять в любой момент.`,
+    welcomeMenu: (firstName: string) =>
+      `👋 <b>Привет, ${firstName}! Добро пожаловать в wishbucket</b>\n\n` +
+      `🎁 <b>wishbucket</b> — ваш помощник по вишлистам в Telegram.\n\n` +
+      `Что можно делать:\n` +
+      `• Создавать и редактировать вишлисты\n` +
+      `• Добавлять товары вручную или вставкой ссылки\n` +
+      `• Пересылать сообщения и сохранять gift hints\n` +
+      `• Смотреть, что хотят друзья\n\n` +
+      `Выберите действие ниже 👇`,
+    instructionsTitle: `📖 <b>Инструкция</b>\n\nПолный гайд тут:`,
+    hintsTitle:
+      `💡 <b>Как работают gift hints</b>\n\n` +
+      `Когда кто-то в чате пишет, что хочет получить, просто перешлите это сообщение мне.\n\n` +
+      `<b>Шаги:</b>\n` +
+      `1️⃣ Увидели желание в чате\n` +
+      `2️⃣ Зажмите сообщение -> Переслать -> отправьте этому боту\n` +
+      `3️⃣ Я сохраню это как hint с данными отправителя\n\n` +
+      `<b>Поддерживаются:</b> текст, фото, голос, видео, документы\n\n` +
+      `Откройте приложение, чтобы смотреть все hints 📱`,
+    noHints: `📭 У вас пока нет сохраненных hints.\n\nПерешлите сообщение из чата, чтобы сохранить идею подарка!`,
+    hintsHeader: `🎁 <b>Ваши последние gift hints:</b>\n\n`,
+    hintsFooter: `\n📱 Откройте приложение, чтобы смотреть и управлять hints.`,
+    hintSaved: (
+      forwardName: string,
+      previewText: string,
+      isLong: boolean,
+      mediaLabel: string,
+    ) =>
+      `✅ <b>Gift hint сохранен!</b>\n\n` +
+      `👤 <b>От:</b> ${forwardName}\n` +
+      `💬 <b>Hint:</b> ${previewText}${isLong ? "..." : ""}${mediaLabel}\n\n` +
+      `Все hints можно посмотреть в приложении.`,
+    regularTip:
+      `💡 <b>Совет:</b> чтобы сохранить gift hint, <b>перешлите сообщение</b> из чата!\n\n` +
+      `Когда кто-то говорит, что хочет, просто перешлите сообщение этому боту.`,
+    buttons: {
+      openApp: "🚀 Открыть wishbucket",
+      instructions: "📖 Инструкция",
+      language: "Язык",
+      hintsInfo: "💡 Как работают hints",
+      openInstructions: "📖 Открыть инструкцию",
+      back: "⬅️ Назад",
+      viewHints: "📱 Посмотреть hints",
+      openWishbucket: "📱 Открыть wishbucket",
+    },
+  },
+} as const;
+
+function normalizeLanguage(value?: string): LanguageCode {
+  if (value === "uk" || value === "ru" || value === "en") {
+    return value;
+  }
+  return DEFAULT_LANGUAGE;
+}
+
+function getDocsUrl(language: LanguageCode): string {
+  if (language === "uk") return DOCS_URL_UK;
+  if (language === "ru") return DOCS_URL_RU;
+  return DOCS_URL_EN;
+}
+
+function getMainMenuMarkup(language: LanguageCode) {
+  const t = I18N[language].buttons;
+  return {
+    inline_keyboard: [
+      [
+        {
+          text: t.openApp,
+          web_app: {
+            url: WEBAPP_URL,
+          },
+        },
+      ],
+      [
+        { text: t.instructions, callback_data: "instructions" },
+        { text: t.language, callback_data: "choose_language" },
+      ],
+      [{ text: t.hintsInfo, callback_data: "hints_info" }],
+    ],
+  };
+}
+
+function getLanguageButtons(
+  withBack = false,
+  language: LanguageCode = DEFAULT_LANGUAGE,
+) {
+  const rows: Array<Array<{ text: string; callback_data: string }>> = [
+    [
+      { text: "English", callback_data: "lang_en" },
+      { text: "Українська", callback_data: "lang_uk" },
+      { text: "Русский", callback_data: "lang_ru" },
+    ],
+  ];
+
+  if (withBack) {
+    rows.push([
+      { text: I18N[language].buttons.back, callback_data: "back_to_start" },
+    ]);
+  }
+
+  return { inline_keyboard: rows };
+}
+
+async function getUserLanguage(userId: number): Promise<LanguageCode> {
+  const { data: user } = await supabase
+    .from("users")
+    .select("telegram_data")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (!user) return DEFAULT_LANGUAGE;
+
+  const tgData =
+    typeof user.telegram_data === "string"
+      ? JSON.parse(user.telegram_data)
+      : user.telegram_data;
+
+  return normalizeLanguage(tgData?.language);
+}
+
+async function setUserLanguage(
+  userId: number,
+  language: LanguageCode,
+): Promise<void> {
+  const { data: user } = await supabase
+    .from("users")
+    .select("telegram_data")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  const currentData =
+    typeof user?.telegram_data === "string"
+      ? JSON.parse(user.telegram_data)
+      : (user?.telegram_data ?? {});
+
+  await supabase
+    .from("users")
+    .update({ telegram_data: { ...currentData, language } })
+    .eq("user_id", userId);
+}
 
 interface TelegramUser {
   id: number;
@@ -107,7 +371,7 @@ async function ensureUser(telegramUser: TelegramUser) {
   if (!existingUser) {
     await supabase.from("users").insert({
       user_id: telegramUser.id,
-      telegram_data: telegramUser,
+      telegram_data: { ...telegramUser, language: DEFAULT_LANGUAGE },
       referral_code: Math.random().toString(36).substring(2, 10).toUpperCase(),
     });
   }
@@ -240,35 +504,15 @@ async function editTelegramMessage(
 // ============================================
 async function handleStartCommand(message: TelegramMessage) {
   const userId = await ensureUser(message.from);
+  const language = await getUserLanguage(userId);
+  const t = I18N[language];
   const firstName = message.from.first_name || "there";
 
-  const text =
-    `👋 <b>Hey ${firstName}! Welcome to WishBucket</b>\n\n` +
-    `🎁 <b>WishBucket</b> is your personal wishlist assistant inside Telegram.\n\n` +
-    `Here's what you can do:\n` +
-    `• Create and share wishlists with friends\n` +
-    `• Forward messages to save gift hints\n` +
-    `• Discover what your friends want\n` +
-    `• Organize secret santa events\n\n` +
-    `Choose an option below to get started 👇`;
-
-  await sendTelegramMessage(message.chat.id, text, {
-    inline_keyboard: [
-      [
-        {
-          text: "🚀 Open WishBucket",
-          web_app: {
-            url: WEBAPP_URL,
-          },
-        },
-      ],
-      [
-        { text: "📖 Instructions", callback_data: "instructions" },
-        { text: "🌍 Language", callback_data: "choose_language" },
-      ],
-      [{ text: "💡 How Hints Work", callback_data: "hints_info" }],
-    ],
-  });
+  await sendTelegramMessage(
+    message.chat.id,
+    t.greeting(firstName),
+    getLanguageButtons(false, language),
+  );
 }
 
 // ============================================
@@ -281,21 +525,21 @@ async function handleCallbackQuery(
   messageId: number,
   from: TelegramUser,
 ) {
+  await ensureUser(from);
+  const currentLanguage = await getUserLanguage(from.id);
+  const currentT = I18N[currentLanguage];
+
   switch (data) {
     case "instructions": {
-      const text =
-        `📖 <b>Instructions</b>\n\n` +
-        `Read the full guide on how to use WishBucket:`;
-
-      await editTelegramMessage(chatId, messageId, text, {
+      await editTelegramMessage(chatId, messageId, currentT.instructionsTitle, {
         inline_keyboard: [
           [
             {
-              text: "📖 Open Instructions",
-              url: "https://telegra.ph/wishbucket-quick-guide-03-18",
+              text: currentT.buttons.openInstructions,
+              url: getDocsUrl(currentLanguage),
             },
           ],
-          [{ text: "⬅️ Back", callback_data: "back_to_start" }],
+          [{ text: currentT.buttons.back, callback_data: "back_to_start" }],
         ],
       });
       await answerCallbackQuery(callbackQueryId);
@@ -303,77 +547,52 @@ async function handleCallbackQuery(
     }
 
     case "choose_language": {
-      const text =
-        `🌍 <b>Choose your language</b>\n\n` +
-        `Select your preferred language:`;
-
-      await editTelegramMessage(chatId, messageId, text, {
-        inline_keyboard: [
-          [
-            { text: "🇬🇧 English", callback_data: "lang_en" },
-            { text: "🇵🇱 Polski", callback_data: "lang_pl" },
-          ],
-          [
-            { text: "🇺🇦 Українська", callback_data: "lang_uk" },
-            { text: "🇷🇺 Русский", callback_data: "lang_ru" },
-          ],
-          [{ text: "⬅️ Back", callback_data: "back_to_start" }],
-        ],
-      });
+      const text = `${currentT.chooseLanguageTitle}\n\n${currentT.chooseLanguageBody}`;
+      await editTelegramMessage(
+        chatId,
+        messageId,
+        text,
+        getLanguageButtons(true, currentLanguage),
+      );
       await answerCallbackQuery(callbackQueryId);
       break;
     }
 
     case "lang_en":
-    case "lang_pl":
     case "lang_uk":
+    case "lang_pl":
     case "lang_ru": {
-      const langNames: Record<string, string> = {
-        lang_en: "English 🇬🇧",
-        lang_pl: "Polski 🇵🇱",
-        lang_uk: "Українська 🇺🇦",
-        lang_ru: "Русский 🇷🇺",
-      };
-      // TODO: persist language preference to DB
+      const selectedLanguage: LanguageCode =
+        data === "lang_ru" ? "ru" : data === "lang_uk" ? "uk" : "en";
+      await setUserLanguage(from.id, selectedLanguage);
+
+      const selectedT = I18N[selectedLanguage];
       await answerCallbackQuery(
         callbackQueryId,
-        `✅ ${langNames[data]} selected`,
+        selectedT.languageSet(selectedT.languageName),
       );
 
-      const text =
-        `✅ Language set to <b>${langNames[data]}</b>\n\n` +
-        `You can change it anytime from this menu.`;
-
-      await editTelegramMessage(chatId, messageId, text, {
-        inline_keyboard: [
-          [{ text: "⬅️ Back to menu", callback_data: "back_to_start" }],
-        ],
-      });
+      await editTelegramMessage(
+        chatId,
+        messageId,
+        selectedT.welcomeMenu(from.first_name || "there"),
+        getMainMenuMarkup(selectedLanguage),
+      );
       break;
     }
 
     case "hints_info": {
-      const text =
-        `💡 <b>How Gift Hints Work</b>\n\n` +
-        `When someone in a chat says they want something — forward that message to me!\n\n` +
-        `<b>Steps:</b>\n` +
-        `1️⃣ See someone mention a wish in a chat\n` +
-        `2️⃣ Long-press the message → Forward → send to this bot\n` +
-        `3️⃣ I'll save it as a gift hint with the sender's name\n\n` +
-        `<b>Supported formats:</b> Text, photos, voice, video, documents\n\n` +
-        `Open the app to browse all your saved hints anytime 📱`;
-
-      await editTelegramMessage(chatId, messageId, text, {
+      await editTelegramMessage(chatId, messageId, currentT.hintsTitle, {
         inline_keyboard: [
           [
             {
-              text: "📱 Open WishBucket",
+              text: currentT.buttons.openWishbucket,
               web_app: {
                 url: WEBAPP_URL,
               },
             },
           ],
-          [{ text: "⬅️ Back", callback_data: "back_to_start" }],
+          [{ text: currentT.buttons.back, callback_data: "back_to_start" }],
         ],
       });
       await answerCallbackQuery(callbackQueryId);
@@ -381,34 +600,12 @@ async function handleCallbackQuery(
     }
 
     case "back_to_start": {
-      const firstName = from.first_name || "there";
-      const text =
-        `👋 <b>Hey ${firstName}! Welcome to WishBucket</b>\n\n` +
-        `🎁 <b>WishBucket</b> is your personal wishlist assistant inside Telegram.\n\n` +
-        `Here's what you can do:\n` +
-        `• Create and share wishlists with friends\n` +
-        `• Forward messages to save gift hints\n` +
-        `• Discover what your friends want\n` +
-        `• Organize secret santa events\n\n` +
-        `Choose an option below to get started 👇`;
-
-      await editTelegramMessage(chatId, messageId, text, {
-        inline_keyboard: [
-          [
-            {
-              text: "🚀 Open WishBucket",
-              web_app: {
-                url: WEBAPP_URL,
-              },
-            },
-          ],
-          [
-            { text: "📖 Instructions", callback_data: "instructions" },
-            { text: "🌍 Language", callback_data: "choose_language" },
-          ],
-          [{ text: "💡 How Hints Work", callback_data: "hints_info" }],
-        ],
-      });
+      await editTelegramMessage(
+        chatId,
+        messageId,
+        currentT.welcomeMenu(from.first_name || "there"),
+        getMainMenuMarkup(currentLanguage),
+      );
       await answerCallbackQuery(callbackQueryId);
       break;
     }
@@ -421,6 +618,8 @@ async function handleCallbackQuery(
 // Handle /hints command - show recent hints
 async function handleHintsCommand(message: TelegramMessage) {
   const userId = message.from.id;
+  const language = await getUserLanguage(userId);
+  const t = I18N[language];
 
   const { data: hints } = await supabase
     .from("gift_hints")
@@ -431,28 +630,24 @@ async function handleHintsCommand(message: TelegramMessage) {
     .limit(5);
 
   if (!hints || hints.length === 0) {
-    await sendTelegramMessage(
-      message.chat.id,
-      `📭 You don't have any saved hints yet.\n\n` +
-        `Forward a message from a chat to save a gift idea!`,
-    );
+    await sendTelegramMessage(message.chat.id, t.noHints);
     return;
   }
 
-  let text = `🎁 <b>Your Recent Gift Hints:</b>\n\n`;
+  let text = t.hintsHeader;
   for (const hint of hints) {
     const preview = hint.hint_text?.substring(0, 50) || "[Media]";
     text += `• <b>${hint.about_name || "Someone"}</b>: ${preview}${
       hint.hint_text?.length > 50 ? "..." : ""
     }\n`;
   }
-  text += `\n📱 Open the app to see all hints and manage them.`;
+  text += t.hintsFooter;
 
   await sendTelegramMessage(message.chat.id, text, {
     inline_keyboard: [
       [
         {
-          text: "📱 Open WishBucket",
+          text: t.buttons.openWishbucket,
           web_app: {
             url: WEBAPP_URL,
           },
@@ -465,6 +660,8 @@ async function handleHintsCommand(message: TelegramMessage) {
 // Handle forwarded message - save as gift hint
 async function handleForwardedMessage(message: TelegramMessage) {
   const userId = await ensureUser(message.from);
+  const language = await getUserLanguage(userId);
+  const t = I18N[language];
   const forwardInfo = getForwardedFromName(message);
 
   // Try to find the user in our database
@@ -508,19 +705,16 @@ async function handleForwardedMessage(message: TelegramMessage) {
 
   // Send confirmation
   const mediaLabel = messageType !== "text" ? ` (${messageType})` : "";
+  const previewText = hintText?.substring(0, 100) || "[Media message]";
+  const isLong = !!hintText && hintText.length > 100;
   await sendTelegramMessage(
     message.chat.id,
-    `✅ <b>Gift hint saved!</b>\n\n` +
-      `👤 <b>From:</b> ${forwardInfo.name}\n` +
-      `💬 <b>Hint:</b> ${hintText?.substring(0, 100) || "[Media message]"}${
-        hintText && hintText.length > 100 ? "..." : ""
-      }${mediaLabel}\n\n` +
-      `You can view all hints in the app.`,
+    t.hintSaved(forwardInfo.name, previewText, isLong, mediaLabel),
     {
       inline_keyboard: [
         [
           {
-            text: "📱 View Hints",
+            text: t.buttons.viewHints,
             web_app: {
               url: WEBAPP_URL,
             },
@@ -533,16 +727,15 @@ async function handleForwardedMessage(message: TelegramMessage) {
 
 // Handle /instructions and /help command
 async function handleInstructionsCommand(message: TelegramMessage) {
-  const text =
-    `📖 <b>WishBucket Instructions</b>\n\n` +
-    `Read the full guide on how to use WishBucket and gift hints:`;
+  const language = await getUserLanguage(message.from.id);
+  const t = I18N[language];
 
-  await sendTelegramMessage(message.chat.id, text, {
+  await sendTelegramMessage(message.chat.id, t.instructionsTitle, {
     inline_keyboard: [
-      [{ text: "📖 Open Instructions", url: `${WEBAPP_URL}/docs` }],
+      [{ text: t.buttons.openInstructions, url: getDocsUrl(language) }],
       [
         {
-          text: "📱 Open WishBucket",
+          text: t.buttons.openWishbucket,
           web_app: {
             url: WEBAPP_URL,
           },
@@ -554,23 +747,21 @@ async function handleInstructionsCommand(message: TelegramMessage) {
 
 // Handle regular (non-forwarded) message
 async function handleRegularMessage(message: TelegramMessage) {
-  await sendTelegramMessage(
-    message.chat.id,
-    `💡 <b>Tip:</b> To save a gift hint, <b>forward a message</b> from your chat!\n\n` +
-      `When someone says they want something, just forward that message to me and I'll remember it for you.`,
-    {
-      inline_keyboard: [
-        [
-          {
-            text: "📱 Open WishBucket",
-            web_app: {
-              url: WEBAPP_URL,
-            },
+  const language = await getUserLanguage(message.from.id);
+  const t = I18N[language];
+
+  await sendTelegramMessage(message.chat.id, t.regularTip, {
+    inline_keyboard: [
+      [
+        {
+          text: t.buttons.openWishbucket,
+          web_app: {
+            url: WEBAPP_URL,
           },
-        ],
+        },
       ],
-    },
-  );
+    ],
+  });
 }
 
 // Main handler
