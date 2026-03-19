@@ -1,10 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  hapticFeedback,
-  openTelegramLink,
-  showTelegramAlert,
-} from "../utils/telegram";
+import { hapticFeedback, openTelegramLink } from "../utils/telegram";
 import { getUserProfile, updateUserProfile } from "../services/supabase-api";
 import "./SettingsModal.css";
 
@@ -111,14 +107,8 @@ export default function SettingsModal({
       const updatedBirthday = updated.birthday || "";
       setBirthday(updatedBirthday);
       setSavedBirthday(updatedBirthday);
-      hapticFeedback.notification("success");
-      showTelegramAlert(
-        "Birthday saved. Followers will be reminded 1 week before and on your birthday.",
-      );
     } catch (error) {
       console.error("Error updating birthday:", error);
-      hapticFeedback.notification("error");
-      showTelegramAlert("Failed to save birthday.");
     } finally {
       setIsSavingBirthday(false);
     }

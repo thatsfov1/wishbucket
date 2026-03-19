@@ -91,10 +91,7 @@ serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    const botToken =
-      Deno.env.get("TELEGRAM_BOT_TOKEN_MAIN") ||
-      Deno.env.get("TELEGRAM_BOT_TOKEN") ||
-      Deno.env.get("TELEGRAM_BOT_TOKEN_DEV");
+    const botToken = Deno.env.get("TELEGRAM_BOT_TOKEN");
 
     if (!supabaseUrl || !serviceRoleKey) {
       throw new Error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY");
