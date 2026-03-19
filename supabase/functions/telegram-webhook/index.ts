@@ -22,13 +22,25 @@ if (!supabaseUrl || !supabaseServiceKey) {
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-// Telegram Bot Token
-const BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN");
+// Telegram Bot config (supports legacy + main/dev env naming)
+const BOT_TOKEN = (
+  Deno.env.get("TELEGRAM_BOT_TOKEN_MAIN") ??
+  Deno.env.get("TELEGRAM_BOT_TOKEN") ??
+  Deno.env.get("TELEGRAM_BOT_TOKEN_DEV")
+)?.trim();
 if (!BOT_TOKEN) {
-  throw new Error("Missing TELEGRAM_BOT_TOKEN env var.");
+  throw new Error(
+    "Missing bot token. Set TELEGRAM_BOT_TOKEN_MAIN, TELEGRAM_BOT_TOKEN, or TELEGRAM_BOT_TOKEN_DEV.",
+  );
 }
 
-const WEBAPP_URL = Deno.env.get("WEBAPP_URL");
+const WEBAPP_URL = (
+  Deno.env.get("WEBAPP_URL_MAIN") ??
+  Deno.env.get("WEBAPP_URL") ??
+  Deno.env.get("WEBAPP_URL_DEV")
+)?.trim();
+const BOT_USERNAME = Deno.env.get("TELEGRAM_BOT_USERNAME") ?? "wishbucket_bot";
+const BOT_FALLBACK_URL = `https://t.me/${BOT_USERNAME}`;
 const DOCS_URL_EN = "https://telegra.ph/wishbucket-quick-guide-03-18";
 const DOCS_URL_UK = "https://telegra.ph/wishbucket-shvidkij-gajd-03-18";
 const DOCS_URL_RU = "https://telegra.ph/wishbucket-bystryj-gajd-03-18";
@@ -208,24 +220,56 @@ function normalizeLanguage(value?: string): LanguageCode {
   return DEFAULT_LANGUAGE;
 }
 
+function parseTelegramData(value: unknown): Record<string, unknown> {
+  if (!value) return {};
+
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value);
+      return parsed && typeof parsed === "object"
+        ? (parsed as Record<string, unknown>)
+        : {};
+    } catch {
+      return {};
+    }
+  }
+
+  if (typeof value === "object") {
+    return value as Record<string, unknown>;
+  }
+
+  return {};
+}
+
 function getDocsUrl(language: LanguageCode): string {
   if (language === "uk") return DOCS_URL_UK;
   if (language === "ru") return DOCS_URL_RU;
   return DOCS_URL_EN;
 }
 
+function getOpenAppButton(language: LanguageCode) {
+  const text = I18N[language].buttons.openWishbucket;
+  if (WEBAPP_URL) {
+    return {
+      text,
+      web_app: {
+        url: WEBAPP_URL,
+      },
+    };
+  }
+
+  // Fallback keeps bot responses working even if WEBAPP_URL is not configured.
+  return {
+    text,
+    url: BOT_FALLBACK_URL,
+  };
+}
+
 function getMainMenuMarkup(language: LanguageCode) {
   const t = I18N[language].buttons;
   return {
     inline_keyboard: [
-      [
-        {
-          text: t.openApp,
-          web_app: {
-            url: WEBAPP_URL,
-          },
-        },
-      ],
+      [getOpenAppButton(language)],
       [
         { text: t.instructions, callback_data: "instructions" },
         { text: t.language, callback_data: "choose_language" },
@@ -265,12 +309,11 @@ async function getUserLanguage(userId: number): Promise<LanguageCode> {
 
   if (!user) return DEFAULT_LANGUAGE;
 
-  const tgData =
-    typeof user.telegram_data === "string"
-      ? JSON.parse(user.telegram_data)
-      : user.telegram_data;
+  const tgData = parseTelegramData(user.telegram_data);
+  const language =
+    typeof tgData.language === "string" ? tgData.language : undefined;
 
-  return normalizeLanguage(tgData?.language);
+  return normalizeLanguage(language);
 }
 
 async function setUserLanguage(
@@ -283,10 +326,7 @@ async function setUserLanguage(
     .eq("user_id", userId)
     .maybeSingle();
 
-  const currentData =
-    typeof user?.telegram_data === "string"
-      ? JSON.parse(user.telegram_data)
-      : (user?.telegram_data ?? {});
+  const currentData = parseTelegramData(user?.telegram_data);
 
   await supabase
     .from("users")
@@ -318,6 +358,16 @@ interface TelegramMessage {
     username?: string;
   };
   forward_sender_name?: string;
+  forward_origin?: {
+    type: "user" | "hidden_user" | "chat" | "channel";
+    sender_user?: TelegramUser;
+    sender_user_name?: string;
+    sender_chat?: {
+      id: number;
+      title?: string;
+      username?: string;
+    };
+  };
   forward_date?: number;
   photo?: Array<{ file_id: string; width: number; height: number }>;
   voice?: { file_id: string; duration: number };
@@ -329,6 +379,7 @@ interface TelegramMessage {
 interface TelegramUpdate {
   update_id: number;
   message?: TelegramMessage;
+  edited_message?: TelegramMessage;
   callback_query?: {
     id: string;
     from: TelegramUser;
@@ -353,11 +404,20 @@ async function sendTelegramMessage(
     body.reply_markup = replyMarkup;
   }
 
-  await fetch(url, {
+  const response = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
+
+  const result = await response.json().catch(() => null);
+  if (!response.ok || !result?.ok) {
+    console.error("sendMessage failed:", {
+      chatId,
+      status: response.status,
+      result,
+    });
+  }
 }
 
 // Get or create user in database
@@ -366,14 +426,15 @@ async function ensureUser(telegramUser: TelegramUser) {
     .from("users")
     .select("user_id")
     .eq("user_id", telegramUser.id)
-    .single();
+    .maybeSingle();
 
   if (!existingUser) {
-    await supabase.from("users").insert({
+    const { error } = await supabase.from("users").insert({
       user_id: telegramUser.id,
       telegram_data: { ...telegramUser, language: DEFAULT_LANGUAGE },
       referral_code: Math.random().toString(36).substring(2, 10).toUpperCase(),
     });
+    if (error) console.error("Could not insert user:", error);
   }
 
   return telegramUser.id;
@@ -388,11 +449,10 @@ async function findUserByInfo(username?: string): Promise<number | null> {
       .select("user_id, telegram_data");
     if (users) {
       for (const user of users) {
-        const tgData =
-          typeof user.telegram_data === "string"
-            ? JSON.parse(user.telegram_data)
-            : user.telegram_data;
-        if (tgData?.username?.toLowerCase() === username.toLowerCase()) {
+        const tgData = parseTelegramData(user.telegram_data);
+        const tgUsername =
+          typeof tgData.username === "string" ? tgData.username : undefined;
+        if (tgUsername?.toLowerCase() === username.toLowerCase()) {
           return user.user_id;
         }
       }
@@ -434,12 +494,55 @@ function getMediaFileId(message: TelegramMessage): string | null {
   return null;
 }
 
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
 // Get name of the person who originally sent the message
 function getForwardedFromName(message: TelegramMessage): {
   name: string;
   username?: string;
   userId?: number;
 } {
+  if (message.forward_origin) {
+    if (
+      message.forward_origin.type === "user" &&
+      message.forward_origin.sender_user
+    ) {
+      const sender = message.forward_origin.sender_user;
+      const name = [sender.first_name, sender.last_name]
+        .filter(Boolean)
+        .join(" ");
+      return {
+        name,
+        username: sender.username,
+        userId: sender.id,
+      };
+    }
+
+    if (
+      message.forward_origin.type === "hidden_user" &&
+      message.forward_origin.sender_user_name
+    ) {
+      return { name: message.forward_origin.sender_user_name };
+    }
+
+    if (
+      (message.forward_origin.type === "chat" ||
+        message.forward_origin.type === "channel") &&
+      message.forward_origin.sender_chat
+    ) {
+      return {
+        name: message.forward_origin.sender_chat.title || "Channel",
+        username: message.forward_origin.sender_chat.username,
+      };
+    }
+  }
+
   if (message.forward_from) {
     const name = [
       message.forward_from.first_name,
@@ -468,11 +571,20 @@ function getForwardedFromName(message: TelegramMessage): {
 // Answer callback query (removes loading state)
 async function answerCallbackQuery(callbackQueryId: string, text?: string) {
   const url = `https://api.telegram.org/bot${BOT_TOKEN}/answerCallbackQuery`;
-  await fetch(url, {
+  const response = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ callback_query_id: callbackQueryId, text }),
   });
+
+  const result = await response.json().catch(() => null);
+  if (!response.ok || !result?.ok) {
+    console.error("answerCallbackQuery failed:", {
+      callbackQueryId,
+      status: response.status,
+      result,
+    });
+  }
 }
 
 // Edit an existing message
@@ -492,11 +604,21 @@ async function editTelegramMessage(
   if (replyMarkup) {
     body.reply_markup = replyMarkup;
   }
-  await fetch(url, {
+  const response = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
+
+  const result = await response.json().catch(() => null);
+  if (!response.ok || !result?.ok) {
+    console.error("editMessageText failed:", {
+      chatId,
+      messageId,
+      status: response.status,
+      result,
+    });
+  }
 }
 
 // ============================================
@@ -506,7 +628,7 @@ async function handleStartCommand(message: TelegramMessage) {
   const userId = await ensureUser(message.from);
   const language = await getUserLanguage(userId);
   const t = I18N[language];
-  const firstName = message.from.first_name || "there";
+  const firstName = escapeHtml(message.from.first_name || "there");
 
   await sendTelegramMessage(
     message.chat.id,
@@ -560,7 +682,6 @@ async function handleCallbackQuery(
 
     case "lang_en":
     case "lang_uk":
-    case "lang_pl":
     case "lang_ru": {
       const selectedLanguage: LanguageCode =
         data === "lang_ru" ? "ru" : data === "lang_uk" ? "uk" : "en";
@@ -584,14 +705,7 @@ async function handleCallbackQuery(
     case "hints_info": {
       await editTelegramMessage(chatId, messageId, currentT.hintsTitle, {
         inline_keyboard: [
-          [
-            {
-              text: currentT.buttons.openWishbucket,
-              web_app: {
-                url: WEBAPP_URL,
-              },
-            },
-          ],
+          [getOpenAppButton(currentLanguage)],
           [{ text: currentT.buttons.back, callback_data: "back_to_start" }],
         ],
       });
@@ -636,24 +750,16 @@ async function handleHintsCommand(message: TelegramMessage) {
 
   let text = t.hintsHeader;
   for (const hint of hints) {
-    const preview = hint.hint_text?.substring(0, 50) || "[Media]";
-    text += `• <b>${hint.about_name || "Someone"}</b>: ${preview}${
+    const preview = escapeHtml(hint.hint_text?.substring(0, 50) || "[Media]");
+    const aboutName = escapeHtml(hint.about_name || "Someone");
+    text += `• <b>${aboutName}</b>: ${preview}${
       hint.hint_text?.length > 50 ? "..." : ""
     }\n`;
   }
   text += t.hintsFooter;
 
   await sendTelegramMessage(message.chat.id, text, {
-    inline_keyboard: [
-      [
-        {
-          text: t.buttons.openWishbucket,
-          web_app: {
-            url: WEBAPP_URL,
-          },
-        },
-      ],
-    ],
+    inline_keyboard: [[getOpenAppButton(language)]],
   });
 }
 
@@ -675,24 +781,20 @@ async function handleForwardedMessage(message: TelegramMessage) {
   const mediaFileId = getMediaFileId(message);
 
   // Save the hint
-  const { data: hint, error } = await supabase
-    .from("gift_hints")
-    .insert({
-      user_id: userId,
-      about_user_id: aboutUserId,
-      about_name: forwardInfo.name,
-      about_username: forwardInfo.username,
-      hint_text: hintText,
-      message_type: messageType,
-      media_file_id: mediaFileId,
-      telegram_message_id: message.message_id,
-      telegram_chat_id: message.chat.id,
-      forward_date: message.forward_date
-        ? new Date(message.forward_date * 1000).toISOString()
-        : null,
-    })
-    .select()
-    .single();
+  const { error } = await supabase.from("gift_hints").insert({
+    user_id: userId,
+    about_user_id: aboutUserId,
+    about_name: forwardInfo.name,
+    about_username: forwardInfo.username,
+    hint_text: hintText,
+    message_type: messageType,
+    media_file_id: mediaFileId,
+    telegram_message_id: message.message_id,
+    telegram_chat_id: message.chat.id,
+    forward_date: message.forward_date
+      ? new Date(message.forward_date * 1000).toISOString()
+      : null,
+  });
 
   if (error) {
     console.error("Error saving hint:", error);
@@ -705,22 +807,15 @@ async function handleForwardedMessage(message: TelegramMessage) {
 
   // Send confirmation
   const mediaLabel = messageType !== "text" ? ` (${messageType})` : "";
-  const previewText = hintText?.substring(0, 100) || "[Media message]";
+  const previewText = escapeHtml(
+    hintText?.substring(0, 100) || "[Media message]",
+  );
   const isLong = !!hintText && hintText.length > 100;
   await sendTelegramMessage(
     message.chat.id,
-    t.hintSaved(forwardInfo.name, previewText, isLong, mediaLabel),
+    t.hintSaved(escapeHtml(forwardInfo.name), previewText, isLong, mediaLabel),
     {
-      inline_keyboard: [
-        [
-          {
-            text: t.buttons.viewHints,
-            web_app: {
-              url: WEBAPP_URL,
-            },
-          },
-        ],
-      ],
+      inline_keyboard: [[getOpenAppButton(language)]],
     },
   );
 }
@@ -733,14 +828,7 @@ async function handleInstructionsCommand(message: TelegramMessage) {
   await sendTelegramMessage(message.chat.id, t.instructionsTitle, {
     inline_keyboard: [
       [{ text: t.buttons.openInstructions, url: getDocsUrl(language) }],
-      [
-        {
-          text: t.buttons.openWishbucket,
-          web_app: {
-            url: WEBAPP_URL,
-          },
-        },
-      ],
+      [getOpenAppButton(language)],
     ],
   });
 }
@@ -751,16 +839,7 @@ async function handleRegularMessage(message: TelegramMessage) {
   const t = I18N[language];
 
   await sendTelegramMessage(message.chat.id, t.regularTip, {
-    inline_keyboard: [
-      [
-        {
-          text: t.buttons.openWishbucket,
-          web_app: {
-            url: WEBAPP_URL,
-          },
-        },
-      ],
-    ],
+    inline_keyboard: [[getOpenAppButton(language)]],
   });
 }
 
@@ -773,7 +852,7 @@ Deno.serve(async (req: Request) => {
 
   try {
     const update: TelegramUpdate = await req.json();
-    const message = update.message;
+    const message = update.message ?? update.edited_message;
     const callbackQuery = update.callback_query;
 
     // Handle callback queries (button presses)
@@ -796,19 +875,22 @@ Deno.serve(async (req: Request) => {
       });
     }
 
+    const msgText = (message.text || "").trim().toLowerCase();
+
     // Handle commands
-    if (message.text?.startsWith("/start")) {
+    if (msgText.startsWith("/start")) {
       await handleStartCommand(message);
-    } else if (message.text?.startsWith("/hints")) {
+    } else if (msgText.startsWith("/hints")) {
       await handleHintsCommand(message);
     } else if (
-      message.text?.startsWith("/instructions") ||
-      message.text?.startsWith("/help")
+      msgText.startsWith("/instructions") ||
+      msgText.startsWith("/help")
     ) {
       await handleInstructionsCommand(message);
     }
     // Handle forwarded messages
     else if (
+      message.forward_origin ||
       message.forward_from ||
       message.forward_sender_name ||
       message.forward_from_chat

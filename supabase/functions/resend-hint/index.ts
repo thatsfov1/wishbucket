@@ -20,14 +20,27 @@ if (!supabaseUrl || !supabaseServiceKey) {
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-const BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN");
+const BOT_TOKEN =
+  Deno.env.get("TELEGRAM_BOT_TOKEN_MAIN") ??
+  Deno.env.get("TELEGRAM_BOT_TOKEN") ??
+  Deno.env.get("TELEGRAM_BOT_TOKEN_DEV");
 if (!BOT_TOKEN) {
-  throw new Error("Missing TELEGRAM_BOT_TOKEN env var.");
+  throw new Error(
+    "Missing bot token env var. Set TELEGRAM_BOT_TOKEN_MAIN, TELEGRAM_BOT_TOKEN, or TELEGRAM_BOT_TOKEN_DEV.",
+  );
 }
 
 interface ResendRequest {
   hintId: string;
   userId: number;
+}
+
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 }
 
 // Send text message
@@ -123,13 +136,16 @@ Deno.serve(async (req: Request) => {
     }
 
     // Build the message
-    const header = `💡 <b>Gift Hint from ${
-      hint.about_name || "Someone"
-    }</b>\n\n`;
+    const header = `💡 <b>Gift Hint from ${escapeHtml(
+      hint.about_name || "Someone",
+    )}</b>\n\n`;
 
     if (hint.message_type === "text" || !hint.media_file_id) {
       // Text message
-      await sendMessage(userId, header + (hint.hint_text || "[No text]"));
+      await sendMessage(
+        userId,
+        header + escapeHtml(hint.hint_text || "[No text]"),
+      );
     } else {
       // Media message - send the media with caption
       const caption = header + (hint.hint_text || "");

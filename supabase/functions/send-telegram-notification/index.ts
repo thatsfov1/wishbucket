@@ -6,7 +6,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
 };
 
 interface NotificationPayload {
@@ -24,9 +25,14 @@ serve(async (req: Request) => {
   }
 
   try {
-    const TELEGRAM_BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN");
+    const TELEGRAM_BOT_TOKEN =
+      Deno.env.get("TELEGRAM_BOT_TOKEN_MAIN") ??
+      Deno.env.get("TELEGRAM_BOT_TOKEN") ??
+      Deno.env.get("TELEGRAM_BOT_TOKEN_DEV");
     if (!TELEGRAM_BOT_TOKEN) {
-      throw new Error("TELEGRAM_BOT_TOKEN not configured");
+      throw new Error(
+        "Telegram bot token not configured (TELEGRAM_BOT_TOKEN_MAIN / TELEGRAM_BOT_TOKEN / TELEGRAM_BOT_TOKEN_DEV)",
+      );
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -44,30 +50,57 @@ serve(async (req: Request) => {
 
     // Add action button based on notification type
     let inlineKeyboard: any[][] = [];
-    
+
     switch (type) {
       case "new_follower":
-        inlineKeyboard = [[{ text: "👥 View Friends", callback_data: "view_friends" }]];
+        inlineKeyboard = [
+          [{ text: "👥 View Friends", callback_data: "view_friends" }],
+        ];
         break;
       case "item_reserved":
       case "item_purchased":
         if (data?.wishlistId) {
-          inlineKeyboard = [[{ text: "🎁 View Wishlist", callback_data: `view_wishlist_${data.wishlistId}` }]];
+          inlineKeyboard = [
+            [
+              {
+                text: "🎁 View Wishlist",
+                callback_data: `view_wishlist_${data.wishlistId}`,
+              },
+            ],
+          ];
         }
         break;
       case "wishlist_shared":
         if (data?.wishlistId) {
-          inlineKeyboard = [[{ text: "📋 Open Wishlist", url: `https://t.me/wishbucket_bot?start=wishlist_${data.wishlistId}` }]];
+          inlineKeyboard = [
+            [
+              {
+                text: "📋 Open Wishlist",
+                url: `https://t.me/wishbucket_bot?start=wishlist_${data.wishlistId}`,
+              },
+            ],
+          ];
         }
         break;
       case "birthday_reminder":
-        inlineKeyboard = [[{ text: "🎂 View Friend's Wishlist", callback_data: `birthday_${data?.friendId}` }]];
+        inlineKeyboard = [
+          [
+            {
+              text: "🎂 View Friend's Wishlist",
+              callback_data: `birthday_${data?.friendId}`,
+            },
+          ],
+        ];
         break;
       case "referral_signup":
-        inlineKeyboard = [[{ text: "🎉 Invite More Friends", callback_data: "invite_friends" }]];
+        inlineKeyboard = [
+          [{ text: "🎉 Invite More Friends", callback_data: "invite_friends" }],
+        ];
         break;
       default:
-        inlineKeyboard = [[{ text: "📱 Open WishBucket", url: "https://t.me/wishbucket_bot" }]];
+        inlineKeyboard = [
+          [{ text: "📱 Open WishBucket", url: "https://t.me/wishbucket_bot" }],
+        ];
     }
 
     // Send the Telegram message
@@ -84,7 +117,7 @@ serve(async (req: Request) => {
             inline_keyboard: inlineKeyboard,
           },
         }),
-      }
+      },
     );
 
     const telegramResult = await telegramResponse.json();
@@ -94,22 +127,16 @@ serve(async (req: Request) => {
       // Don't throw - notification was saved to DB, just log the error
     }
 
-    return new Response(
-      JSON.stringify({ success: true, telegramResult }),
-      {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 200,
-      }
-    );
+    return new Response(JSON.stringify({ success: true, telegramResult }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 200,
+    });
   } catch (error) {
     console.error("Error sending notification:", error);
-    return new Response(
-      JSON.stringify({ error: error.message }),
-      {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 500,
-      }
-    );
+    return new Response(JSON.stringify({ error: error.message }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 500,
+    });
   }
 });
 
@@ -120,5 +147,3 @@ function escapeHtml(text: string): string {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
 }
-
-
