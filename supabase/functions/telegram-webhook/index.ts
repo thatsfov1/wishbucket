@@ -763,7 +763,6 @@ async function handleHintsCommand(message: TelegramMessage) {
   });
 }
 
-// Handle forwarded message - save as gift hint
 async function handleForwardedMessage(message: TelegramMessage) {
   const userId = await ensureUser(message.from);
   const language = await getUserLanguage(userId);
@@ -780,7 +779,6 @@ async function handleForwardedMessage(message: TelegramMessage) {
   const messageType = getMessageType(message);
   const mediaFileId = getMediaFileId(message);
 
-  // Save the hint
   const { error } = await supabase.from("gift_hints").insert({
     user_id: userId,
     about_user_id: aboutUserId,
@@ -843,7 +841,6 @@ async function handleRegularMessage(message: TelegramMessage) {
   });
 }
 
-// Main handler
 Deno.serve(async (req: Request) => {
   // Handle CORS
   if (req.method === "OPTIONS") {

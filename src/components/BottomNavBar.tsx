@@ -6,6 +6,11 @@ import { useStore } from "../store/useStore";
 import { addItem, getWishlists } from "../services/supabase-api";
 import { generateAffiliateLink } from "../utils/affiliate";
 import "./BottomNavBar.css";
+import { GoHomeFill } from "react-icons/go";
+import { BsPeopleFill, BsSearch, BsGiftFill } from "react-icons/bs";
+import { PiPlusBold } from "react-icons/pi";
+import { IoSearch } from "react-icons/io5";
+
 
 interface NavItem {
   id: string;
@@ -14,99 +19,36 @@ interface NavItem {
   activeIcon: React.ReactNode;
 }
 
-// SF Symbols style icons
 const navItems: NavItem[] = [
   {
     id: "home",
     path: "/",
-    icon: (
-      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z" />
-        <path d="M9 21V12h6v9" />
-      </svg>
-    ),
-    activeIcon: (
-      <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor">
-        <path d="M12 3L3 9.5V20a1 1 0 001 1h5v-8h6v8h5a1 1 0 001-1V9.5L12 3z" />
-      </svg>
-    ),
+    icon: <GoHomeFill size={26} />,
+    activeIcon: <GoHomeFill size={26} />,
   },
   {
     id: "friends",
     path: "/friends",
-    icon: (
-      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="9" cy="7" r="3" />
-        <path d="M3 20v-1a4 4 0 014-4h4a4 4 0 014 4v1" />
-        <circle cx="17" cy="7" r="2.5" />
-        <path d="M21 20v-1a3 3 0 00-2-2.83" />
-      </svg>
-    ),
-    activeIcon: (
-      <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor">
-        <circle cx="9" cy="7" r="3" />
-        <path d="M3 20v-1a4 4 0 014-4h4a4 4 0 014 4v1H3z" />
-        <circle cx="17" cy="7" r="2.5" />
-        <path d="M21 20v-1a3 3 0 00-2-2.83 3 3 0 00-1-.17h-1v4h4z" />
-      </svg>
-    ),
+    icon: <BsPeopleFill size={26} />,
+    activeIcon: <BsPeopleFill size={26} />,
   },
   {
     id: "add",
     path: "",
-    icon: (
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-        <line x1="12" y1="5" x2="12" y2="19" />
-        <line x1="5" y1="12" x2="19" y2="12" />
-      </svg>
-    ),
-    activeIcon: (
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-        <line x1="12" y1="5" x2="12" y2="19" />
-        <line x1="5" y1="12" x2="19" y2="12" />
-      </svg>
-    ),
+    icon: <PiPlusBold size={24} />,
+    activeIcon: <PiPlusBold size={24} />,
   },
   {
     id: "search",
     path: "/inspiration",
-    icon: (
-      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="11" cy="11" r="7" />
-        <path d="M21 21l-4.35-4.35" />
-      </svg>
-    ),
-    activeIcon: (
-      <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="1.8">
-        <circle cx="11" cy="11" r="7" fillOpacity="0.2" />
-        <circle cx="11" cy="11" r="7" fill="none" />
-        <path d="M21 21l-4.35-4.35" fill="none" />
-      </svg>
-    ),
+    icon: <IoSearch size={26} />,
+    activeIcon: <IoSearch size={26} />,
   },
   {
     id: "gift",
     path: "/find-gift",
-    icon: (
-      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="3" y="8" width="18" height="13" rx="1" />
-        <path d="M12 8v13" />
-        <path d="M3 12h18" />
-        <path d="M12 8c-1.5-2-4-2.5-4.5 0S12 8 12 8z" />
-        <path d="M12 8c1.5-2 4-2.5 4.5 0S12 8 12 8z" />
-      </svg>
-    ),
-    activeIcon: (
-      <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor">
-        <path d="M3 8h18v13a1 1 0 01-1 1H4a1 1 0 01-1-1V8z" />
-        <path d="M3 12h8v10H4a1 1 0 01-1-1v-9z" fill="currentColor" fillOpacity="0.7" />
-        <path d="M13 12h8v9a1 1 0 01-1 1h-7V12z" fill="currentColor" />
-        <path d="M12 8c-1.5-2-4-2.5-4.5 0S12 8 12 8z" stroke="currentColor" strokeWidth="1.8" fill="none" />
-        <path d="M12 8c1.5-2 4-2.5 4.5 0S12 8 12 8z" stroke="currentColor" strokeWidth="1.8" fill="none" />
-        <rect x="11" y="8" width="2" height="14" fill="var(--bg-secondary)" />
-        <rect x="3" y="11" width="18" height="2" fill="var(--bg-secondary)" />
-      </svg>
-    ),
+    icon: <BsGiftFill size={26} />,
+    activeIcon: <BsGiftFill size={26} />,
   },
 ];
 
@@ -153,7 +95,7 @@ export default function BottomNavBar() {
       // Add item to all selected wishlists with notifyFollowers flag
       for (const wishlistId of itemData.wishlistIds) {
         await addItem(
-          wishlistId, 
+          wishlistId,
           {
             wishlistId,
             name: itemData.name,
@@ -169,7 +111,7 @@ export default function BottomNavBar() {
             priority: "medium",
             status: "available",
           },
-          itemData.notifyFollowers
+          itemData.notifyFollowers,
         );
       }
       // Refresh wishlists
@@ -189,7 +131,7 @@ export default function BottomNavBar() {
           {navItems.map((item) => {
             const active = isActive(item);
             const isCenter = item.id === "add";
-            
+
             return (
               <button
                 key={item.id}
@@ -198,9 +140,7 @@ export default function BottomNavBar() {
                 aria-label={item.id}
               >
                 {isCenter ? (
-                  <div className="center-icon">
-                    {item.icon}
-                  </div>
+                  <div className="center-icon">{item.icon}</div>
                 ) : (
                   <div className="icon-wrapper">
                     <div className={`icon ${active ? "active" : ""}`}>

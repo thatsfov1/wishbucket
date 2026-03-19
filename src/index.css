@@ -114,6 +114,8 @@ html {
 }
 
 body {
+  overflow-x: hidden;
+  overflow-y: scroll;
   font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 
     'Segoe UI', 'Roboto', 'Helvetica Neue', sans-serif;
   -webkit-font-smoothing: antialiased;
