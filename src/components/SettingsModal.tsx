@@ -1,6 +1,11 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { hapticFeedback, openTelegramLink } from "../utils/telegram";
+import {
+  hapticFeedback,
+  openTelegramLink,
+  showTelegramAlert,
+} from "../utils/telegram";
+import { getUserProfile, updateUserProfile } from "../services/supabase-api";
 import "./SettingsModal.css";
 
 interface SettingsModalProps {
@@ -21,14 +26,32 @@ export default function SettingsModal({
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [notifyOnAdd, setNotifyOnAdd] = useState(true);
   const [isClosing, setIsClosing] = useState(false);
+  const [birthday, setBirthday] = useState("");
+  const [savedBirthday, setSavedBirthday] = useState("");
+  const [isSavingBirthday, setIsSavingBirthday] = useState(false);
 
   useEffect(() => {
+    if (!isOpen) return;
+
     const theme = document.documentElement.getAttribute("data-theme");
     setIsDarkMode(theme === "dark");
 
     // Load notification preference
     const savedNotifyPref = localStorage.getItem("notifyOnAdd");
     setNotifyOnAdd(savedNotifyPref !== "false");
+
+    const loadBirthday = async () => {
+      try {
+        const profile = await getUserProfile();
+        const profileBirthday = profile.birthday || "";
+        setBirthday(profileBirthday);
+        setSavedBirthday(profileBirthday);
+      } catch (error) {
+        console.error("Error loading birthday:", error);
+      }
+    };
+
+    loadBirthday();
   }, [isOpen]);
 
   useEffect(() => {
@@ -79,6 +102,28 @@ export default function SettingsModal({
     setTimeout(() => navigate(path), 250);
   };
 
+  const handleSaveBirthday = async () => {
+    try {
+      setIsSavingBirthday(true);
+      const updated = await updateUserProfile({
+        birthday: birthday || undefined,
+      });
+      const updatedBirthday = updated.birthday || "";
+      setBirthday(updatedBirthday);
+      setSavedBirthday(updatedBirthday);
+      hapticFeedback.notification("success");
+      showTelegramAlert(
+        "Birthday saved. Followers will be reminded 1 week before and on your birthday.",
+      );
+    } catch (error) {
+      console.error("Error updating birthday:", error);
+      hapticFeedback.notification("error");
+      showTelegramAlert("Failed to save birthday.");
+    } finally {
+      setIsSavingBirthday(false);
+    }
+  };
+
   const handleInvite = () => {
     hapticFeedback.impact("medium");
     openTelegramLink(
@@ -115,25 +160,28 @@ export default function SettingsModal({
               <span>{user?.firstName?.[0]?.toUpperCase() || "U"}</span>
             )}
           </div>
-          <div className="profile-info">
-            <h3>{user?.firstName || "Guest"}</h3>
-            <p>View profile</p>
+          <div className="birthday-editor">
+            <div className="birthday-editor-head">
+              <h3>{user?.firstName || "Guest"}</h3>
+              <span className="birthday-editor-label">Birthday</span>
+            </div>
+            <div className="birthday-editor-row">
+              <input
+                className="birthday-input"
+                type="date"
+                value={birthday}
+                onChange={(e) => setBirthday(e.target.value)}
+                max="9999-12-31"
+              />
+              <button
+                className="birthday-save-btn"
+                onClick={handleSaveBirthday}
+                disabled={isSavingBirthday || birthday === savedBirthday}
+              >
+                {isSavingBirthday ? "Saving..." : "Save"}
+              </button>
+            </div>
           </div>
-          <button
-            className="profile-chevron"
-            onClick={() => handleNavigation("/profile")}
-          >
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
-              <polyline points="9,18 15,12 9,6" />
-            </svg>
-          </button>
         </div>
 
         {/* Quick Share */}
@@ -310,8 +358,6 @@ export default function SettingsModal({
               <polyline points="9,18 15,12 9,6" />
             </svg>
           </button>
-
-          
         </div>
 
         <div className="settings-section">
