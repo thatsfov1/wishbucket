@@ -81,6 +81,7 @@ export default function AddItemPage() {
     currency?: string;
     description?: string;
   }>({});
+  const [scrapedCurrency, setScrapedCurrency] = useState<string | null>(null);
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastScrapedUrlRef = useRef<string>("");
 
@@ -109,9 +110,12 @@ export default function AddItemPage() {
         setProductInfo(result);
         lastScrapedUrlRef.current = url;
 
-        // Set detected currency
+        // Track the scraped currency for mismatch warning
         if (result.currency) {
+          setScrapedCurrency(result.currency);
           setSelectedCurrency(result.currency);
+        } else {
+          setScrapedCurrency(null);
         }
 
         // Auto-fill name and description if not already filled
@@ -179,6 +183,7 @@ export default function AddItemPage() {
     // Only clear product info if URL is completely different (not just being typed)
     if (!cleaned.trim()) {
       setProductInfo({});
+      setScrapedCurrency(null);
       lastScrapedUrlRef.current = "";
     }
   };
@@ -306,6 +311,26 @@ export default function AddItemPage() {
               </div>
             )}
 
+          {/* Currency mismatch warning */}
+          {scrapedCurrency && scrapedCurrency !== selectedCurrency && !processingUrl && (
+            <div className="currency-mismatch-warning">
+              <span className="warning-icon">⚠️</span>
+              <span className="warning-text">
+                Website currency ({scrapedCurrency}) differs from selected ({selectedCurrency})
+              </span>
+              <button
+                type="button"
+                className="use-detected-btn"
+                onClick={() => {
+                  setSelectedCurrency(scrapedCurrency);
+                  hapticFeedback.impact("light");
+                }}
+              >
+                Use {scrapedCurrency}
+              </button>
+            </div>
+          )}
+
           {/* Currency notification & selector */}
           {productInfo.price && !processingUrl && (
             <div className="currency-notice">
@@ -313,13 +338,6 @@ export default function AddItemPage() {
                 <span className="currency-icon">💱</span>
                 <span>
                   Currency: <strong>{selectedCurrency}</strong>
-                  {productInfo.currency &&
-                    productInfo.currency !== selectedCurrency && (
-                      <span className="currency-auto-detected">
-                        {" "}
-                        (detected: {productInfo.currency})
-                      </span>
-                    )}
                 </span>
               </div>
               <button

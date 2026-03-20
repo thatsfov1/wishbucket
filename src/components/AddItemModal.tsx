@@ -52,9 +52,7 @@ export default function AddItemModal({
   // URL scraping state
   const [isScrapingUrl, setIsScrapingUrl] = useState(false);
   const [scrapeError, setScrapeError] = useState<string | null>(null);
-  const [currencyAutoDetected, setCurrencyAutoDetected] = useState<
-    string | null
-  >(null);
+  const [scrapedCurrency, setScrapedCurrency] = useState<string | null>(null);
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastScrapedUrlRef = useRef<string>("");
 
@@ -81,7 +79,7 @@ export default function AddItemModal({
       // Reset scraping state
       setIsScrapingUrl(false);
       setScrapeError(null);
-      setCurrencyAutoDetected(null);
+      setScrapedCurrency(null);
       lastScrapedUrlRef.current = "";
       // Load user's notification preference
       const savedNotifyPref = localStorage.getItem("notifyOnAdd");
@@ -141,7 +139,7 @@ export default function AddItemModal({
             setCustomImage(result.imageUrl);
             setSelectedEmoji("");
           }
-          // Map currency symbol
+          // Map currency code to symbol and track for mismatch warning
           if (result.currency) {
             const currencyMap: Record<string, string> = {
               USD: "$",
@@ -153,11 +151,10 @@ export default function AddItemModal({
               CNY: "¥",
             };
             const detectedSymbol = currencyMap[result.currency] || "$";
+            setScrapedCurrency(detectedSymbol);
             setCurrency(detectedSymbol);
-            // Only show notification if currency is different from default
-            if (detectedSymbol !== "$") {
-              setCurrencyAutoDetected(result.currency);
-            }
+          } else {
+            setScrapedCurrency(null);
           }
 
           hapticFeedback.notification("success");
@@ -378,17 +375,26 @@ export default function AddItemModal({
           <label className="form-label">
             Price <span className="optional">(optional)</span>
           </label>
-          {currencyAutoDetected && (
-            <span className="currency-auto-detected">
-              💱 Currency detected: {currencyAutoDetected}
-            </span>
+          {scrapedCurrency && scrapedCurrency !== currency && (
+            <div className="currency-mismatch-warning">
+              <span>⚠️ Website currency ({scrapedCurrency}) differs from selected ({currency})</span>
+              <button
+                type="button"
+                className="use-detected-btn"
+                onClick={() => {
+                  setCurrency(scrapedCurrency);
+                  hapticFeedback.impact("light");
+                }}
+              >
+                Use {scrapedCurrency}
+              </button>
+            </div>
           )}
           <div className="price-row">
             <button
               className="currency-btn"
               onClick={() => {
                 setShowCurrencyPicker(!showCurrencyPicker);
-                setCurrencyAutoDetected(null); // Clear notification when user interacts
               }}
             >
               {currency}
