@@ -202,10 +202,11 @@ function extractMetaTags(html: string, hostname: string): ProductInfo {
 
   // Default currency symbols
   if (!result.currency) {
-    if (html.includes("$")) result.currency = "USD";
+    if (html.includes("₴")) result.currency = "UAH";
+    else if (html.includes("zł") || html.includes("PLN")) result.currency = "PLN";
     else if (html.includes("€")) result.currency = "EUR";
     else if (html.includes("£")) result.currency = "GBP";
-    else if (html.includes("₴")) result.currency = "UAH";
+    else if (html.includes("$")) result.currency = "USD";
   }
 
   // Clean up title (remove site name suffix)

@@ -110,10 +110,10 @@ export default function AddItemPage() {
         setProductInfo(result);
         lastScrapedUrlRef.current = url;
 
-        // Track the scraped currency for mismatch warning
+        // Track the scraped currency for mismatch warning (don't auto-change)
         if (result.currency) {
           setScrapedCurrency(result.currency);
-          setSelectedCurrency(result.currency);
+          // Don't auto-change currency - let user see warning and decide
         } else {
           setScrapedCurrency(null);
         }

@@ -20,7 +20,7 @@ interface AddItemModalProps {
   preselectedWishlistId?: string;
 }
 
-const currencies = ["$", "€", "£", "₴", "₽", "¥", "₿"];
+const currencies = ["$", "€", "£", "₴", "zł", "₽", "¥", "₿"];
 const defaultEmojis = ["🎁", "📱", "👟", "👗", "💄", "🎮", "📚", "🎧"];
 
 export default function AddItemModal({
@@ -146,13 +146,14 @@ export default function AddItemModal({
               EUR: "€",
               GBP: "£",
               UAH: "₴",
+              PLN: "zł",
               RUB: "₽",
               JPY: "¥",
               CNY: "¥",
             };
-            const detectedSymbol = currencyMap[result.currency] || "$";
+            const detectedSymbol = currencyMap[result.currency] || result.currency;
             setScrapedCurrency(detectedSymbol);
-            setCurrency(detectedSymbol);
+            // Don't auto-change currency - let user see the warning and decide
           } else {
             setScrapedCurrency(null);
           }
@@ -464,17 +465,17 @@ export default function AddItemModal({
               if (pastedText) {
                 try {
                   new URL(pastedText);
-                  // Set the URL first
+                  // Clear any pending debounce first to prevent double scrape
+                  if (debounceTimerRef.current) {
+                    clearTimeout(debounceTimerRef.current);
+                    debounceTimerRef.current = null;
+                  }
+                  // Mark as already scraped to prevent useEffect from triggering another scrape
+                  lastScrapedUrlRef.current = pastedText;
+                  // Set the URL
                   setUrl(pastedText);
-                  // Valid URL pasted - scrape immediately without debounce
-                  // Use a small delay to ensure state is updated
-                  setTimeout(() => {
-                    if (debounceTimerRef.current) {
-                      clearTimeout(debounceTimerRef.current);
-                    }
-                    lastScrapedUrlRef.current = ""; // Reset to force scrape
-                    scrapeUrl(pastedText);
-                  }, 100);
+                  // Valid URL pasted - scrape immediately
+                  scrapeUrl(pastedText);
                 } catch {
                   // Not a valid URL, let normal flow handle it
                   console.log("❌ Invalid URL pasted");
