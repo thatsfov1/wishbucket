@@ -86,7 +86,7 @@ export default function AddItemPage() {
   const lastScrapedUrlRef = useRef<string>("");
 
   // Fetch product info from URL
-  const fetchProductInfo = useCallback(async (url: string) => {
+  const fetchProductInfo = useCallback(async (url: string, isNewUrl: boolean = false) => {
     if (!url.trim()) return;
 
     // Validate URL
@@ -110,19 +110,23 @@ export default function AddItemPage() {
         setProductInfo(result);
         lastScrapedUrlRef.current = url;
 
-        // Track the scraped currency for mismatch warning (don't auto-change)
+        // Track the scraped currency for mismatch warning
         if (result.currency) {
           setScrapedCurrency(result.currency);
-          // Don't auto-change currency - let user see warning and decide
+          // Reset to default currency if new URL so warning shows
+          if (isNewUrl) {
+            setSelectedCurrency("USD");
+          }
         } else {
           setScrapedCurrency(null);
         }
 
-        // Auto-fill name and description if not already filled
+        // Auto-fill name and description
+        // If new URL, always update; otherwise only if empty
         setFormData((prev) => ({
           ...prev,
-          name: prev.name || result.title || "",
-          description: prev.description || result.description || "",
+          name: isNewUrl ? (result.title || prev.name) : (prev.name || result.title || ""),
+          description: isNewUrl ? (result.description || prev.description) : (prev.description || result.description || ""),
         }));
 
         hapticFeedback.notification("success");
@@ -157,11 +161,13 @@ export default function AddItemPage() {
     if (url && url !== lastScrapedUrlRef.current) {
       try {
         new URL(url);
+        // Check if this is a subsequent URL (not the first one)
+        const isNewUrl = lastScrapedUrlRef.current !== "";
         // Lock immediately so duplicate triggers are blocked
         lastScrapedUrlRef.current = url;
         // Debounce the scraping to avoid too many requests while typing
         debounceTimerRef.current = setTimeout(() => {
-          fetchProductInfo(url);
+          fetchProductInfo(url, isNewUrl);
         }, 500);
       } catch {
         // Invalid URL, don't scrape

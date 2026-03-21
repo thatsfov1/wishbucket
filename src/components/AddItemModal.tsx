@@ -99,7 +99,7 @@ export default function AddItemModal({
 
   // Auto-scrape URL when pasted/changed
   const scrapeUrl = useCallback(
-    async (urlToScrape: string) => {
+    async (urlToScrape: string, isNewUrl: boolean = false) => {
       if (!urlToScrape.trim()) return;
 
       // Validate URL
@@ -125,17 +125,18 @@ export default function AddItemModal({
           result.price ||
           result.description
         ) {
-          // Auto-fill fields if they're empty
-          if (result.title && !name) {
+          // If it's a new URL paste, always update fields with scraped data
+          // Otherwise only fill if fields are empty (first time)
+          if (result.title && (isNewUrl || !name)) {
             setName(result.title);
           }
-          if (result.description && !description) {
+          if (result.description && (isNewUrl || !description)) {
             setDescription(result.description);
           }
-          if (result.price && !price) {
+          if (result.price && (isNewUrl || !price)) {
             setPrice(result.price.toString());
           }
-          if (result.imageUrl && !customImage) {
+          if (result.imageUrl && (isNewUrl || !customImage)) {
             setCustomImage(result.imageUrl);
             setSelectedEmoji("");
           }
@@ -153,7 +154,10 @@ export default function AddItemModal({
             };
             const detectedSymbol = currencyMap[result.currency] || result.currency;
             setScrapedCurrency(detectedSymbol);
-            // Don't auto-change currency - let user see the warning and decide
+            // If new URL, reset currency to default so warning shows
+            if (isNewUrl) {
+              setCurrency("$");
+            }
           } else {
             setScrapedCurrency(null);
           }
@@ -470,12 +474,14 @@ export default function AddItemModal({
                     clearTimeout(debounceTimerRef.current);
                     debounceTimerRef.current = null;
                   }
+                  // Check if this is a new/different URL
+                  const isNewUrl = pastedText !== url && lastScrapedUrlRef.current !== "";
                   // Mark as already scraped to prevent useEffect from triggering another scrape
                   lastScrapedUrlRef.current = pastedText;
                   // Set the URL
                   setUrl(pastedText);
-                  // Valid URL pasted - scrape immediately
-                  scrapeUrl(pastedText);
+                  // Valid URL pasted - scrape immediately (pass isNewUrl flag)
+                  scrapeUrl(pastedText, isNewUrl);
                 } catch {
                   // Not a valid URL, let normal flow handle it
                   console.log("❌ Invalid URL pasted");
