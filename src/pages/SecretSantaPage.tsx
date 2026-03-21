@@ -1,3 +1,16 @@
+import ComingSoon from '../components/ComingSoon';
+
+export default function SecretSantaPage() {
+  return (
+    <ComingSoon
+      emoji="🎄"
+      title="Secret Santa"
+      description="Organize gift exchanges with friends and family! Draw names, set budgets, and spread holiday cheer."
+    />
+  );
+}
+
+/* ORIGINAL CODE - Uncomment when ready to develop
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
@@ -235,4 +248,5 @@ export default function SecretSantaPage() {
     </Layout>
   );
 }
+*/
 

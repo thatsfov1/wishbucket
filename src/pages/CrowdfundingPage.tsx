@@ -1,3 +1,16 @@
+import ComingSoon from '../components/ComingSoon';
+
+export default function CrowdfundingPage() {
+  return (
+    <ComingSoon
+      emoji="💰"
+      title="Crowdfunding"
+      description="Help your friends get expensive items by contributing together! Pool money with friends and family for big purchases."
+    />
+  );
+}
+
+/* ORIGINAL CODE - Uncomment when ready to develop
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
@@ -132,4 +145,5 @@ export default function CrowdfundingPage() {
     </Layout>
   );
 }
+*/
 

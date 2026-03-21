@@ -1,3 +1,16 @@
+import ComingSoon from "../components/ComingSoon";
+
+export default function TasksPage() {
+  return (
+    <ComingSoon
+      emoji="⭐"
+      title="Earn Points"
+      description="Complete tasks, invite friends, and earn points to redeem in the Gift Shop!"
+    />
+  );
+}
+
+/* ORIGINAL CODE - Uncomment when ready to develop
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useStore } from "../store/useStore";
@@ -208,122 +221,123 @@ export default function TasksPage() {
 
   return (
     <div className="tasks-container">
-      {/* Header */}
-      <header className="tasks-header">
-        <button className="back-btn" onClick={() => navigate(-1)}>
-          <svg
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-          >
-            <polyline points="15,18 9,12 15,6" />
-          </svg>
-        </button>
-        <h1>Earn Points</h1>
-        <div className="header-points">
-          <span className="points-icon">💎</span>
-          <span className="points-value">{userPoints}</span>
-        </div>
-      </header>
+      // {/* Header */
+//       <header className="tasks-header">
+//         <button className="back-btn" onClick={() => navigate(-1)}>
+//           <svg
+//             width="24"
+//             height="24"
+//             viewBox="0 0 24 24"
+//             fill="none"
+//             stroke="currentColor"
+//             strokeWidth="2"
+//           >
+//             <polyline points="15,18 9,12 15,6" />
+//           </svg>
+//         </button>
+//         <h1>Earn Points</h1>
+//         <div className="header-points">
+//           <span className="points-icon">💎</span>
+//           <span className="points-value">{userPoints}</span>
+//         </div>
+//       </header>
 
-      {/* Points & Progress Banner */}
-      <div className="tasks-banner">
-        <div className="banner-stats">
-          <div className="stat-box">
-            <span className="stat-value">{userPoints}</span>
-            <span className="stat-label">Points</span>
-          </div>
-          <div className="stat-divider" />
-          <div className="stat-box">
-            <span className="stat-value">{referralCount}</span>
-            <span className="stat-label">Referrals</span>
-          </div>
-          <div className="stat-divider" />
-          <div className="stat-box">
-            <span className="stat-value">{completedMilestones.length}</span>
-            <span className="stat-label">Milestones</span>
-          </div>
-        </div>
-        {nextMilestone && (
-          <div className="next-milestone">
-            <span className="milestone-label">Next: {nextMilestone.label}</span>
-            <div className="milestone-progress">
-              <div
-                className="milestone-fill"
-                style={{
-                  width: `${(referralCount / nextMilestone.count) * 100}%`,
-                }}
-              />
-            </div>
-            <span className="milestone-reward">+{nextMilestone.reward} 💎</span>
-          </div>
-        )}
-      </div>
+//       {/* Points & Progress Banner */}
+//       <div className="tasks-banner">
+//         <div className="banner-stats">
+//           <div className="stat-box">
+//             <span className="stat-value">{userPoints}</span>
+//             <span className="stat-label">Points</span>
+//           </div>
+//           <div className="stat-divider" />
+//           <div className="stat-box">
+//             <span className="stat-value">{referralCount}</span>
+//             <span className="stat-label">Referrals</span>
+//           </div>
+//           <div className="stat-divider" />
+//           <div className="stat-box">
+//             <span className="stat-value">{completedMilestones.length}</span>
+//             <span className="stat-label">Milestones</span>
+//           </div>
+//         </div>
+//         {nextMilestone && (
+//           <div className="next-milestone">
+//             <span className="milestone-label">Next: {nextMilestone.label}</span>
+//             <div className="milestone-progress">
+//               <div
+//                 className="milestone-fill"
+//                 style={{
+//                   width: `${(referralCount / nextMilestone.count) * 100}%`,
+//                 }}
+//               />
+//             </div>
+//             <span className="milestone-reward">+{nextMilestone.reward} 💎</span>
+//           </div>
+//         )}
+//       </div>
 
-      {/* Categories */}
-      <div className="tasks-categories">
-        <button
-          className={`category-btn ${activeCategory === "all" ? "active" : ""}`}
-          onClick={() => handleCategoryChange("all")}
-        >
-          All Tasks
-        </button>
-        {TASK_CATEGORIES.map((cat) => (
-          <button
-            key={cat.id}
-            className={`category-btn ${
-              activeCategory === cat.id ? "active" : ""
-            }`}
-            onClick={() => handleCategoryChange(cat.id)}
-          >
-            <span>{cat.emoji}</span>
-            <span>{cat.name}</span>
-          </button>
-        ))}
-      </div>
+//       {/* Categories */}
+//       <div className="tasks-categories">
+//         <button
+//           className={`category-btn ${activeCategory === "all" ? "active" : ""}`}
+//           onClick={() => handleCategoryChange("all")}
+//         >
+//           All Tasks
+//         </button>
+//         {TASK_CATEGORIES.map((cat) => (
+//           <button
+//             key={cat.id}
+//             className={`category-btn ${
+//               activeCategory === cat.id ? "active" : ""
+//             }`}
+//             onClick={() => handleCategoryChange(cat.id)}
+//           >
+//             <span>{cat.emoji}</span>
+//             <span>{cat.name}</span>
+//           </button>
+//         ))}
+//       </div>
 
-      {/* Tasks List */}
-      <div className="tasks-content">
-        {isLoading ? (
-          <div className="loading-state">
-            <div className="loading-spinner" />
-            <p>Loading tasks...</p>
-          </div>
-        ) : activeCategory === "all" ? (
-          TASK_CATEGORIES.map((category) => {
-            const tasks = getTasksByCategory(category.id);
-            if (tasks.length === 0) return null;
+//       {/* Tasks List */}
+//       <div className="tasks-content">
+//         {isLoading ? (
+//           <div className="loading-state">
+//             <div className="loading-spinner" />
+//             <p>Loading tasks...</p>
+//           </div>
+//         ) : activeCategory === "all" ? (
+//           TASK_CATEGORIES.map((category) => {
+//             const tasks = getTasksByCategory(category.id);
+//             if (tasks.length === 0) return null;
 
-            return (
-              <div key={category.id} className="category-section">
-                <div className="section-header">
-                  <span className="section-emoji">{category.emoji}</span>
-                  <div className="section-info">
-                    <h2>{category.name}</h2>
-                    <p>{category.description}</p>
-                  </div>
-                </div>
-                <div className="tasks-list">{tasks.map(renderTask)}</div>
-              </div>
-            );
-          })
-        ) : (
-          <div className="tasks-list">{getAllTasks().map(renderTask)}</div>
-        )}
-      </div>
+//             return (
+//               <div key={category.id} className="category-section">
+//                 <div className="section-header">
+//                   <span className="section-emoji">{category.emoji}</span>
+//                   <div className="section-info">
+//                     <h2>{category.name}</h2>
+//                     <p>{category.description}</p>
+//                   </div>
+//                 </div>
+//                 <div className="tasks-list">{tasks.map(renderTask)}</div>
+//               </div>
+//             );
+//           })
+//         ) : (
+//           <div className="tasks-list">{getAllTasks().map(renderTask)}</div>
+//         )}
+//       </div>
 
-      {/* Bottom CTA */}
-      <div className="tasks-cta">
-        <button className="cta-btn" onClick={() => navigate("/market")}>
-          <span>🎁</span>
-          <span>Spend Points in Shop</span>
-        </button>
-      </div>
+//       {/* Bottom CTA */}
+//       <div className="tasks-cta">
+//         <button className="cta-btn" onClick={() => navigate("/market")}>
+//           <span>🎁</span>
+//           <span>Spend Points in Shop</span>
+//         </button>
+//       </div>
 
-      <BottomNavBar />
-    </div>
-  );
-}
+//       <BottomNavBar />
+//     </div>
+//   );
+// }
+// */

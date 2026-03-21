@@ -1,3 +1,16 @@
+import ComingSoon from "../components/ComingSoon";
+
+export default function MarketPage() {
+  return (
+    <ComingSoon
+      emoji="🎁"
+      title="Gift Shop"
+      description="Redeem your points for exclusive gifts, discounts, and special rewards!"
+    />
+  );
+}
+
+/* ORIGINAL CODE - Uncomment when ready to develop
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useStore } from "../store/useStore";
@@ -103,7 +116,7 @@ export default function MarketPage() {
 
   return (
     <div className="market-container">
-      {/* Header */}
+      {/* Header *}
       <header className="market-header">
         <button className="back-btn" onClick={() => navigate(-1)}>
           <svg
@@ -124,7 +137,7 @@ export default function MarketPage() {
         </div>
       </header>
 
-      {/* Points Banner */}
+      {/* Points Banner *}
       <div className="points-banner">
         <div className="banner-content">
           <div className="banner-icon">🎁</div>
@@ -138,7 +151,7 @@ export default function MarketPage() {
         </button>
       </div>
 
-      {/* Categories */}
+      {/* Categories *}
       <div className="market-categories">
         <button
           className={`category-btn ${activeCategory === "all" ? "active" : ""}`}
@@ -160,7 +173,7 @@ export default function MarketPage() {
         ))}
       </div>
 
-      {/* Items Grid */}
+      {/* Items Grid *}
       <div className="market-content">
         {activeCategory === "all" ? (
           MARKET_CATEGORIES.map((category) => {
@@ -182,7 +195,7 @@ export default function MarketPage() {
         )}
       </div>
 
-      {/* Purchase Modal */}
+      {/* Purchase Modal *}
       {selectedItem && (
         <div className="purchase-modal-overlay" onClick={handleCloseModal}>
           <div className="purchase-modal" onClick={(e) => e.stopPropagation()}>
@@ -248,3 +261,4 @@ export default function MarketPage() {
     </div>
   );
 }
+*/

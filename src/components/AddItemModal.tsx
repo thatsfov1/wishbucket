@@ -23,6 +23,17 @@ interface AddItemModalProps {
 const currencies = ["$", "€", "£", "₴", "zł", "₽", "¥", "₿"];
 const defaultEmojis = ["🎁", "📱", "👟", "👗", "💄", "🎮", "📚", "🎧"];
 
+const currencyCodeToSymbol: Record<string, string> = {
+  USD: "$",
+  EUR: "€",
+  GBP: "£",
+  UAH: "₴",
+  PLN: "zł",
+  RUB: "₽",
+  JPY: "¥",
+  CNY: "¥",
+};
+
 export default function AddItemModal({
   isOpen,
   onClose,
@@ -69,7 +80,10 @@ export default function AddItemModal({
       setSelectedEmoji("🎁");
       setCustomImage(null);
       setPrice("");
-      setCurrency("$");
+      // Load default currency from settings
+      const savedCurrencyCode = localStorage.getItem("defaultCurrency") || "USD";
+      const defaultSymbol = currencyCodeToSymbol[savedCurrencyCode] || "$";
+      setCurrency(defaultSymbol);
       setUrl("");
       setSelectedWishlists(
         preselectedWishlistId ? [preselectedWishlistId] : [],

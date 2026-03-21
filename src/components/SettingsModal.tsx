@@ -4,6 +4,16 @@ import { hapticFeedback, openTelegramLink } from "../utils/telegram";
 import { getUserProfile, updateUserProfile } from "../services/supabase-api";
 import "./SettingsModal.css";
 
+const CURRENCIES = [
+  { code: "USD", symbol: "$", name: "US Dollar" },
+  { code: "EUR", symbol: "€", name: "Euro" },
+  { code: "GBP", symbol: "£", name: "British Pound" },
+  { code: "UAH", symbol: "₴", name: "Ukrainian Hryvnia" },
+  { code: "PLN", symbol: "zł", name: "Polish Złoty" },
+  { code: "JPY", symbol: "¥", name: "Japanese Yen" },
+  { code: "RUB", symbol: "₽", name: "Russian Ruble" },
+];
+
 interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -25,6 +35,8 @@ export default function SettingsModal({
   const [birthday, setBirthday] = useState("");
   const [savedBirthday, setSavedBirthday] = useState("");
   const [isSavingBirthday, setIsSavingBirthday] = useState(false);
+  const [defaultCurrency, setDefaultCurrency] = useState("USD");
+  const [showCurrencyPicker, setShowCurrencyPicker] = useState(false);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -35,6 +47,12 @@ export default function SettingsModal({
     // Load notification preference
     const savedNotifyPref = localStorage.getItem("notifyOnAdd");
     setNotifyOnAdd(savedNotifyPref !== "false");
+
+    // Load default currency
+    const savedCurrency = localStorage.getItem("defaultCurrency");
+    if (savedCurrency) {
+      setDefaultCurrency(savedCurrency);
+    }
 
     const loadBirthday = async () => {
       try {
@@ -90,6 +108,13 @@ export default function SettingsModal({
     const newValue = !notifyOnAdd;
     setNotifyOnAdd(newValue);
     localStorage.setItem("notifyOnAdd", String(newValue));
+  };
+
+  const handleCurrencyChange = (currencyCode: string) => {
+    hapticFeedback.selection();
+    setDefaultCurrency(currencyCode);
+    localStorage.setItem("defaultCurrency", currencyCode);
+    setShowCurrencyPicker(false);
   };
 
   const handleNavigation = (path: string) => {
@@ -172,6 +197,58 @@ export default function SettingsModal({
               </button>
             </div>
           </div>
+        </div>
+
+        {/* Default Currency */}
+        <div className="settings-section currency-section">
+          <h4>Default Currency</h4>
+          <button
+            className="currency-selector-btn"
+            onClick={() => {
+              setShowCurrencyPicker(!showCurrencyPicker);
+              hapticFeedback.selection();
+            }}
+          >
+            <div className="currency-display">
+              <span className="currency-symbol">
+                {CURRENCIES.find(c => c.code === defaultCurrency)?.symbol}
+              </span>
+              <span className="currency-name">
+                {CURRENCIES.find(c => c.code === defaultCurrency)?.name}
+              </span>
+            </div>
+            <svg
+              className={`currency-chevron ${showCurrencyPicker ? "open" : ""}`}
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
+              <polyline points="6,9 12,15 18,9" />
+            </svg>
+          </button>
+          {showCurrencyPicker && (
+            <div className="currency-options">
+              {CURRENCIES.map((currency) => (
+                <button
+                  key={currency.code}
+                  className={`currency-option ${defaultCurrency === currency.code ? "selected" : ""}`}
+                  onClick={() => handleCurrencyChange(currency.code)}
+                >
+                  <span className="option-symbol">{currency.symbol}</span>
+                  <span className="option-name">{currency.name}</span>
+                  <span className="option-code">{currency.code}</span>
+                  {defaultCurrency === currency.code && (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                      <polyline points="20,6 9,17 4,12" />
+                    </svg>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Quick Share */}
@@ -396,7 +473,21 @@ export default function SettingsModal({
           </button>
         </div>
 
-        <p className="settings-version">WishBucket v1.0.0 · @wishbucket_bot</p>
+        <div className="settings-footer">
+          <p className="settings-version">WishBucket v1.0.0</p>
+          <p className="settings-credits">
+            made by{" "}
+            <button
+              className="dev-link"
+              onClick={() => {
+                hapticFeedback.impact("light");
+                openTelegramLink("https://t.me/thatsfov1");
+              }}
+            >
+              @thatsfov1
+            </button>
+          </p>
+        </div>
       </div>
     </div>
   );

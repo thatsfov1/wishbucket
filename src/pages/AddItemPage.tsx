@@ -64,7 +64,9 @@ export default function AddItemPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { setLoading, addItem: addItemToStore } = useStore();
-  const [selectedCurrency, setSelectedCurrency] = useState<string>("USD");
+  const [selectedCurrency, setSelectedCurrency] = useState<string>(() => {
+    return localStorage.getItem("defaultCurrency") || "USD";
+  });
   const [showCurrencySelector, setShowCurrencySelector] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
