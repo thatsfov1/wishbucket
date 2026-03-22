@@ -53,46 +53,36 @@ function App() {
           throw new Error("User not authenticated");
         }
 
-        // Get user profile (creates new user if doesn't exist)
-        const profile = await getUserProfile();
+        // Load all data in parallel for faster startup
+        const [profile, wishlists, reminders] = await Promise.all([
+          getUserProfile(),
+          getWishlists(),
+          getBirthdayReminders(),
+        ]);
+
         setUserProfile(profile);
+        setWishlists(wishlists);
+        setBirthdayReminders(reminders);
 
-        // Check for referral code in start_param
+        // Check for referral code in start_param (non-blocking)
         const referralCode = getReferralCodeFromStart();
-        console.log("🔍 Start param referral code:", referralCode);
-
         if (referralCode) {
           console.log("📝 Attempting to apply referral code:", referralCode);
-          try {
-            // Check if this is a new user (no referrals used before)
-            const result = await applyReferral(referralCode);
-            console.log("✅ Referral result:", result);
-            if (result.success) {
-              console.log(
-                `🎉 Referral applied! Earned ${result.bonus} bonus points`,
-              );
-              // Refresh profile to get updated bonus
-              const updatedProfile = await getUserProfile();
-              setUserProfile(updatedProfile);
-            }
-          } catch (e: any) {
-            // Log the actual error
-            console.error("❌ Referral error:", e?.message || e);
-          }
+          applyReferral(referralCode)
+            .then((result) => {
+              if (result.success) {
+                console.log(`🎉 Referral applied! Earned ${result.bonus} bonus points`);
+                getUserProfile().then(setUserProfile);
+              }
+            })
+            .catch((e) => console.error("❌ Referral error:", e?.message || e));
         }
 
         // Check for wishlist deeplink
         const wishlistId = getWishlistIdFromStart();
         if (wishlistId) {
-          // Navigate to wishlist (handled by router)
           window.location.hash = `/wishlists/${wishlistId}`;
         }
-
-        const wishlists = await getWishlists();
-        setWishlists(wishlists);
-
-        const reminders = await getBirthdayReminders();
-        setBirthdayReminders(reminders);
       } catch (error) {
         console.error("Error loading data:", error);
         setError(

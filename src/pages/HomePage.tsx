@@ -83,36 +83,40 @@ export default function HomePage() {
         setLoading(true);
         setError(null);
 
-        const [wishlistsData, notifCount, friendsData, followersData] =
+        // Load all data in parallel for faster loading
+        const [wishlistsData, notifCount, friendsData, followersData, remoteTasks] =
           await Promise.all([
             getWishlists(),
             getUnreadNotificationsCount(),
             getFriends(),
             getFollowers(),
+            getCompletedSocialTasks(),
           ]);
 
+        // Merge local and remote tasks
         const localTasks = loadCompletedTasks(telegramUser?.id);
-        const remoteTasks = await getCompletedSocialTasks();
         const mergedTasks = Array.from(
           new Set([...remoteTasks, ...localTasks]),
         );
 
         setCompletedTaskIds(mergedTasks);
         saveCompletedTasks(mergedTasks, telegramUser?.id);
-
-        if (mergedTasks.length !== remoteTasks.length) {
-          const syncedTasks = await syncCompletedSocialTasks(mergedTasks);
-          setCompletedTaskIds(syncedTasks);
-          saveCompletedTasks(syncedTasks, telegramUser?.id);
-        }
-
         setWishlists(wishlistsData);
         setUnreadNotificationsCount(notifCount);
         setFriendsCount(friendsData.length);
         setFollowersCount(followersData.length);
+
+        // Sync tasks in background (non-blocking)
+        if (mergedTasks.length !== remoteTasks.length) {
+          syncCompletedSocialTasks(mergedTasks)
+            .then((syncedTasks) => {
+              setCompletedTaskIds(syncedTasks);
+              saveCompletedTasks(syncedTasks, telegramUser?.id);
+            })
+            .catch(console.error);
+        }
       } catch (err) {
         console.error("Error loading data:", err);
-        // Don't show error for unauthenticated users - just show empty state
         if (
           err instanceof Error &&
           !err.message.includes("not authenticated")
@@ -125,7 +129,6 @@ export default function HomePage() {
       }
     };
 
-    // Only load if we have a telegram user
     if (telegramUser) {
       loadData();
     }

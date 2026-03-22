@@ -200,20 +200,21 @@ export default function SettingsModal({
         </div>
 
         {/* Default Currency */}
-        <div className="settings-section currency-section">
-          <h4>Default Currency</h4>
+        <div className="currency-setting">
           <button
-            className="currency-selector-btn"
+            className="currency-setting-header"
             onClick={() => {
               setShowCurrencyPicker(!showCurrencyPicker);
               hapticFeedback.selection();
             }}
           >
-            <div className="currency-display">
-              <span className="currency-symbol">
-                {CURRENCIES.find(c => c.code === defaultCurrency)?.symbol}
-              </span>
-              <span className="currency-name">
+            <div className="currency-icon-wrapper">
+              <span>💱</span>
+            </div>
+            <div className="currency-setting-info">
+              <span className="currency-setting-label">Default Currency</span>
+              <span className="currency-setting-value">
+                {CURRENCIES.find(c => c.code === defaultCurrency)?.symbol}{" "}
                 {CURRENCIES.find(c => c.code === defaultCurrency)?.name}
               </span>
             </div>
@@ -230,21 +231,15 @@ export default function SettingsModal({
             </svg>
           </button>
           {showCurrencyPicker && (
-            <div className="currency-options">
+            <div className="currency-chips">
               {CURRENCIES.map((currency) => (
                 <button
                   key={currency.code}
-                  className={`currency-option ${defaultCurrency === currency.code ? "selected" : ""}`}
+                  className={`currency-chip ${defaultCurrency === currency.code ? "selected" : ""}`}
                   onClick={() => handleCurrencyChange(currency.code)}
                 >
-                  <span className="option-symbol">{currency.symbol}</span>
-                  <span className="option-name">{currency.name}</span>
-                  <span className="option-code">{currency.code}</span>
-                  {defaultCurrency === currency.code && (
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-                      <polyline points="20,6 9,17 4,12" />
-                    </svg>
-                  )}
+                  <span className="chip-symbol">{currency.symbol}</span>
+                  <span className="chip-code">{currency.code}</span>
                 </button>
               ))}
             </div>

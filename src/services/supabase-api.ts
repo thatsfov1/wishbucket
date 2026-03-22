@@ -260,20 +260,25 @@ export const getUserProfile = async (): Promise<UserProfile> => {
 
   const userId = telegramUser.id;
 
-  // Перевіряємо чи існує користувач
-  const { data: existingUser, error: fetchError } = await supabase
-    .from("users")
-    .select("*")
-    .eq("user_id", userId)
-    .single();
+  // Fetch user and friends in parallel
+  const [userResult, friendsResult] = await Promise.all([
+    supabase
+      .from("users")
+      .select("*")
+      .eq("user_id", userId)
+      .single(),
+    supabase
+      .from("friends")
+      .select("friend_id")
+      .eq("user_id", userId),
+  ]);
 
-  if (fetchError && fetchError.code !== "PGRST116") {
-    // PGRST116 = not found
-    throw new Error(`Failed to fetch user: ${fetchError.message}`);
+  if (userResult.error && userResult.error.code !== "PGRST116") {
+    throw new Error(`Failed to fetch user: ${userResult.error.message}`);
   }
 
-  // Якщо користувач не існує, створюємо нового
-  if (!existingUser) {
+  // If user doesn't exist, create new one
+  if (!userResult.data) {
     const referralCode = generateReferralCode();
     const { data: newUser, error: createError } = await supabase
       .from("users")
@@ -292,14 +297,8 @@ export const getUserProfile = async (): Promise<UserProfile> => {
     return mapUserToProfile(newUser, telegramUser);
   }
 
-  // Завантажуємо друзів
-  const { data: friends } = await supabase
-    .from("friends")
-    .select("friend_id")
-    .eq("user_id", userId);
-
-  const userProfile = mapUserToProfile(existingUser, telegramUser);
-  userProfile.friends = friends?.map((f) => f.friend_id) || [];
+  const userProfile = mapUserToProfile(userResult.data, telegramUser);
+  userProfile.friends = friendsResult.data?.map((f) => f.friend_id) || [];
 
   return userProfile;
 };
@@ -581,32 +580,33 @@ export const getFriends = async (): Promise<Friend[]> => {
     throw new Error("User not authenticated");
   }
 
-  // Get people I follow
-  const { data: following, error: followingError } = await supabase
-    .from("friends")
-    .select(
-      `
-      friend_id,
-      created_at,
-      friend:users!friends_friend_id_fkey (
-        user_id,
-        telegram_data
+  // Run both queries in parallel for faster loading
+  const [followingResult, followersResult] = await Promise.all([
+    supabase
+      .from("friends")
+      .select(
+        `
+        friend_id,
+        created_at,
+        friend:users!friends_friend_id_fkey (
+          user_id,
+          telegram_data
+        )
+      `,
       )
-    `,
-    )
-    .eq("user_id", userId);
+      .eq("user_id", userId),
+    supabase
+      .from("friends")
+      .select("user_id")
+      .eq("friend_id", userId),
+  ]);
 
-  if (followingError) {
-    throw new Error(`Failed to fetch friends: ${followingError.message}`);
+  if (followingResult.error) {
+    throw new Error(`Failed to fetch friends: ${followingResult.error.message}`);
   }
 
-  // Get people who follow me
-  const { data: followers } = await supabase
-    .from("friends")
-    .select("user_id")
-    .eq("friend_id", userId);
-
-  const followerIds = new Set(followers?.map((f) => f.user_id) || []);
+  const following = followingResult.data;
+  const followerIds = new Set(followersResult.data?.map((f) => f.user_id) || []);
 
   return (following || []).map((f) => {
     const telegramData =
@@ -636,32 +636,33 @@ export const getFollowers = async (): Promise<Friend[]> => {
     throw new Error("User not authenticated");
   }
 
-  // Get people who follow me
-  const { data: followers, error: followersError } = await supabase
-    .from("friends")
-    .select(
-      `
-      user_id,
-      created_at,
-      user:users!friends_user_id_fkey (
+  // Run both queries in parallel for faster loading
+  const [followersResult, followingResult] = await Promise.all([
+    supabase
+      .from("friends")
+      .select(
+        `
         user_id,
-        telegram_data
+        created_at,
+        user:users!friends_user_id_fkey (
+          user_id,
+          telegram_data
+        )
+      `,
       )
-    `,
-    )
-    .eq("friend_id", userId);
+      .eq("friend_id", userId),
+    supabase
+      .from("friends")
+      .select("friend_id")
+      .eq("user_id", userId),
+  ]);
 
-  if (followersError) {
-    throw new Error(`Failed to fetch followers: ${followersError.message}`);
+  if (followersResult.error) {
+    throw new Error(`Failed to fetch followers: ${followersResult.error.message}`);
   }
 
-  // Get people I follow
-  const { data: following } = await supabase
-    .from("friends")
-    .select("friend_id")
-    .eq("user_id", userId);
-
-  const followingIds = new Set(following?.map((f) => f.friend_id) || []);
+  const followers = followersResult.data;
+  const followingIds = new Set(followingResult.data?.map((f) => f.friend_id) || []);
 
   return (followers || []).map((f) => {
     const telegramData =
