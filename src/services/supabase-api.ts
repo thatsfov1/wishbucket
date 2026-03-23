@@ -98,6 +98,174 @@ const mapItem = (item: any): WishlistItem => {
 };
 
 // ============================================
+// OPTIMIZED HOME PAGE API (Fast loading)
+// ============================================
+
+export interface WishlistSummary {
+  id: string;
+  name: string;
+  description?: string;
+  imageUrl?: string;
+  eventDate?: string;
+  isPublic: boolean;
+  isDefault: boolean;
+  itemCount: number;
+  createdAt: string;
+}
+
+export interface HomePageData {
+  wishlists: WishlistSummary[];
+  friendsCount: number;
+  followersCount: number;
+  unreadNotifications: number;
+}
+
+/**
+ * Single optimized query for home page - gets all needed data in minimal requests
+ */
+export const getHomePageData = async (): Promise<HomePageData> => {
+  const userId = getCurrentUserId();
+  if (!userId) {
+    throw new Error("User not authenticated");
+  }
+
+  // Run all queries in parallel with minimal data
+  const [wishlistsResult, friendsCountResult, followersCountResult, notificationsResult] = 
+    await Promise.all([
+      // Get wishlists with item count only (no items data)
+      supabase
+        .from("wishlists")
+        .select(`
+          id,
+          name,
+          description,
+          image_url,
+          event_date,
+          is_public,
+          is_default,
+          created_at,
+          wishlist_items(count)
+        `)
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false }),
+      
+      // Just count friends (people I follow)
+      supabase
+        .from("friends")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", userId),
+      
+      // Just count followers (people who follow me)
+      supabase
+        .from("friends")
+        .select("*", { count: "exact", head: true })
+        .eq("friend_id", userId),
+      
+      // Just count unread notifications
+      supabase
+        .from("notifications")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", userId)
+        .eq("is_read", false),
+    ]);
+
+  if (wishlistsResult.error) {
+    throw new Error(`Failed to fetch data: ${wishlistsResult.error.message}`);
+  }
+
+  const wishlists: WishlistSummary[] = (wishlistsResult.data || []).map((w: any) => ({
+    id: w.id,
+    name: w.name,
+    description: w.description || undefined,
+    imageUrl: w.image_url || undefined,
+    eventDate: w.event_date || undefined,
+    isPublic: w.is_public,
+    isDefault: w.is_default,
+    itemCount: w.wishlist_items?.[0]?.count || 0,
+    createdAt: w.created_at,
+  }));
+
+  return {
+    wishlists,
+    friendsCount: friendsCountResult.count || 0,
+    followersCount: followersCountResult.count || 0,
+    unreadNotifications: notificationsResult.count || 0,
+  };
+};
+
+/**
+ * Get wishlists with only summary data (no items)
+ */
+export const getWishlistsSummary = async (): Promise<WishlistSummary[]> => {
+  const userId = getCurrentUserId();
+  if (!userId) {
+    throw new Error("User not authenticated");
+  }
+
+  const { data, error } = await supabase
+    .from("wishlists")
+    .select(`
+      id,
+      name,
+      description,
+      image_url,
+      event_date,
+      is_public,
+      is_default,
+      created_at,
+      wishlist_items(count)
+    `)
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    throw new Error(`Failed to fetch wishlists: ${error.message}`);
+  }
+
+  return (data || []).map((w: any) => ({
+    id: w.id,
+    name: w.name,
+    description: w.description || undefined,
+    imageUrl: w.image_url || undefined,
+    eventDate: w.event_date || undefined,
+    isPublic: w.is_public,
+    isDefault: w.is_default,
+    itemCount: w.wishlist_items?.[0]?.count || 0,
+    createdAt: w.created_at,
+  }));
+};
+
+/**
+ * Get just the count of friends (fast)
+ */
+export const getFriendsCount = async (): Promise<number> => {
+  const userId = getCurrentUserId();
+  if (!userId) return 0;
+
+  const { count } = await supabase
+    .from("friends")
+    .select("*", { count: "exact", head: true })
+    .eq("user_id", userId);
+
+  return count || 0;
+};
+
+/**
+ * Get just the count of followers (fast)
+ */
+export const getFollowersCount = async (): Promise<number> => {
+  const userId = getCurrentUserId();
+  if (!userId) return 0;
+
+  const { count } = await supabase
+    .from("friends")
+    .select("*", { count: "exact", head: true })
+    .eq("friend_id", userId);
+
+  return count || 0;
+};
+
+// ============================================
 // URL Scraping API
 // ============================================
 

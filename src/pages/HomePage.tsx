@@ -4,13 +4,11 @@ import { useStore } from "../store/useStore";
 import { getTelegramUser, hapticFeedback } from "../utils/telegram";
 import {
   createWishlist,
-  getWishlists,
-  getUnreadNotificationsCount,
-  getFriends,
-  getFollowers,
+  getHomePageData,
   getCompletedSocialTasks,
   markSocialTaskCompleted,
   syncCompletedSocialTasks,
+  WishlistSummary,
 } from "../services/supabase-api";
 import BottomNavBar from "../components/BottomNavBar";
 import SettingsModal from "../components/SettingsModal";
@@ -45,10 +43,8 @@ function saveCompletedTasks(ids: string[], userId?: number): void {
 export default function HomePage() {
   const navigate = useNavigate();
   const {
-    wishlists,
     userProfile,
     addWishlist,
-    setWishlists,
     setLoading,
     isLoading,
     setUnreadNotificationsCount,
@@ -62,6 +58,8 @@ export default function HomePage() {
   const [followersCount, setFollowersCount] = useState(0);
   const [completedTaskIds, setCompletedTaskIds] = useState<string[]>([]);
   const [isLevelLoading, setIsLevelLoading] = useState(true);
+  // Use local state for fast wishlist summaries (no items loaded)
+  const [wishlistSummaries, setWishlistSummaries] = useState<WishlistSummary[]>([]);
 
   const firstName = telegramUser?.first_name || "Guest";
   const photoUrl = telegramUser?.photo_url;
@@ -76,51 +74,41 @@ export default function HomePage() {
     ? getWishlistLimit(referrals, completedTaskIds)
     : LEVELS[0].wishlistLimit;
 
-  // Load data on mount
+  // Load data on mount - OPTIMIZED: single query for all home page data
   useEffect(() => {
     const loadData = async () => {
       try {
         setLoading(true);
         setError(null);
 
-        // Load all data in parallel for faster loading
-        const [wishlistsData, notifCount, friendsData, followersData, remoteTasks] =
-          await Promise.all([
-            getWishlists(),
-            getUnreadNotificationsCount(),
-            getFriends(),
-            getFollowers(),
-            getCompletedSocialTasks(),
-          ]);
-
-        // Merge local and remote tasks
+        // Use local storage for completed tasks first (instant)
         const localTasks = loadCompletedTasks(telegramUser?.id);
-        const mergedTasks = Array.from(
-          new Set([...remoteTasks, ...localTasks]),
-        );
+        setCompletedTaskIds(localTasks);
 
-        setCompletedTaskIds(mergedTasks);
-        saveCompletedTasks(mergedTasks, telegramUser?.id);
-        setWishlists(wishlistsData);
-        setUnreadNotificationsCount(notifCount);
-        setFriendsCount(friendsData.length);
-        setFollowersCount(followersData.length);
+        // Single optimized query for all home page data
+        const homeData = await getHomePageData();
 
-        // Sync tasks in background (non-blocking)
-        if (mergedTasks.length !== remoteTasks.length) {
-          syncCompletedSocialTasks(mergedTasks)
-            .then((syncedTasks) => {
-              setCompletedTaskIds(syncedTasks);
-              saveCompletedTasks(syncedTasks, telegramUser?.id);
-            })
-            .catch(console.error);
-        }
+        setWishlistSummaries(homeData.wishlists);
+        setUnreadNotificationsCount(homeData.unreadNotifications);
+        setFriendsCount(homeData.friendsCount);
+        setFollowersCount(homeData.followersCount);
+
+        // Sync tasks in background (non-blocking, low priority)
+        getCompletedSocialTasks()
+          .then((remoteTasks) => {
+            const mergedTasks = Array.from(new Set([...remoteTasks, ...localTasks]));
+            if (mergedTasks.length !== localTasks.length) {
+              setCompletedTaskIds(mergedTasks);
+              saveCompletedTasks(mergedTasks, telegramUser?.id);
+              if (mergedTasks.length !== remoteTasks.length) {
+                syncCompletedSocialTasks(mergedTasks).catch(console.error);
+              }
+            }
+          })
+          .catch(console.error);
       } catch (err) {
         console.error("Error loading data:", err);
-        if (
-          err instanceof Error &&
-          !err.message.includes("not authenticated")
-        ) {
+        if (err instanceof Error && !err.message.includes("not authenticated")) {
           setError(err.message);
         }
       } finally {
@@ -132,10 +120,10 @@ export default function HomePage() {
     if (telegramUser) {
       loadData();
     }
-  }, [telegramUser, setWishlists, setLoading, setUnreadNotificationsCount]);
+  }, [telegramUser, setLoading, setUnreadNotificationsCount]);
 
   const stats = {
-    wishlists: wishlists.length,
+    wishlists: wishlistSummaries.length,
     friends: friendsCount,
     followers: followersCount,
   };
@@ -152,7 +140,7 @@ export default function HomePage() {
     }
 
     // Enforce wishlist limit (-1 = unlimited)
-    if (wishlistLimit !== -1 && wishlists.length >= wishlistLimit) {
+    if (wishlistLimit !== -1 && wishlistSummaries.length >= wishlistLimit) {
       hapticFeedback.notification("warning");
       setLevelBoardOpen(true);
       return;
@@ -202,7 +190,6 @@ export default function HomePage() {
   }) => {
     try {
       setLoading(true);
-      // Pass all fields including imageUrl and eventDate
       const newWishlist = await createWishlist(
         {
           name: wishlistData.name,
@@ -210,11 +197,23 @@ export default function HomePage() {
           imageUrl: wishlistData.imageUrl,
           eventDate: wishlistData.eventDate,
           isPublic: wishlistData.isPublic,
-          isDefault: wishlists.length === 0,
+          isDefault: wishlistSummaries.length === 0,
           userId: telegramUser?.id || 0,
         },
         wishlistData.notifyFollowers,
       );
+      // Add to local summary state
+      setWishlistSummaries(prev => [{
+        id: newWishlist.id,
+        name: newWishlist.name,
+        description: newWishlist.description,
+        imageUrl: newWishlist.imageUrl,
+        eventDate: newWishlist.eventDate,
+        isPublic: newWishlist.isPublic,
+        isDefault: newWishlist.isDefault,
+        itemCount: 0,
+        createdAt: newWishlist.createdAt,
+      }, ...prev]);
       addWishlist(newWishlist);
       hapticFeedback.notification("success");
       navigate(`/wishlists/${newWishlist.id}`);
@@ -289,7 +288,7 @@ export default function HomePage() {
             <p>{error}</p>
             <button onClick={() => window.location.reload()}>Try Again</button>
           </div>
-        ) : wishlists.length === 0 ? (
+        ) : wishlistSummaries.length === 0 ? (
           <div
             className="create-wishlist-section animate-slide-up"
             style={{ animationDelay: "0.1s" }}
@@ -341,7 +340,7 @@ export default function HomePage() {
               </button>
             </div>
             <div className="wishlists-grid">
-              {wishlists.slice(0, 4).map((wishlist, index) => (
+              {wishlistSummaries.slice(0, 4).map((wishlist, index) => (
                 <div
                   key={wishlist.id}
                   className="wishlist-card animate-scale-in"
@@ -363,7 +362,7 @@ export default function HomePage() {
                     )}
                   </div>
                   <h3>{wishlist.name}</h3>
-                  <p>{wishlist.items.length} items</p>
+                  <p>{wishlist.itemCount} items</p>
                 </div>
               ))}
               <div

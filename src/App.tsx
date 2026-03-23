@@ -7,12 +7,7 @@ import {
   getWishlistIdFromStart,
 } from "./utils/telegram";
 import { useStore } from "./store/useStore";
-import {
-  getUserProfile,
-  getWishlists,
-  getBirthdayReminders,
-  applyReferral,
-} from "./services/supabase-api";
+import { getUserProfile, applyReferral } from "./services/supabase-api";
 import HomePage from "./pages/HomePage";
 import WishlistsPage from "./pages/WishlistsPage";
 import WishlistDetailPage from "./pages/WishlistDetailPage";
@@ -30,13 +25,7 @@ import HintsPage from "./pages/HintsPage";
 import EditWishlistPage from "./pages/EditWishlistPage";
 
 function App() {
-  const {
-    setUserProfile,
-    setWishlists,
-    setBirthdayReminders,
-    setLoading,
-    setError,
-  } = useStore();
+  const { setUserProfile } = useStore();
 
   useEffect(() => {
     const tg = initTelegram();
@@ -45,62 +34,40 @@ function App() {
       return;
     }
 
-    const loadData = async () => {
+    const initApp = async () => {
+      const user = getTelegramUser();
+      if (!user) return;
+
       try {
-        setLoading(true);
-        const user = getTelegramUser();
-        if (!user) {
-          throw new Error("User not authenticated");
-        }
-
-        // Load all data in parallel for faster startup
-        const [profile, wishlists, reminders] = await Promise.all([
-          getUserProfile(),
-          getWishlists(),
-          getBirthdayReminders(),
-        ]);
-
+        // Only load user profile on app init (lightweight)
+        // HomePage handles its own optimized data loading
+        const profile = await getUserProfile();
         setUserProfile(profile);
-        setWishlists(wishlists);
-        setBirthdayReminders(reminders);
 
-        // Check for referral code in start_param (non-blocking)
+        // Handle referral code in background (non-blocking)
         const referralCode = getReferralCodeFromStart();
         if (referralCode) {
-          console.log("📝 Attempting to apply referral code:", referralCode);
           applyReferral(referralCode)
             .then((result) => {
               if (result.success) {
-                console.log(`🎉 Referral applied! Earned ${result.bonus} bonus points`);
                 getUserProfile().then(setUserProfile);
               }
             })
-            .catch((e) => console.error("❌ Referral error:", e?.message || e));
+            .catch(console.error);
         }
 
-        // Check for wishlist deeplink
+        // Handle wishlist deeplink
         const wishlistId = getWishlistIdFromStart();
         if (wishlistId) {
           window.location.hash = `/wishlists/${wishlistId}`;
         }
       } catch (error) {
-        console.error("Error loading data:", error);
-        setError(
-          error instanceof Error ? error.message : "Failed to load data",
-        );
-      } finally {
-        setLoading(false);
+        console.error("Error initializing app:", error);
       }
     };
 
-    loadData();
-  }, [
-    setUserProfile,
-    setWishlists,
-    setBirthdayReminders,
-    setLoading,
-    setError,
-  ]);
+    initApp();
+  }, [setUserProfile]);
 
   return (
     <BrowserRouter>
