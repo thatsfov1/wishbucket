@@ -132,7 +132,7 @@ export const getHomePageData = async (): Promise<HomePageData> => {
   // Run all queries in parallel with minimal data
   const [wishlistsResult, friendsCountResult, followersCountResult, notificationsResult] = 
     await Promise.all([
-      // Get wishlists with item count only (no items data)
+      // Get wishlists (without item count - we'll count separately)
       supabase
         .from("wishlists")
         .select(`
@@ -143,8 +143,7 @@ export const getHomePageData = async (): Promise<HomePageData> => {
           event_date,
           is_public,
           is_default,
-          created_at,
-          wishlist_items(count)
+          created_at
         `)
         .eq("user_id", userId)
         .order("created_at", { ascending: false }),
@@ -173,6 +172,24 @@ export const getHomePageData = async (): Promise<HomePageData> => {
     throw new Error(`Failed to fetch data: ${wishlistsResult.error.message}`);
   }
 
+  const wishlistIds = (wishlistsResult.data || []).map((w: any) => w.id);
+
+  // Get item counts excluding purchased items (received) - single efficient query
+  const itemCountMap = new Map<string, number>();
+  if (wishlistIds.length > 0) {
+    const { data: items } = await supabase
+      .from("wishlist_items")
+      .select("wishlist_id, status")
+      .in("wishlist_id", wishlistIds);
+
+    // Count only non-purchased items per wishlist
+    items?.forEach((item) => {
+      if (item.status !== "purchased") {
+        itemCountMap.set(item.wishlist_id, (itemCountMap.get(item.wishlist_id) || 0) + 1);
+      }
+    });
+  }
+
   const wishlists: WishlistSummary[] = (wishlistsResult.data || []).map((w: any) => ({
     id: w.id,
     name: w.name,
@@ -181,7 +198,7 @@ export const getHomePageData = async (): Promise<HomePageData> => {
     eventDate: w.event_date || undefined,
     isPublic: w.is_public,
     isDefault: w.is_default,
-    itemCount: w.wishlist_items?.[0]?.count || 0,
+    itemCount: itemCountMap.get(w.id) || 0,
     createdAt: w.created_at,
   }));
 
@@ -212,14 +229,30 @@ export const getWishlistsSummary = async (): Promise<WishlistSummary[]> => {
       event_date,
       is_public,
       is_default,
-      created_at,
-      wishlist_items(count)
+      created_at
     `)
     .eq("user_id", userId)
     .order("created_at", { ascending: false });
 
   if (error) {
     throw new Error(`Failed to fetch wishlists: ${error.message}`);
+  }
+
+  const wishlistIds = (data || []).map((w: any) => w.id);
+
+  // Get item counts excluding purchased items
+  const itemCountMap = new Map<string, number>();
+  if (wishlistIds.length > 0) {
+    const { data: items } = await supabase
+      .from("wishlist_items")
+      .select("wishlist_id, status")
+      .in("wishlist_id", wishlistIds);
+
+    items?.forEach((item) => {
+      if (item.status !== "purchased") {
+        itemCountMap.set(item.wishlist_id, (itemCountMap.get(item.wishlist_id) || 0) + 1);
+      }
+    });
   }
 
   return (data || []).map((w: any) => ({
@@ -230,7 +263,7 @@ export const getWishlistsSummary = async (): Promise<WishlistSummary[]> => {
     eventDate: w.event_date || undefined,
     isPublic: w.is_public,
     isDefault: w.is_default,
-    itemCount: w.wishlist_items?.[0]?.count || 0,
+    itemCount: itemCountMap.get(w.id) || 0,
     createdAt: w.created_at,
   }));
 };
@@ -1444,6 +1477,90 @@ export const updateItem = async (
   }
 
   return mapItem(data);
+};
+
+/**
+ * Mark item as received and remove duplicates from other wishlists
+ * - Current item: marked as "purchased" (received)
+ * - Same item in other wishlists: deleted
+ */
+export const markItemAsReceivedAcrossWishlists = async (
+  itemId: string,
+): Promise<void> => {
+  const userId = getCurrentUserId();
+  if (!userId) {
+    throw new Error("User not authenticated");
+  }
+
+  // Get full item details for matching
+  const { data: item, error: itemError } = await supabase
+    .from("wishlist_items")
+    .select("original_url, wishlist_id, name, price, image_url")
+    .eq("id", itemId)
+    .single();
+
+  if (itemError || !item) {
+    throw new Error(`Failed to get item: ${itemError?.message}`);
+  }
+
+  // Mark current item as received
+  await updateItem(itemId, { status: "purchased" });
+
+  // Get all user's wishlist IDs
+  const { data: wishlists } = await supabase
+    .from("wishlists")
+    .select("id")
+    .eq("user_id", userId);
+
+  if (!wishlists || wishlists.length === 0) {
+    return;
+  }
+
+  // Get other wishlist IDs (exclude the current one)
+  const otherWishlistIds = wishlists
+    .map((w) => w.id)
+    .filter((id) => id !== item.wishlist_id);
+
+  if (otherWishlistIds.length === 0) {
+    return;
+  }
+
+  // Try to delete duplicates - use original_url if available, otherwise match by name + price
+  if (item.original_url && item.original_url.trim() !== "") {
+    // Match by URL
+    const { error: deleteError } = await supabase
+      .from("wishlist_items")
+      .delete()
+      .eq("original_url", item.original_url)
+      .in("wishlist_id", otherWishlistIds);
+
+    if (deleteError) {
+      console.error("Failed to delete duplicate items by URL:", deleteError.message);
+    }
+  } else {
+    // No URL - match by name + price + image (items added together have same values)
+    let query = supabase
+      .from("wishlist_items")
+      .delete()
+      .eq("name", item.name)
+      .in("wishlist_id", otherWishlistIds);
+
+    // Add price match if price exists
+    if (item.price !== null) {
+      query = query.eq("price", item.price);
+    }
+
+    // Add image match if image exists
+    if (item.image_url) {
+      query = query.eq("image_url", item.image_url);
+    }
+
+    const { error: deleteError } = await query;
+
+    if (deleteError) {
+      console.error("Failed to delete duplicate items by name:", deleteError.message);
+    }
+  }
 };
 
 /**

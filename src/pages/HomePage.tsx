@@ -45,6 +45,7 @@ export default function HomePage() {
   const {
     userProfile,
     addWishlist,
+    setWishlists,
     setLoading,
     isLoading,
     setUnreadNotificationsCount,
@@ -93,6 +94,24 @@ export default function HomePage() {
         setFriendsCount(homeData.friendsCount);
         setFollowersCount(homeData.followersCount);
 
+        // Also populate store wishlists for AddItemModal compatibility
+        const userId = telegramUser?.id || 0;
+        setWishlists(
+          homeData.wishlists.map((s) => ({
+            id: s.id,
+            userId,
+            name: s.name,
+            description: s.description,
+            imageUrl: s.imageUrl,
+            eventDate: s.eventDate,
+            isPublic: s.isPublic,
+            isDefault: s.isDefault,
+            createdAt: s.createdAt,
+            updatedAt: s.createdAt,
+            items: [],
+          }))
+        );
+
         // Sync tasks in background (non-blocking, low priority)
         getCompletedSocialTasks()
           .then((remoteTasks) => {
@@ -120,7 +139,7 @@ export default function HomePage() {
     if (telegramUser) {
       loadData();
     }
-  }, [telegramUser, setLoading, setUnreadNotificationsCount]);
+  }, [telegramUser, setLoading, setUnreadNotificationsCount, setWishlists]);
 
   const stats = {
     wishlists: wishlistSummaries.length,

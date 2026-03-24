@@ -183,7 +183,7 @@ export default function FriendProfilePage() {
     return null;
   };
 
-  const totalItems = wishlists.reduce((sum, w) => sum + w.items.length, 0);
+  const totalItems = wishlists.reduce((sum, w) => sum + w.items.filter(i => i.status !== 'purchased').length, 0);
 
   if (isLoading) {
     return (
@@ -321,7 +321,7 @@ export default function FriendProfilePage() {
                 }}
               >
                 {wishlist.isDefault ? "⭐" : "📝"} {wishlist.name}
-                <span className="tab-count">{wishlist.items.length}</span>
+                <span className="tab-count">{wishlist.items.filter(i => i.status !== 'purchased').length}</span>
               </button>
             ))}
           </div>

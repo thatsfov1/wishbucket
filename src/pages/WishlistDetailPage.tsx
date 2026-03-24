@@ -7,7 +7,7 @@ import {
   getShareLink,
   addItem,
   deleteItem,
-  updateItem,
+  markItemAsReceivedAcrossWishlists,
 } from "../services/supabase-api";
 import {
   openTelegramLink,
@@ -170,8 +170,8 @@ export default function WishlistDetailPage() {
       const reason = DELETE_REASONS.find((r) => r.id === reasonId);
 
       if (reason?.action === "mark_received") {
-        // Mark as purchased/received instead of deleting
-        await updateItem(deleteItemModal.itemId, { status: "purchased" });
+        // Mark as purchased/received in all wishlists with the same item
+        await markItemAsReceivedAcrossWishlists(deleteItemModal.itemId);
         hapticFeedback.notification("success");
       } else {
         // Actually delete the item
@@ -430,7 +430,7 @@ export default function WishlistDetailPage() {
           </button>
         </div>
 
-        {currentWishlist.items.length === 0 ? (
+        {currentWishlist.items.filter((i) => i.status !== "purchased").length === 0 ? (
           <div className="empty-items">
             <div className="empty-emoji">🎁</div>
             <h3>No items yet</h3>

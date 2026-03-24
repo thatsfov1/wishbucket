@@ -187,8 +187,8 @@ export default function WishlistsPage() {
                     )}
                   </div>
                   <p className="wishlist-meta">
-                    {wishlist.items.length} item
-                    {wishlist.items.length !== 1 ? "s" : ""}
+                    {wishlist.items.filter(i => i.status !== 'purchased').length} item
+                    {wishlist.items.filter(i => i.status !== 'purchased').length !== 1 ? "s" : ""}
                     {wishlist.description &&
                       ` · ${wishlist.description.slice(0, 30)}${wishlist.description.length > 30 ? "..." : ""}`}
                   </p>
