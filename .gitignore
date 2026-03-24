@@ -32,3 +32,5 @@ dist-ssr
 # Supabase
 .supabase
 
+BACKEND_API.md
+DATABASE_SCHEMA.md
