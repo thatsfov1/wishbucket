@@ -757,15 +757,6 @@
   color: var(--sage-dark);
 }
 
-.detail-priority {
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--text-muted);
-  padding: 6px 12px;
-  background: var(--bg-tertiary);
-  border-radius: 8px;
-}
-
 .detail-link-btn {
   display: block;
   width: 100%;

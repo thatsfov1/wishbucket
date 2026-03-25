@@ -161,28 +161,46 @@ export default function WishlistDetailPage() {
   };
 
   const handleDeleteItem = async (reasonId: string) => {
-    if (!deleteItemModal.itemId || !id) return;
+    if (!deleteItemModal.itemId || !id || !currentWishlist) return;
 
+    const reason = DELETE_REASONS.find((r) => r.id === reasonId);
+    const itemId = deleteItemModal.itemId;
+
+    // Optimistic UI update - immediately update the UI
+    hapticFeedback.notification("success");
+    
+    if (reason?.action === "mark_received") {
+      // Optimistically mark as received
+      setCurrentWishlist({
+        ...currentWishlist,
+        items: currentWishlist.items.map((item) =>
+          item.id === itemId ? { ...item, status: "purchased" as const } : item
+        ),
+      });
+    } else {
+      // Optimistically remove from UI
+      setCurrentWishlist({
+        ...currentWishlist,
+        items: currentWishlist.items.filter((item) => item.id !== itemId),
+      });
+    }
+
+    // Close modal immediately
+    setDeleteItemModal({ isOpen: false, itemId: null, itemName: "" });
+
+    // Perform actual API call in background
     try {
-      const reason = DELETE_REASONS.find((r) => r.id === reasonId);
-
       if (reason?.action === "mark_received") {
-        // Mark as purchased/received in all wishlists with the same item
-        await markItemAsReceivedAcrossWishlists(deleteItemModal.itemId);
-        hapticFeedback.notification("success");
+        await markItemAsReceivedAcrossWishlists(itemId);
       } else {
-        // Actually delete the item
-        await deleteItem(deleteItemModal.itemId);
-        hapticFeedback.notification("success");
+        await deleteItem(itemId);
       }
-
-      // Reload wishlist to update items
-      const wishlist = await getWishlist(id);
-      setCurrentWishlist(wishlist);
-      setDeleteItemModal({ isOpen: false, itemId: null, itemName: "" });
     } catch (error) {
       console.error("Error updating item:", error);
       hapticFeedback.notification("error");
+      // Reload to restore correct state on error
+      const wishlist = await getWishlist(id);
+      setCurrentWishlist(wishlist);
     }
   };
 
@@ -547,9 +565,6 @@ export default function WishlistDetailPage() {
                   {selectedItem.status === "available" && "✓ Available"}
                   {selectedItem.status === "reserved" && "⏳ Reserved"}
                   {selectedItem.status === "purchased" && "🎁 Received"}
-                </span>
-                <span className="detail-priority priority-${selectedItem.priority}">
-                  Priority: {selectedItem.priority}
                 </span>
               </div>
 
