@@ -5,7 +5,7 @@ import {
   getWishlist,
   deleteWishlist,
   getShareLink,
-  addItem,
+  addItemToMultipleWishlists,
   deleteItem,
   markItemAsReceivedAcrossWishlists,
 } from "../services/supabase-api";
@@ -117,28 +117,25 @@ export default function WishlistDetailPage() {
         : { affiliateUrl: cleanUrl, hasAffiliate: false as const };
       const finalUrl = affiliateResult.affiliateUrl || cleanUrl;
 
-      // Add item to all selected wishlists with notifyFollowers flag
-      for (const wishlistId of itemData.wishlistIds) {
-        await addItem(
-          wishlistId,
-          {
-            wishlistId,
-            name: itemData.name,
-            description: itemData.description,
-            url: finalUrl,
-            originalUrl: cleanUrl,
-            affiliateUrl: affiliateResult.hasAffiliate
-              ? affiliateResult.affiliateUrl
-              : undefined,
-            imageUrl: itemData.imageUrl,
-            price: itemData.price,
-            currency: itemData.currency,
-            priority: "medium",
-            status: "available",
-          },
-          itemData.notifyFollowers,
-        );
-      }
+      // Add item to all selected wishlists with a single notification
+      await addItemToMultipleWishlists(
+        itemData.wishlistIds,
+        {
+          name: itemData.name,
+          description: itemData.description,
+          url: finalUrl,
+          originalUrl: cleanUrl,
+          affiliateUrl: affiliateResult.hasAffiliate
+            ? affiliateResult.affiliateUrl
+            : undefined,
+          imageUrl: itemData.imageUrl,
+          price: itemData.price,
+          currency: itemData.currency,
+          priority: "medium",
+          status: "available",
+        },
+        itemData.notifyFollowers,
+      );
       // Reload current wishlist if it was in the selected list
       if (id && itemData.wishlistIds.includes(id)) {
         const wishlist = await getWishlist(id);

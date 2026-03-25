@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { hapticFeedback } from "../utils/telegram";
 import AddItemModal from "./AddItemModal";
 import { useStore } from "../store/useStore";
-import { addItem, getWishlists } from "../services/supabase-api";
+import { addItemToMultipleWishlists, getWishlists } from "../services/supabase-api";
 import { generateAffiliateLink } from "../utils/affiliate";
 import "./BottomNavBar.css";
 import { GoHomeFill } from "react-icons/go";
@@ -92,28 +92,25 @@ export default function BottomNavBar() {
         : { affiliateUrl: cleanUrl, hasAffiliate: false as const };
       const finalUrl = affiliateResult.affiliateUrl || cleanUrl;
 
-      // Add item to all selected wishlists with notifyFollowers flag
-      for (const wishlistId of itemData.wishlistIds) {
-        await addItem(
-          wishlistId,
-          {
-            wishlistId,
-            name: itemData.name,
-            description: itemData.description,
-            url: finalUrl,
-            originalUrl: cleanUrl,
-            affiliateUrl: affiliateResult.hasAffiliate
-              ? affiliateResult.affiliateUrl
-              : undefined,
-            imageUrl: itemData.imageUrl,
-            price: itemData.price,
-            currency: itemData.currency,
-            priority: "medium",
-            status: "available",
-          },
-          itemData.notifyFollowers,
-        );
-      }
+      // Add item to all selected wishlists with a single notification
+      await addItemToMultipleWishlists(
+        itemData.wishlistIds,
+        {
+          name: itemData.name,
+          description: itemData.description,
+          url: finalUrl,
+          originalUrl: cleanUrl,
+          affiliateUrl: affiliateResult.hasAffiliate
+            ? affiliateResult.affiliateUrl
+            : undefined,
+          imageUrl: itemData.imageUrl,
+          price: itemData.price,
+          currency: itemData.currency,
+          priority: "medium",
+          status: "available",
+        },
+        itemData.notifyFollowers,
+      );
       // Refresh wishlists
       const updated = await getWishlists();
       setWishlists(updated);

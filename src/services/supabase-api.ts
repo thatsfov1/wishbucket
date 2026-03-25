@@ -1441,6 +1441,68 @@ export const addItem = async (
 };
 
 /**
+ * Add item to multiple wishlists with a single combined notification
+ */
+export const addItemToMultipleWishlists = async (
+  wishlistIds: string[],
+  item: Omit<WishlistItem, "id" | "createdAt" | "updatedAt" | "wishlistId">,
+  notifyFollowersFlag = true,
+): Promise<WishlistItem[]> => {
+  const userId = getCurrentUserId();
+  const addedItems: WishlistItem[] = [];
+
+  // Add item to each wishlist without sending notifications
+  for (const wishlistId of wishlistIds) {
+    const result = await addItem(
+      wishlistId,
+      { ...item, wishlistId },
+      false, // Don't notify - we'll send one combined notification
+    );
+    addedItems.push(result);
+  }
+
+  // Send a single combined notification for all public wishlists
+  if (notifyFollowersFlag && userId && wishlistIds.length > 0) {
+    try {
+      // Get names of all public wishlists
+      const { data: wishlists } = await supabase
+        .from("wishlists")
+        .select("id, name, is_public")
+        .in("id", wishlistIds);
+
+      const publicWishlists = wishlists?.filter((w) => w.is_public) || [];
+
+      if (publicWishlists.length > 0) {
+        const telegramUser = getTelegramUser();
+        const userName = telegramUser?.first_name || "Someone";
+
+        let message: string;
+        if (publicWishlists.length === 1) {
+          message = `${userName} added "${item.name}" to their wishlist "${publicWishlists[0].name}"`;
+        } else if (publicWishlists.length === 2) {
+          message = `${userName} added "${item.name}" to wishlists "${publicWishlists[0].name}" and "${publicWishlists[1].name}"`;
+        } else {
+          const lastWishlist = publicWishlists[publicWishlists.length - 1];
+          const otherWishlists = publicWishlists.slice(0, -1).map((w) => `"${w.name}"`).join(", ");
+          message = `${userName} added "${item.name}" to wishlists ${otherWishlists}, and "${lastWishlist.name}"`;
+        }
+
+        notifyFollowers(
+          "friend_added_item",
+          "✨ New Item Added!",
+          message,
+          { wishlistIds: publicWishlists.map((w) => w.id), userId },
+        );
+      }
+    } catch (e) {
+      console.error("Failed to notify followers:", e);
+    }
+  }
+
+  return addedItems;
+};
+
+/**
  * Оновлює item
  */
 export const updateItem = async (
