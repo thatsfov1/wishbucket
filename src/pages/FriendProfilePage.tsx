@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
-  getUserById,
-  getUserPublicWishlists,
+  getFriendProfileData,
   addFriend,
   removeFriend,
   reserveItem,
@@ -41,10 +40,8 @@ export default function FriendProfilePage() {
       setIsLoading(true);
       const targetUserId = parseInt(userId!);
 
-      const [userData, wishlistsData] = await Promise.all([
-        getUserById(targetUserId),
-        getUserPublicWishlists(targetUserId),
-      ]);
+      // Single optimized call for all friend profile data
+      const { user: userData, wishlists: wishlistsData } = await getFriendProfileData(targetUserId);
 
       setUser(userData);
       setWishlists(wishlistsData);

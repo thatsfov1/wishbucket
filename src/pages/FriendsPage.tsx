@@ -2,8 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useStore } from "../store/useStore";
 import {
-  getFriends,
-  getFollowers,
+  getFriendsPageData,
   searchUsers,
   addFriend,
   removeFriend,
@@ -45,13 +44,13 @@ export default function FriendsPage() {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [friendsData, followersData, statsData] = await Promise.all([
-        getFriends(),
-        getFollowers(),
+      // Single optimized call for friends data + referral stats in parallel
+      const [friendsData, statsData] = await Promise.all([
+        getFriendsPageData(),
         getReferralStats(),
       ]);
-      setFollowing(friendsData);
-      setFollowers(followersData);
+      setFollowing(friendsData.following);
+      setFollowers(friendsData.followers);
       setReferralStats(statsData);
     } catch (error) {
       console.error("Error loading data:", error);
