@@ -17,6 +17,25 @@ import { Friend, Wishlist, WishlistItem } from "../types";
 import BottomNavBar from "../components/BottomNavBar";
 import "./FriendProfilePage.css";
 
+// Format birthday for display (with or without year)
+function formatBirthday(birthday: string): string {
+  try {
+    const date = new Date(birthday);
+    const month = date.toLocaleDateString('en-US', { month: 'long' });
+    const day = date.getDate();
+    const year = date.getFullYear();
+    
+    // If year is 1900 or earlier, it's likely a placeholder (no year provided)
+    if (year <= 1900) {
+      return `${month} ${day}`;
+    }
+    
+    return `${month} ${day}, ${year}`;
+  } catch {
+    return birthday;
+  }
+}
+
 export default function FriendProfilePage() {
   const { userId } = useParams<{ userId: string }>();
   const navigate = useNavigate();
@@ -41,7 +60,8 @@ export default function FriendProfilePage() {
       const targetUserId = parseInt(userId!);
 
       // Single optimized call for all friend profile data
-      const { user: userData, wishlists: wishlistsData } = await getFriendProfileData(targetUserId);
+      const { user: userData, wishlists: wishlistsData } =
+        await getFriendProfileData(targetUserId);
 
       setUser(userData);
       setWishlists(wishlistsData);
@@ -180,7 +200,10 @@ export default function FriendProfilePage() {
     return null;
   };
 
-  const totalItems = wishlists.reduce((sum, w) => sum + w.items.filter(i => i.status !== 'purchased').length, 0);
+  const totalItems = wishlists.reduce(
+    (sum, w) => sum + w.items.filter((i) => i.status !== "purchased").length,
+    0,
+  );
 
   if (isLoading) {
     return (
@@ -269,6 +292,11 @@ export default function FriendProfilePage() {
           {user.firstName} {user.lastName || ""}
         </h2>
         {user.username && <p className="username">@{user.username}</p>}
+        {user.birthday && (
+          <p className="user-birthday">
+            🎂 {formatBirthday(user.birthday)}
+          </p>
+        )}
 
         <div className="user-stats">
           <div className="stat">
@@ -318,7 +346,12 @@ export default function FriendProfilePage() {
                 }}
               >
                 {wishlist.isDefault ? "⭐" : "📝"} {wishlist.name}
-                <span className="tab-count">{wishlist.items.filter(i => i.status !== 'purchased').length}</span>
+                <span className="tab-count">
+                  {
+                    wishlist.items.filter((i) => i.status !== "purchased")
+                      .length
+                  }
+                </span>
               </button>
             ))}
           </div>

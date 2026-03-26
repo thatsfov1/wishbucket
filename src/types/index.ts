@@ -114,6 +114,7 @@ export interface Friend {
   lastName?: string;
   username?: string;
   photoUrl?: string;
+  birthday?: string;
   isFollowing: boolean;
   isFollowedBy: boolean;
   addedAt: string;

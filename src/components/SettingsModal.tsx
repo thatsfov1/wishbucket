@@ -214,8 +214,8 @@ export default function SettingsModal({
             <div className="currency-setting-info">
               <span className="currency-setting-label">Default Currency</span>
               <span className="currency-setting-value">
-                {CURRENCIES.find(c => c.code === defaultCurrency)?.symbol}{" "}
-                {CURRENCIES.find(c => c.code === defaultCurrency)?.name}
+                {CURRENCIES.find((c) => c.code === defaultCurrency)?.symbol}{" "}
+                {CURRENCIES.find((c) => c.code === defaultCurrency)?.name}
               </span>
             </div>
             <svg

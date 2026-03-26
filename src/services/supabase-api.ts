@@ -130,40 +130,47 @@ export const getHomePageData = async (): Promise<HomePageData> => {
   }
 
   // Run ALL queries in parallel - including item statuses for all user's wishlists
-  const [wishlistsResult, itemsResult, friendsCountResult, followersCountResult, notificationsResult] = 
-    await Promise.all([
-      // Get wishlists
-      supabase
-        .from("wishlists")
-        .select(`id, name, description, image_url, event_date, is_public, is_default, created_at`)
-        .eq("user_id", userId)
-        .order("created_at", { ascending: false }),
-      
-      // Get ALL items for user's wishlists (via join) - only status needed for counting
-      supabase
-        .from("wishlist_items")
-        .select("wishlist_id, status, wishlists!inner(user_id)")
-        .eq("wishlists.user_id", userId),
-      
-      // Count friends
-      supabase
-        .from("friends")
-        .select("*", { count: "exact", head: true })
-        .eq("user_id", userId),
-      
-      // Count followers
-      supabase
-        .from("friends")
-        .select("*", { count: "exact", head: true })
-        .eq("friend_id", userId),
-      
-      // Count unread notifications
-      supabase
-        .from("notifications")
-        .select("*", { count: "exact", head: true })
-        .eq("user_id", userId)
-        .eq("is_read", false),
-    ]);
+  const [
+    wishlistsResult,
+    itemsResult,
+    friendsCountResult,
+    followersCountResult,
+    notificationsResult,
+  ] = await Promise.all([
+    // Get wishlists
+    supabase
+      .from("wishlists")
+      .select(
+        `id, name, description, image_url, event_date, is_public, is_default, created_at`,
+      )
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false }),
+
+    // Get ALL items for user's wishlists (via join) - only status needed for counting
+    supabase
+      .from("wishlist_items")
+      .select("wishlist_id, status, wishlists!inner(user_id)")
+      .eq("wishlists.user_id", userId),
+
+    // Count friends
+    supabase
+      .from("friends")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", userId),
+
+    // Count followers
+    supabase
+      .from("friends")
+      .select("*", { count: "exact", head: true })
+      .eq("friend_id", userId),
+
+    // Count unread notifications
+    supabase
+      .from("notifications")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .eq("is_read", false),
+  ]);
 
   if (wishlistsResult.error) {
     throw new Error(`Failed to fetch data: ${wishlistsResult.error.message}`);
@@ -173,21 +180,26 @@ export const getHomePageData = async (): Promise<HomePageData> => {
   const itemCountMap = new Map<string, number>();
   (itemsResult.data || []).forEach((item: any) => {
     if (item.status !== "purchased") {
-      itemCountMap.set(item.wishlist_id, (itemCountMap.get(item.wishlist_id) || 0) + 1);
+      itemCountMap.set(
+        item.wishlist_id,
+        (itemCountMap.get(item.wishlist_id) || 0) + 1,
+      );
     }
   });
 
-  const wishlists: WishlistSummary[] = (wishlistsResult.data || []).map((w: any) => ({
-    id: w.id,
-    name: w.name,
-    description: w.description || undefined,
-    imageUrl: w.image_url || undefined,
-    eventDate: w.event_date || undefined,
-    isPublic: w.is_public,
-    isDefault: w.is_default,
-    itemCount: itemCountMap.get(w.id) || 0,
-    createdAt: w.created_at,
-  }));
+  const wishlists: WishlistSummary[] = (wishlistsResult.data || []).map(
+    (w: any) => ({
+      id: w.id,
+      name: w.name,
+      description: w.description || undefined,
+      imageUrl: w.image_url || undefined,
+      eventDate: w.event_date || undefined,
+      isPublic: w.is_public,
+      isDefault: w.is_default,
+      itemCount: itemCountMap.get(w.id) || 0,
+      createdAt: w.created_at,
+    }),
+  );
 
   return {
     wishlists,
@@ -210,7 +222,9 @@ export const getWishlistsSummary = async (): Promise<WishlistSummary[]> => {
   const [wishlistsResult, itemsResult] = await Promise.all([
     supabase
       .from("wishlists")
-      .select(`id, name, description, image_url, event_date, is_public, is_default, created_at`)
+      .select(
+        `id, name, description, image_url, event_date, is_public, is_default, created_at`,
+      )
       .eq("user_id", userId)
       .order("created_at", { ascending: false }),
     supabase
@@ -220,14 +234,19 @@ export const getWishlistsSummary = async (): Promise<WishlistSummary[]> => {
   ]);
 
   if (wishlistsResult.error) {
-    throw new Error(`Failed to fetch wishlists: ${wishlistsResult.error.message}`);
+    throw new Error(
+      `Failed to fetch wishlists: ${wishlistsResult.error.message}`,
+    );
   }
 
   // Build item count map (excluding purchased items)
   const itemCountMap = new Map<string, number>();
   (itemsResult.data || []).forEach((item: any) => {
     if (item.status !== "purchased") {
-      itemCountMap.set(item.wishlist_id, (itemCountMap.get(item.wishlist_id) || 0) + 1);
+      itemCountMap.set(
+        item.wishlist_id,
+        (itemCountMap.get(item.wishlist_id) || 0) + 1,
+      );
     }
   });
 
@@ -439,15 +458,8 @@ export const getUserProfile = async (): Promise<UserProfile> => {
 
   // Fetch user and friends in parallel
   const [userResult, friendsResult] = await Promise.all([
-    supabase
-      .from("users")
-      .select("*")
-      .eq("user_id", userId)
-      .single(),
-    supabase
-      .from("friends")
-      .select("friend_id")
-      .eq("user_id", userId),
+    supabase.from("users").select("*").eq("user_id", userId).single(),
+    supabase.from("friends").select("friend_id").eq("user_id", userId),
   ]);
 
   if (userResult.error && userResult.error.code !== "PGRST116") {
@@ -766,38 +778,50 @@ export const getFriendsPageData = async (): Promise<FriendsPageData> => {
   const [followingResult, followersResult] = await Promise.all([
     supabase
       .from("friends")
-      .select(`
+      .select(
+        `
         friend_id,
         created_at,
         friend:users!friends_friend_id_fkey (
           user_id,
           telegram_data
         )
-      `)
+      `,
+      )
       .eq("user_id", userId),
     supabase
       .from("friends")
-      .select(`
+      .select(
+        `
         user_id,
         created_at,
         user:users!friends_user_id_fkey (
           user_id,
           telegram_data
         )
-      `)
+      `,
+      )
       .eq("friend_id", userId),
   ]);
 
   if (followingResult.error) {
-    throw new Error(`Failed to fetch friends: ${followingResult.error.message}`);
+    throw new Error(
+      `Failed to fetch friends: ${followingResult.error.message}`,
+    );
   }
   if (followersResult.error) {
-    throw new Error(`Failed to fetch followers: ${followersResult.error.message}`);
+    throw new Error(
+      `Failed to fetch followers: ${followersResult.error.message}`,
+    );
   }
 
   // Build sets for cross-referencing
-  const followingIds = new Set(followingResult.data?.map((f) => f.friend_id) || []);
-  const followerIds = new Set(followersResult.data?.map((f) => f.user_id) || []);
+  const followingIds = new Set(
+    followingResult.data?.map((f) => f.friend_id) || [],
+  );
+  const followerIds = new Set(
+    followersResult.data?.map((f) => f.user_id) || [],
+  );
 
   // Map following
   const following: Friend[] = (followingResult.data || []).map((f) => {
@@ -864,18 +888,19 @@ export const getFriends = async (): Promise<Friend[]> => {
       `,
       )
       .eq("user_id", userId),
-    supabase
-      .from("friends")
-      .select("user_id")
-      .eq("friend_id", userId),
+    supabase.from("friends").select("user_id").eq("friend_id", userId),
   ]);
 
   if (followingResult.error) {
-    throw new Error(`Failed to fetch friends: ${followingResult.error.message}`);
+    throw new Error(
+      `Failed to fetch friends: ${followingResult.error.message}`,
+    );
   }
 
   const following = followingResult.data;
-  const followerIds = new Set(followersResult.data?.map((f) => f.user_id) || []);
+  const followerIds = new Set(
+    followersResult.data?.map((f) => f.user_id) || [],
+  );
 
   return (following || []).map((f) => {
     const telegramData =
@@ -920,18 +945,19 @@ export const getFollowers = async (): Promise<Friend[]> => {
       `,
       )
       .eq("friend_id", userId),
-    supabase
-      .from("friends")
-      .select("friend_id")
-      .eq("user_id", userId),
+    supabase.from("friends").select("friend_id").eq("user_id", userId),
   ]);
 
   if (followersResult.error) {
-    throw new Error(`Failed to fetch followers: ${followersResult.error.message}`);
+    throw new Error(
+      `Failed to fetch followers: ${followersResult.error.message}`,
+    );
   }
 
   const followers = followersResult.data;
-  const followingIds = new Set(followingResult.data?.map((f) => f.friend_id) || []);
+  const followingIds = new Set(
+    followingResult.data?.map((f) => f.friend_id) || [],
+  );
 
   return (followers || []).map((f) => {
     const telegramData =
@@ -1148,31 +1174,32 @@ export const getFriendProfileData = async (
   }
 
   // All queries in parallel
-  const [userResult, followingResult, followerResult, wishlistsResult] = await Promise.all([
-    supabase
-      .from("users")
-      .select("user_id, telegram_data")
-      .eq("user_id", targetUserId)
-      .single(),
-    supabase
-      .from("friends")
-      .select("friend_id")
-      .eq("user_id", userId)
-      .eq("friend_id", targetUserId)
-      .maybeSingle(),
-    supabase
-      .from("friends")
-      .select("user_id")
-      .eq("user_id", targetUserId)
-      .eq("friend_id", userId)
-      .maybeSingle(),
-    supabase
-      .from("wishlists")
-      .select(`*, wishlist_items (*)`)
-      .eq("user_id", targetUserId)
-      .eq("is_public", true)
-      .order("created_at", { ascending: false }),
-  ]);
+  const [userResult, followingResult, followerResult, wishlistsResult] =
+    await Promise.all([
+      supabase
+        .from("users")
+        .select("user_id, telegram_data")
+        .eq("user_id", targetUserId)
+        .single(),
+      supabase
+        .from("friends")
+        .select("friend_id")
+        .eq("user_id", userId)
+        .eq("friend_id", targetUserId)
+        .maybeSingle(),
+      supabase
+        .from("friends")
+        .select("user_id")
+        .eq("user_id", targetUserId)
+        .eq("friend_id", userId)
+        .maybeSingle(),
+      supabase
+        .from("wishlists")
+        .select(`*, wishlist_items (*)`)
+        .eq("user_id", targetUserId)
+        .eq("is_public", true)
+        .order("created_at", { ascending: false }),
+    ]);
 
   // Build user object
   let user: Friend | null = null;
@@ -1627,16 +1654,17 @@ export const addItemToMultipleWishlists = async (
           message = `${userName} added "${item.name}" to wishlists "${publicWishlists[0].name}" and "${publicWishlists[1].name}"`;
         } else {
           const lastWishlist = publicWishlists[publicWishlists.length - 1];
-          const otherWishlists = publicWishlists.slice(0, -1).map((w) => `"${w.name}"`).join(", ");
+          const otherWishlists = publicWishlists
+            .slice(0, -1)
+            .map((w) => `"${w.name}"`)
+            .join(", ");
           message = `${userName} added "${item.name}" to wishlists ${otherWishlists}, and "${lastWishlist.name}"`;
         }
 
-        notifyFollowers(
-          "friend_added_item",
-          "✨ New Item Added!",
-          message,
-          { wishlistIds: publicWishlists.map((w) => w.id), userId },
-        );
+        notifyFollowers("friend_added_item", "✨ New Item Added!", message, {
+          wishlistIds: publicWishlists.map((w) => w.id),
+          userId,
+        });
       }
     } catch (e) {
       console.error("Failed to notify followers:", e);
@@ -1741,7 +1769,10 @@ export const markItemAsReceivedAcrossWishlists = async (
       .in("wishlist_id", otherWishlistIds);
 
     if (deleteError) {
-      console.error("Failed to delete duplicate items by URL:", deleteError.message);
+      console.error(
+        "Failed to delete duplicate items by URL:",
+        deleteError.message,
+      );
     }
   } else {
     // No URL - match by name + price + image (items added together have same values)
@@ -1764,7 +1795,10 @@ export const markItemAsReceivedAcrossWishlists = async (
     const { error: deleteError } = await query;
 
     if (deleteError) {
-      console.error("Failed to delete duplicate items by name:", deleteError.message);
+      console.error(
+        "Failed to delete duplicate items by name:",
+        deleteError.message,
+      );
     }
   }
 };
@@ -2286,14 +2320,13 @@ export const getReferralStats = async (): Promise<ReferralStats> => {
       .select("referral_code, referrals, bonus_points")
       .eq("user_id", userId)
       .single(),
-    supabase
-      .from("referrals")
-      .select("bonus_earned")
-      .eq("referrer_id", userId),
+    supabase.from("referrals").select("bonus_earned").eq("referrer_id", userId),
   ]);
 
   if (userResult.error) {
-    throw new Error(`Failed to get referral stats: ${userResult.error.message}`);
+    throw new Error(
+      `Failed to get referral stats: ${userResult.error.message}`,
+    );
   }
 
   const user = userResult.data;
