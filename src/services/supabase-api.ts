@@ -1178,7 +1178,7 @@ export const getFriendProfileData = async (
     await Promise.all([
       supabase
         .from("users")
-        .select("user_id, telegram_data")
+        .select("user_id, telegram_data, birthday")
         .eq("user_id", targetUserId)
         .single(),
       supabase
@@ -1215,6 +1215,7 @@ export const getFriendProfileData = async (
       lastName: telegramData.last_name,
       username: telegramData.username,
       photoUrl: telegramData.photo_url,
+      birthday: userResult.data.birthday || undefined,
       isFollowing: !!followingResult.data,
       isFollowedBy: !!followerResult.data,
       addedAt: "",

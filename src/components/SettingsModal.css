@@ -126,55 +126,92 @@
 .birthday-editor-label {
   font-size: 12px;
   color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.4px;
   font-weight: 600;
 }
 
-.birthday-editor-row {
+.birthday-editor-inputs {
   display: flex;
-  align-items: center;
-  gap: 10px;
+  gap: 8px;
+  margin-bottom: 8px;
 }
 
-.birthday-input {
+.birthday-select {
   flex: 1;
-  min-width: 0;
   border: 1px solid var(--border-color);
   background: var(--bg-primary);
   color: var(--text-primary);
-  border-radius: 12px;
-  padding: 9px 12px;
+  border-radius: 10px;
+  padding: 10px 12px;
   font-size: 14px;
   font-weight: 500;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
 }
 
-.birthday-input:focus {
+.birthday-select-day {
+  flex: 0.65;
+}
+
+.birthday-select-year {
+  flex: 1;
+}
+
+.birthday-select:focus {
   outline: none;
   border-color: var(--coral);
   box-shadow: 0 0 0 3px rgba(250, 112, 112, 0.16);
 }
 
-.birthday-save-btn {
-  border: none;
-  border-radius: 12px;
-  padding: 10px 14px;
-  background: linear-gradient(135deg, var(--coral) 0%, var(--coral-light) 100%);
-  color: #ffffff;
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
-  transition:
-    transform 0.16s ease,
-    opacity 0.16s ease;
+.birthday-year-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
 }
 
-.birthday-save-btn:active {
+.year-toggle-btn {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.18s ease;
+  white-space: nowrap;
+}
+
+.year-toggle-btn.active {
+  background: rgba(250, 112, 112, 0.12);
+  border-color: var(--coral);
+  color: var(--coral);
+}
+
+.year-toggle-btn:active {
   transform: scale(0.96);
 }
 
+.birthday-save-btn {
+  width: 100%;
+  border: none;
+  border-radius: 12px;
+  padding: 11px 14px;
+  background: linear-gradient(135deg, var(--coral) 0%, var(--coral-light) 100%);
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.16s ease, opacity 0.16s ease;
+}
+
+.birthday-save-btn:active {
+  transform: scale(0.97);
+}
+
 .birthday-save-btn:disabled {
-  opacity: 0.5;
+  opacity: 0.45;
   cursor: not-allowed;
 }
 

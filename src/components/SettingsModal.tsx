@@ -32,11 +32,21 @@ export default function SettingsModal({
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [notifyOnAdd, setNotifyOnAdd] = useState(true);
   const [isClosing, setIsClosing] = useState(false);
-  const [birthday, setBirthday] = useState("");
-  const [savedBirthday, setSavedBirthday] = useState("");
   const [isSavingBirthday, setIsSavingBirthday] = useState(false);
   const [defaultCurrency, setDefaultCurrency] = useState("USD");
   const [showCurrencyPicker, setShowCurrencyPicker] = useState(false);
+
+  // Birthday component states
+  const [birthMonth, setBirthMonth] = useState("");
+  const [birthDay, setBirthDay] = useState("");
+  const [birthYear, setBirthYear] = useState("");
+  const [includeYear, setIncludeYear] = useState(false);
+  const [savedBirthdayStr, setSavedBirthdayStr] = useState("");
+
+  // Compute current birthday string from parts to detect changes
+  const currentBirthdayStr = birthMonth && birthDay
+    ? `${includeYear && birthYear ? birthYear : "1900"}-${birthMonth}-${birthDay}`
+    : "";
 
   useEffect(() => {
     if (!isOpen) return;
@@ -44,22 +54,38 @@ export default function SettingsModal({
     const theme = document.documentElement.getAttribute("data-theme");
     setIsDarkMode(theme === "dark");
 
-    // Load notification preference
     const savedNotifyPref = localStorage.getItem("notifyOnAdd");
     setNotifyOnAdd(savedNotifyPref !== "false");
 
-    // Load default currency
     const savedCurrency = localStorage.getItem("defaultCurrency");
-    if (savedCurrency) {
-      setDefaultCurrency(savedCurrency);
-    }
+    if (savedCurrency) setDefaultCurrency(savedCurrency);
 
     const loadBirthday = async () => {
       try {
         const profile = await getUserProfile();
-        const profileBirthday = profile.birthday || "";
-        setBirthday(profileBirthday);
-        setSavedBirthday(profileBirthday);
+        const raw = profile.birthday || "";
+        setSavedBirthdayStr(raw);
+
+        if (raw) {
+          const date = new Date(raw);
+          const m = (date.getMonth() + 1).toString().padStart(2, "0");
+          const d = date.getDate().toString().padStart(2, "0");
+          const y = date.getFullYear();
+          setBirthMonth(m);
+          setBirthDay(d);
+          if (y > 1900) {
+            setBirthYear(y.toString());
+            setIncludeYear(true);
+          } else {
+            setBirthYear("");
+            setIncludeYear(false);
+          }
+        } else {
+          setBirthMonth("");
+          setBirthDay("");
+          setBirthYear("");
+          setIncludeYear(false);
+        }
       } catch (error) {
         console.error("Error loading birthday:", error);
       }
@@ -124,16 +150,17 @@ export default function SettingsModal({
   };
 
   const handleSaveBirthday = async () => {
+    if (!birthMonth || !birthDay) return;
     try {
       setIsSavingBirthday(true);
-      const updated = await updateUserProfile({
-        birthday: birthday || undefined,
-      });
-      const updatedBirthday = updated.birthday || "";
-      setBirthday(updatedBirthday);
-      setSavedBirthday(updatedBirthday);
+      const year = includeYear && birthYear ? birthYear : "1900";
+      const birthdayStr = `${year}-${birthMonth}-${birthDay}`;
+      const updated = await updateUserProfile({ birthday: birthdayStr });
+      setSavedBirthdayStr(updated.birthday || "");
+      hapticFeedback.notification("success");
     } catch (error) {
       console.error("Error updating birthday:", error);
+      hapticFeedback.notification("error");
     } finally {
       setIsSavingBirthday(false);
     }
@@ -178,24 +205,62 @@ export default function SettingsModal({
           <div className="birthday-editor">
             <div className="birthday-editor-head">
               <h3>{user?.firstName || "Guest"}</h3>
-              <span className="birthday-editor-label">Birthday</span>
+              <span className="birthday-editor-label">🎂 Birthday</span>
             </div>
-            <div className="birthday-editor-row">
-              <input
-                className="birthday-input"
-                type="date"
-                value={birthday}
-                onChange={(e) => setBirthday(e.target.value)}
-                max="9999-12-31"
-              />
-              <button
-                className="birthday-save-btn"
-                onClick={handleSaveBirthday}
-                disabled={isSavingBirthday || birthday === savedBirthday}
+            <div className="birthday-editor-inputs">
+              <select
+                className="birthday-select"
+                value={birthMonth}
+                onChange={(e) => setBirthMonth(e.target.value)}
               >
-                {isSavingBirthday ? "Saving..." : "Save"}
-              </button>
+                <option value="">Month</option>
+                {["January","February","March","April","May","June","July","August","September","October","November","December"].map((m, i) => (
+                  <option key={m} value={(i + 1).toString().padStart(2, "0")}>{m}</option>
+                ))}
+              </select>
+              <select
+                className="birthday-select birthday-select-day"
+                value={birthDay}
+                onChange={(e) => setBirthDay(e.target.value)}
+              >
+                <option value="">Day</option>
+                {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
+                  <option key={d} value={d.toString().padStart(2, "0")}>{d}</option>
+                ))}
+              </select>
             </div>
+            <div className="birthday-year-row">
+              <button
+                className={`year-toggle-btn ${includeYear ? "active" : ""}`}
+                onClick={() => {
+                  const next = !includeYear;
+                  setIncludeYear(next);
+                  if (!next) setBirthYear("");
+                  hapticFeedback.selection();
+                }}
+              >
+                {includeYear ? "Hide year" : "+ Add year"}
+              </button>
+              {includeYear && (
+                <select
+                  className="birthday-select birthday-select-year"
+                  value={birthYear}
+                  onChange={(e) => setBirthYear(e.target.value)}
+                >
+                  <option value="">Year</option>
+                  {Array.from({ length: 100 }, (_, i) => new Date().getFullYear() - i).map((y) => (
+                    <option key={y} value={y}>{y}</option>
+                  ))}
+                </select>
+              )}
+            </div>
+            <button
+              className="birthday-save-btn"
+              onClick={handleSaveBirthday}
+              disabled={isSavingBirthday || !birthMonth || !birthDay || currentBirthdayStr === savedBirthdayStr}
+            >
+              {isSavingBirthday ? "Saving..." : "Save Birthday"}
+            </button>
           </div>
         </div>
 
