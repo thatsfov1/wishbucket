@@ -1,167 +1,229 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { hapticFeedback } from "../utils/telegram";
 import BottomNavBar from "../components/BottomNavBar";
+import { giftCatalog, GiftItem } from "../data/giftCatalog";
 import "./InspirationPage.css";
 
 interface Category {
   id: string;
   name: string;
   icon: string;
-  color: string;
-}
-
-interface TrendingItem {
-  id: string;
-  name: string;
-  price: number;
-  currency: string;
-  image: string;
-  category: string;
-  popularity: number;
 }
 
 const categories: Category[] = [
-  { id: "tech", name: "Tech", icon: "💻", color: "#5c5ce0" },
-  { id: "fashion", name: "Fashion", icon: "👗", color: "#e05c8c" },
-  { id: "home", name: "Home", icon: "🏠", color: "#5ce0a5" },
-  { id: "beauty", name: "Beauty", icon: "✨", color: "#e0c05c" },
-  { id: "sports", name: "Sports", icon: "⚽", color: "#e08c5c" },
-  { id: "books", name: "Books", icon: "📚", color: "#8c5ce0" },
+  { id: "all",      name: "All",       icon: "✨" },
+  { id: "tech",     name: "Tech",      icon: "💻" },
+  { id: "fashion",  name: "Fashion",   icon: "👗" },
+  { id: "home",     name: "Home",      icon: "🏠" },
+  { id: "beauty",   name: "Beauty",    icon: "💆" },
+  { id: "wellness", name: "Wellness",  icon: "🧘" },
+  { id: "food",     name: "Food",      icon: "🍽️" },
+  { id: "outdoors", name: "Outdoors",  icon: "🏕️" },
+  { id: "creative", name: "Creative",  icon: "🎨" },
+  { id: "gaming",   name: "Gaming",    icon: "🎮" },
+  { id: "books",    name: "Books",     icon: "📚" },
 ];
 
-const trendingItems: TrendingItem[] = [
+interface Collection {
+  id: string;
+  label: string;
+  icon: string;
+  gradient: string;
+  filter: (item: GiftItem) => boolean;
+}
+
+const collections: Collection[] = [
   {
-    id: "1",
-    name: "Apple AirPods Pro 2",
-    price: 249,
-    currency: "$",
-    image: "https://store.storeimages.cdn-apple.com/4982/as-images.apple.com/is/MQD83?wid=800&hei=800&fmt=jpeg&qlt=90",
-    category: "Tech",
-    popularity: 98,
+    id: "under50",
+    label: "Under $50",
+    icon: "💵",
+    gradient: "linear-gradient(135deg, #22c55e, #16a34a)",
+    filter: (i) => i.price < 50,
   },
   {
-    id: "2",
-    name: "Sony WH-1000XM5",
-    price: 399,
-    currency: "$",
-    image: "https://m.media-amazon.com/images/I/61vJtKbAssL._AC_SL1500_.jpg",
-    category: "Tech",
-    popularity: 95,
+    id: "romantic",
+    label: "Romantic",
+    icon: "❤️",
+    gradient: "linear-gradient(135deg, #f43f5e, #e11d48)",
+    filter: (i) => i.vibes.includes("romantic"),
   },
   {
-    id: "3",
-    name: "Kindle Paperwhite",
-    price: 149,
-    currency: "$",
-    image: "https://m.media-amazon.com/images/I/61Ww4abGclL._AC_SL1000_.jpg",
-    category: "Tech",
-    popularity: 92,
+    id: "cozy",
+    label: "Cozy Vibes",
+    icon: "🛋️",
+    gradient: "linear-gradient(135deg, #f97316, #ea580c)",
+    filter: (i) => i.vibes.includes("cozy"),
+  },
+  {
+    id: "adventure",
+    label: "Adventurous",
+    icon: "🗺️",
+    gradient: "linear-gradient(135deg, #3b82f6, #1d4ed8)",
+    filter: (i) => i.vibes.includes("adventurous"),
+  },
+  {
+    id: "unique",
+    label: "Unique Finds",
+    icon: "✨",
+    gradient: "linear-gradient(135deg, #a855f7, #7e22ce)",
+    filter: (i) => i.vibes.includes("unique"),
+  },
+  {
+    id: "luxury",
+    label: "Luxury",
+    icon: "👑",
+    gradient: "linear-gradient(135deg, #eab308, #a16207)",
+    filter: (i) => i.priceRange === "luxury" || i.vibes.includes("luxury"),
   },
 ];
 
 export default function InspirationPage() {
   const navigate = useNavigate();
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [activeCategory, setActiveCategory] = useState("all");
+  const [activeCollection, setActiveCollection] = useState<string | null>(null);
+  const [addedIds, setAddedIds] = useState<Set<string>>(new Set());
 
-  const handleCategoryClick = (categoryId: string) => {
+  const handleCategoryClick = (id: string) => {
     hapticFeedback.selection();
-    setSelectedCategory(selectedCategory === categoryId ? null : categoryId);
+    setActiveCategory(id);
+    setActiveCollection(null);
   };
 
-  const handleAddToWishlist = (item: TrendingItem) => {
-    hapticFeedback.notification("success");
-    // In real implementation, this would add the item to user's wishlist
-    navigate(`/wishlists?action=add&item=${encodeURIComponent(JSON.stringify(item))}`);
+  const handleCollectionClick = (col: Collection) => {
+    hapticFeedback.selection();
+    if (activeCollection === col.id) {
+      setActiveCollection(null);
+    } else {
+      setActiveCollection(col.id);
+      setActiveCategory("all");
+    }
   };
+
+  const handleAdd = (item: GiftItem) => {
+    hapticFeedback.notification("success");
+    setAddedIds((prev) => new Set([...prev, item.id]));
+    navigate(
+      `/wishlists?action=add&name=${encodeURIComponent(item.name)}&price=${item.price}&image=${encodeURIComponent(item.imageUrl || item.emoji)}&url=${encodeURIComponent(item.url || "")}`
+    );
+  };
+
+  const filteredItems = useMemo(() => {
+    const col = collections.find((c) => c.id === activeCollection);
+    if (col) return giftCatalog.filter(col.filter);
+    if (activeCategory === "all") return giftCatalog;
+    return giftCatalog.filter((i) => i.categories.includes(activeCategory));
+  }, [activeCategory, activeCollection]);
+
+  const activeCol = collections.find((c) => c.id === activeCollection);
 
   return (
     <div className="inspiration-container">
       {/* Header */}
-      <header className="inspiration-header">
-        <h1>Inspiration</h1>
-        <p>Discover trending gifts and ideas</p>
+      <header className="insp-header">
+        <div>
+          <h1>Inspiration</h1>
+          <p>Discover great gift ideas</p>
+        </div>
       </header>
 
-      {/* Categories */}
-      <section className="categories-section">
-        <h2>Categories</h2>
-        <div className="categories-grid">
-          {categories.map((cat) => (
+      {/* Collections row */}
+      <section className="insp-collections-section">
+        <h2 className="insp-section-title">Collections</h2>
+        <div className="insp-collections-scroll">
+          {collections.map((col) => (
             <button
-              key={cat.id}
-              className={`category-btn ${selectedCategory === cat.id ? "active" : ""}`}
-              style={{ "--cat-color": cat.color } as React.CSSProperties}
-              onClick={() => handleCategoryClick(cat.id)}
+              key={col.id}
+              className={`insp-collection-chip ${activeCollection === col.id ? "active" : ""}`}
+              style={{ "--col-gradient": col.gradient } as React.CSSProperties}
+              onClick={() => handleCollectionClick(col)}
             >
-              <span className="category-icon">{cat.icon}</span>
-              <span className="category-name">{cat.name}</span>
+              <span className="insp-chip-icon">{col.icon}</span>
+              <span className="insp-chip-label">{col.label}</span>
             </button>
           ))}
         </div>
       </section>
 
-      {/* Trending Section */}
-      <section className="trending-section">
-        <div className="section-header">
-          <h2>Trending Now 🔥</h2>
-          <button className="see-all-btn">See all</button>
+      {/* Category pills */}
+      <section className="insp-categories-section">
+        <div className="insp-category-scroll">
+          {categories.map((cat) => (
+            <button
+              key={cat.id}
+              className={`insp-cat-pill ${activeCategory === cat.id && !activeCollection ? "active" : ""}`}
+              onClick={() => handleCategoryClick(cat.id)}
+            >
+              <span>{cat.icon}</span>
+              <span>{cat.name}</span>
+            </button>
+          ))}
         </div>
-        <div className="trending-list">
-          {trendingItems.map((item) => (
-            <div key={item.id} className="trending-card">
-              <div className="trending-image">
-                <img src={item.image} alt={item.name} />
-                <span className="popularity-badge">
-                  🔥 {item.popularity}%
-                </span>
+      </section>
+
+      {/* Items grid */}
+      <section className="insp-items-section">
+        <div className="insp-items-header">
+          <h2 className="insp-section-title">
+            {activeCol
+              ? `${activeCol.icon} ${activeCol.label}`
+              : activeCategory === "all"
+              ? "All Gifts 🎁"
+              : `${categories.find((c) => c.id === activeCategory)?.icon} ${categories.find((c) => c.id === activeCategory)?.name}`}
+          </h2>
+          <span className="insp-item-count">{filteredItems.length} items</span>
+        </div>
+
+        <div className="insp-grid">
+          {filteredItems.map((item, i) => (
+            <div
+              key={item.id}
+              className="insp-card"
+              style={{ animationDelay: `${i * 0.04}s` }}
+            >
+              <div className="insp-card-image">
+                {item.imageUrl ? (
+                  <img src={item.imageUrl} alt={item.name} />
+                ) : (
+                  <span className="insp-card-emoji">{item.emoji}</span>
+                )}
               </div>
-              <div className="trending-info">
-                <span className="trending-category">{item.category}</span>
-                <h3>{item.name}</h3>
-                <div className="trending-footer">
-                  <span className="trending-price">{item.currency}{item.price}</span>
+              <div className="insp-card-body">
+                <span className="insp-card-category">
+                  {item.categories[0]}
+                </span>
+                <h3 className="insp-card-name">{item.name}</h3>
+                <p className="insp-card-desc">{item.description}</p>
+                <div className="insp-card-footer">
+                  <span className="insp-card-price">~${item.price}</span>
                   <button
-                    className="add-to-wishlist-btn"
-                    onClick={() => handleAddToWishlist(item)}
+                    className={`insp-add-btn ${addedIds.has(item.id) ? "added" : ""}`}
+                    onClick={() => handleAdd(item)}
                   >
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <line x1="12" y1="5" x2="12" y2="19" />
-                      <line x1="5" y1="12" x2="19" y2="12" />
-                    </svg>
+                    {addedIds.has(item.id) ? (
+                      "✓"
+                    ) : (
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <line x1="12" y1="5" x2="12" y2="19" />
+                        <line x1="5" y1="12" x2="19" y2="12" />
+                      </svg>
+                    )}
                   </button>
                 </div>
               </div>
             </div>
           ))}
         </div>
-      </section>
 
-      {/* Collections */}
-      <section className="collections-section">
-        <h2>Gift Collections</h2>
-        <div className="collections-scroll">
-          <div className="collection-card" style={{ background: "linear-gradient(135deg, #ff6b6b, #ee5a5a)" }}>
-            <span className="collection-icon">🎄</span>
-            <h3>Holiday Gifts</h3>
-            <p>Perfect presents for the season</p>
+        {filteredItems.length === 0 && (
+          <div className="insp-empty">
+            <span>🔍</span>
+            <p>No gifts in this category yet.</p>
           </div>
-          <div className="collection-card" style={{ background: "linear-gradient(135deg, #a855f7, #9333ea)" }}>
-            <span className="collection-icon">🎂</span>
-            <h3>Birthday Ideas</h3>
-            <p>Make their day special</p>
-          </div>
-          <div className="collection-card" style={{ background: "linear-gradient(135deg, #22c55e, #16a34a)" }}>
-            <span className="collection-icon">💝</span>
-            <h3>Romantic Gifts</h3>
-            <p>Show your love</p>
-          </div>
-        </div>
+        )}
       </section>
 
       <BottomNavBar />
     </div>
   );
 }
-
-

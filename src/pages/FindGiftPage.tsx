@@ -1,33 +1,28 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { hapticFeedback } from "../utils/telegram";
 import BottomNavBar from "../components/BottomNavBar";
+import { getRecommendations, GiftItem } from "../data/giftCatalog";
 import "./FindGiftPage.css";
 
-interface GiftQuestion {
+interface Question {
   id: string;
   question: string;
+  subtitle?: string;
   options: { value: string; label: string; icon: string }[];
 }
 
-interface GiftSuggestion {
-  id: string;
-  name: string;
-  price: number;
-  currency: string;
-  image: string;
-  match: number;
-  reason: string;
-}
-
-const questions: GiftQuestion[] = [
+const questions: Question[] = [
   {
     id: "recipient",
     question: "Who is this gift for?",
     options: [
       { value: "partner", label: "Partner", icon: "💕" },
       { value: "friend", label: "Friend", icon: "👋" },
-      { value: "family", label: "Family", icon: "👨‍👩‍👧" },
+      { value: "parent", label: "Parent", icon: "👨‍👩‍👧" },
+      { value: "sibling", label: "Sibling", icon: "🤝" },
       { value: "colleague", label: "Colleague", icon: "💼" },
+      { value: "child", label: "Child", icon: "🧒" },
     ],
   },
   {
@@ -37,17 +32,24 @@ const questions: GiftQuestion[] = [
       { value: "birthday", label: "Birthday", icon: "🎂" },
       { value: "holiday", label: "Holiday", icon: "🎄" },
       { value: "anniversary", label: "Anniversary", icon: "💍" },
-      { value: "just-because", label: "Just Because", icon: "💝" },
+      { value: "graduation", label: "Graduation", icon: "🎓" },
+      { value: "valentines", label: "Valentine's", icon: "💝" },
+      { value: "just-because", label: "Just Because", icon: "🎁" },
     ],
   },
   {
-    id: "interests",
-    question: "What are they interested in?",
+    id: "category",
+    question: "What are they into?",
+    subtitle: "Pick their main interest",
     options: [
-      { value: "tech", label: "Technology", icon: "📱" },
+      { value: "tech", label: "Tech", icon: "📱" },
       { value: "fashion", label: "Fashion", icon: "👗" },
       { value: "outdoors", label: "Outdoors", icon: "🏕️" },
       { value: "creative", label: "Creative", icon: "🎨" },
+      { value: "food", label: "Food & Drink", icon: "🍽️" },
+      { value: "wellness", label: "Wellness", icon: "🧘" },
+      { value: "gaming", label: "Gaming", icon: "🎮" },
+      { value: "books", label: "Books", icon: "📚" },
     ],
   },
   {
@@ -55,65 +57,56 @@ const questions: GiftQuestion[] = [
     question: "What's your budget?",
     options: [
       { value: "low", label: "Under $50", icon: "💵" },
-      { value: "medium", label: "$50-$150", icon: "💰" },
-      { value: "high", label: "$150-$300", icon: "💎" },
+      { value: "medium", label: "$50–$150", icon: "💰" },
+      { value: "high", label: "$150–$300", icon: "💎" },
       { value: "luxury", label: "$300+", icon: "👑" },
+    ],
+  },
+  {
+    id: "vibe",
+    question: "What's the vibe?",
+    subtitle: "How do you want them to feel?",
+    options: [
+      { value: "practical", label: "Practical", icon: "✅" },
+      { value: "cozy", label: "Cozy", icon: "🛋️" },
+      { value: "adventurous", label: "Adventurous", icon: "🗺️" },
+      { value: "romantic", label: "Romantic", icon: "❤️" },
+      { value: "fun", label: "Fun", icon: "🎉" },
+      { value: "unique", label: "Unique", icon: "✨" },
     ],
   },
 ];
 
-const sampleSuggestions: GiftSuggestion[] = [
-  {
-    id: "1",
-    name: "Apple AirPods Pro 2",
-    price: 249,
-    currency: "$",
-    image: "https://store.storeimages.cdn-apple.com/4982/as-images.apple.com/is/MQD83?wid=800&hei=800&fmt=jpeg&qlt=90",
-    match: 95,
-    reason: "Perfect for tech lovers who enjoy music",
-  },
-  {
-    id: "2",
-    name: "Ember Smart Mug",
-    price: 129,
-    currency: "$",
-    image: "https://m.media-amazon.com/images/I/61G1m4VZwmL._AC_SL1500_.jpg",
-    match: 88,
-    reason: "Great for coffee enthusiasts",
-  },
-  {
-    id: "3",
-    name: "Polaroid Now Camera",
-    price: 119,
-    currency: "$",
-    image: "https://m.media-amazon.com/images/I/61yrYXrsCvL._AC_SL1500_.jpg",
-    match: 82,
-    reason: "Fun for capturing memories",
-  },
-];
-
 export default function FindGiftPage() {
+  const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [results, setResults] = useState<Array<GiftItem & { score: number }>>([]);
   const [showResults, setShowResults] = useState(false);
+  const [addedIds, setAddedIds] = useState<Set<string>>(new Set());
 
-  const handleOptionSelect = (questionId: string, value: string) => {
+  const handleSelect = (questionId: string, value: string) => {
     hapticFeedback.selection();
-    setAnswers((prev) => ({ ...prev, [questionId]: value }));
+    const newAnswers = { ...answers, [questionId]: value };
+    setAnswers(newAnswers);
 
     if (currentStep < questions.length - 1) {
-      setTimeout(() => setCurrentStep((prev) => prev + 1), 300);
+      setTimeout(() => setCurrentStep((s) => s + 1), 280);
     } else {
-      setTimeout(() => setShowResults(true), 300);
+      const recs = getRecommendations(newAnswers, 8);
+      setResults(recs);
+      setTimeout(() => setShowResults(true), 280);
     }
   };
 
   const handleBack = () => {
-    hapticFeedback.selection();
+    hapticFeedback.impact("light");
     if (showResults) {
       setShowResults(false);
     } else if (currentStep > 0) {
-      setCurrentStep((prev) => prev - 1);
+      setCurrentStep((s) => s - 1);
+    } else {
+      navigate(-1);
     }
   };
 
@@ -122,60 +115,90 @@ export default function FindGiftPage() {
     setCurrentStep(0);
     setAnswers({});
     setShowResults(false);
+    setAddedIds(new Set());
   };
 
-  const handleAddToWishlist = (suggestion: GiftSuggestion) => {
+  const handleAdd = (item: GiftItem) => {
     hapticFeedback.notification("success");
-    // In real implementation, this would add to wishlist
+    setAddedIds((prev) => new Set([...prev, item.id]));
+    // Navigate to wishlists page with item pre-filled via query
+    navigate(
+      `/wishlists?action=add&name=${encodeURIComponent(item.name)}&price=${item.price}&image=${encodeURIComponent(item.imageUrl || item.emoji)}&url=${encodeURIComponent(item.url || "")}`
+    );
   };
 
+  const progress = ((currentStep + (showResults ? 1 : 0)) / questions.length) * 100;
+
+  // ── Results screen ─────────────────────────────────────────────────────────
   if (showResults) {
     return (
       <div className="findgift-container">
         <header className="findgift-header">
-          <button className="back-btn" onClick={handleBack}>
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <polyline points="15,18 9,12 15,6" />
-            </svg>
+          <button className="fg-back-btn" onClick={handleBack}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="15,18 9,12 15,6" /></svg>
           </button>
-          <h1>Gift Suggestions</h1>
-          <button className="reset-btn" onClick={handleReset}>
-            Start Over
-          </button>
+          <h1>Perfect Picks 🎁</h1>
+          <button className="fg-reset-btn" onClick={handleReset}>Restart</button>
         </header>
 
-        <div className="results-intro">
-          <span className="results-emoji">🎁</span>
-          <h2>We found perfect gifts!</h2>
-          <p>Based on your answers, here are our top picks</p>
+        <div className="fg-results-intro">
+          <p className="fg-results-sub">
+            {results.length} gifts matched your answers
+          </p>
         </div>
 
-        <div className="suggestions-list">
-          {sampleSuggestions.map((suggestion) => (
-            <div key={suggestion.id} className="suggestion-card">
-              <div className="suggestion-image">
-                <img src={suggestion.image} alt={suggestion.name} />
-                <div className="match-badge">{suggestion.match}% match</div>
+        <div className="fg-results-list">
+          {results.map((item, i) => (
+            <div
+              key={item.id}
+              className="fg-result-card"
+              style={{ animationDelay: `${i * 0.06}s` }}
+            >
+              <div className="fg-result-image">
+                {item.imageUrl ? (
+                  <img src={item.imageUrl} alt={item.name} />
+                ) : (
+                  <span className="fg-result-emoji">{item.emoji}</span>
+                )}
+                <div className="fg-match-badge">{item.score}% match</div>
               </div>
-              <div className="suggestion-content">
-                <h3>{suggestion.name}</h3>
-                <p className="suggestion-reason">{suggestion.reason}</p>
-                <div className="suggestion-footer">
-                  <span className="suggestion-price">{suggestion.currency}{suggestion.price}</span>
+              <div className="fg-result-body">
+                <div className="fg-result-tags">
+                  {item.categories.slice(0, 2).map((c) => (
+                    <span key={c} className="fg-tag">{c}</span>
+                  ))}
+                </div>
+                <h3 className="fg-result-name">{item.name}</h3>
+                <p className="fg-result-desc">{item.description}</p>
+                <div className="fg-result-footer">
+                  <span className="fg-result-price">
+                    ~${item.price}
+                  </span>
                   <button
-                    className="add-btn"
-                    onClick={() => handleAddToWishlist(suggestion)}
+                    className={`fg-add-btn ${addedIds.has(item.id) ? "added" : ""}`}
+                    onClick={() => handleAdd(item)}
                   >
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <line x1="12" y1="5" x2="12" y2="19" />
-                      <line x1="5" y1="12" x2="19" y2="12" />
-                    </svg>
-                    Add
+                    {addedIds.has(item.id) ? (
+                      <>✓ Added</>
+                    ) : (
+                      <>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+                        Add to list
+                      </>
+                    )}
                   </button>
                 </div>
               </div>
             </div>
           ))}
+
+          {results.length === 0 && (
+            <div className="fg-no-results">
+              <span>🤔</span>
+              <p>No gifts matched all filters. Try restarting with different answers!</p>
+              <button className="fg-reset-btn-lg" onClick={handleReset}>Try Again</button>
+            </div>
+          )}
         </div>
 
         <BottomNavBar />
@@ -183,41 +206,37 @@ export default function FindGiftPage() {
     );
   }
 
-  const currentQuestion = questions[currentStep];
-  const progress = ((currentStep + 1) / questions.length) * 100;
+  // ── Question screen ────────────────────────────────────────────────────────
+  const q = questions[currentStep];
+  const isWide = q.options.length > 4;
 
   return (
     <div className="findgift-container">
-      {/* Header */}
       <header className="findgift-header">
-        {currentStep > 0 && (
-          <button className="back-btn" onClick={handleBack}>
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <polyline points="15,18 9,12 15,6" />
-            </svg>
-          </button>
-        )}
-        <h1>Find Gift</h1>
-        <span className="step-indicator">{currentStep + 1}/{questions.length}</span>
+        <button className="fg-back-btn" onClick={handleBack}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="15,18 9,12 15,6" /></svg>
+        </button>
+        <h1>Find a Gift</h1>
+        <span className="fg-step">{currentStep + 1} / {questions.length}</span>
       </header>
 
-      {/* Progress Bar */}
-      <div className="progress-bar">
-        <div className="progress-fill" style={{ width: `${progress}%` }} />
+      <div className="fg-progress">
+        <div className="fg-progress-fill" style={{ width: `${progress}%` }} />
       </div>
 
-      {/* Question */}
-      <div className="question-section">
-        <h2>{currentQuestion.question}</h2>
-        <div className="options-grid">
-          {currentQuestion.options.map((option) => (
+      <div className="fg-question-section">
+        <h2 className="fg-question">{q.question}</h2>
+        {q.subtitle && <p className="fg-question-sub">{q.subtitle}</p>}
+
+        <div className={`fg-options ${isWide ? "fg-options-wide" : ""}`}>
+          {q.options.map((opt) => (
             <button
-              key={option.value}
-              className={`option-btn ${answers[currentQuestion.id] === option.value ? "selected" : ""}`}
-              onClick={() => handleOptionSelect(currentQuestion.id, option.value)}
+              key={opt.value}
+              className={`fg-option ${answers[q.id] === opt.value ? "selected" : ""}`}
+              onClick={() => handleSelect(q.id, opt.value)}
             >
-              <span className="option-icon">{option.icon}</span>
-              <span className="option-label">{option.label}</span>
+              <span className="fg-option-icon">{opt.icon}</span>
+              <span className="fg-option-label">{opt.label}</span>
             </button>
           ))}
         </div>
@@ -227,5 +246,3 @@ export default function FindGiftPage() {
     </div>
   );
 }
-
-
