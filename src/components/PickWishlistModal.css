@@ -1,0 +1,298 @@
+/* ── Overlay ─────────────────────────────────────────────────────────────── */
+.pwm-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 1000;
+  display: flex;
+  align-items: flex-end;
+  animation: pwm-fade-in 0.22s ease both;
+  backdrop-filter: blur(2px);
+}
+
+.pwm-overlay.closing {
+  animation: pwm-fade-out 0.22s ease both;
+}
+
+@keyframes pwm-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes pwm-fade-out {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+
+/* ── Sheet ───────────────────────────────────────────────────────────────── */
+.pwm-sheet {
+  width: 100%;
+  background: var(--bg-primary);
+  border-radius: 28px 28px 0 0;
+  padding: 12px 20px calc(32px + var(--safe-bottom, 0px));
+  animation: pwm-slide-up 0.28s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  max-height: 85vh;
+  overflow-y: auto;
+}
+
+.pwm-sheet.closing {
+  animation: pwm-slide-down 0.22s ease both;
+}
+
+@keyframes pwm-slide-up {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+@keyframes pwm-slide-down {
+  from { transform: translateY(0); }
+  to   { transform: translateY(100%); }
+}
+
+/* ── Handle ──────────────────────────────────────────────────────────────── */
+.pwm-handle {
+  width: 36px;
+  height: 4px;
+  background: var(--bg-tertiary);
+  border-radius: 2px;
+  margin: 0 auto 20px;
+}
+
+/* ── Item preview ────────────────────────────────────────────────────────── */
+.pwm-preview {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  padding: 4px 0 4px;
+}
+
+.pwm-preview-image {
+  width: 72px;
+  height: 72px;
+  border-radius: 16px;
+  background: var(--bg-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.pwm-preview-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  padding: 6px;
+}
+
+.pwm-preview-emoji {
+  font-size: 38px;
+}
+
+.pwm-preview-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.pwm-preview-name {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+  line-height: 1.25;
+  /* truncate long names */
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.pwm-preview-desc {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.pwm-preview-price {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--coral);
+}
+
+/* ── Divider ─────────────────────────────────────────────────────────────── */
+.pwm-divider {
+  height: 1px;
+  background: var(--bg-secondary);
+  margin: 20px 0 18px;
+}
+
+/* ── Section ─────────────────────────────────────────────────────────────── */
+.pwm-section {
+  margin-bottom: 24px;
+}
+
+.pwm-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 12px;
+}
+
+/* ── Wishlist chips ───────────────────────────────────────────────────────── */
+.pwm-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.pwm-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  background: var(--bg-secondary);
+  border: 2px solid transparent;
+  border-radius: 24px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: var(--shadow-sm);
+}
+
+.pwm-chip.selected {
+  border-color: var(--coral);
+  background: rgba(250, 112, 112, 0.08);
+  color: var(--coral);
+}
+
+.pwm-chip:active { transform: scale(0.94); }
+
+.pwm-chip-new {
+  color: var(--text-muted);
+  border-style: dashed;
+  border-color: var(--bg-tertiary);
+  background: transparent;
+  box-shadow: none;
+}
+
+/* ── Quick-create ─────────────────────────────────────────────────────────── */
+.pwm-empty {
+  text-align: center;
+  padding: 20px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.pwm-empty p {
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.pwm-new-btn {
+  padding: 10px 20px;
+  background: var(--coral);
+  border: none;
+  border-radius: 20px;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.pwm-quick-create {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.pwm-input {
+  width: 100%;
+  padding: 13px 16px;
+  background: var(--bg-secondary);
+  border: 1.5px solid var(--bg-tertiary);
+  border-radius: 14px;
+  font-size: 15px;
+  color: var(--text-primary);
+  outline: none;
+  box-sizing: border-box;
+}
+
+.pwm-input:focus {
+  border-color: var(--coral);
+}
+
+.pwm-quick-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.pwm-cancel-small,
+.pwm-confirm-small {
+  flex: 1;
+  padding: 11px;
+  border: none;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.pwm-cancel-small {
+  background: var(--bg-secondary);
+  color: var(--text-muted);
+}
+
+.pwm-confirm-small {
+  background: var(--coral);
+  color: #fff;
+}
+
+.pwm-confirm-small:disabled { opacity: 0.5; }
+
+/* ── Action buttons ───────────────────────────────────────────────────────── */
+.pwm-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.pwm-btn-cancel {
+  flex: 0 0 auto;
+  padding: 15px 20px;
+  background: var(--bg-secondary);
+  border: none;
+  border-radius: 16px;
+  color: var(--text-muted);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.pwm-btn-add {
+  flex: 1;
+  padding: 15px;
+  background: var(--coral);
+  border: none;
+  border-radius: 16px;
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 6px 18px rgba(250, 112, 112, 0.35);
+}
+
+.pwm-btn-add:disabled {
+  opacity: 0.45;
+  box-shadow: none;
+}
+
+.pwm-btn-add:active:not(:disabled) { transform: scale(0.97); }

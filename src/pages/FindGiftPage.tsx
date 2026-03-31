@@ -2,6 +2,8 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { hapticFeedback } from "../utils/telegram";
 import BottomNavBar from "../components/BottomNavBar";
+import PickWishlistModal from "../components/PickWishlistModal";
+import type { PrefilledGiftItem } from "../components/PickWishlistModal";
 import { getRecommendations, GiftItem } from "../data/giftCatalog";
 import "./FindGiftPage.css";
 
@@ -84,6 +86,8 @@ export default function FindGiftPage() {
   const [results, setResults] = useState<Array<GiftItem & { score: number }>>([]);
   const [showResults, setShowResults] = useState(false);
   const [addedIds, setAddedIds] = useState<Set<string>>(new Set());
+  const [pickerItem, setPickerItem] = useState<PrefilledGiftItem | null>(null);
+  const [pickerSourceId, setPickerSourceId] = useState<string | null>(null);
 
   const handleSelect = (questionId: string, value: string) => {
     hapticFeedback.selection();
@@ -119,12 +123,17 @@ export default function FindGiftPage() {
   };
 
   const handleAdd = (item: GiftItem) => {
-    hapticFeedback.notification("success");
-    setAddedIds((prev) => new Set([...prev, item.id]));
-    // Navigate to wishlists page with item pre-filled via query
-    navigate(
-      `/wishlists?action=add&name=${encodeURIComponent(item.name)}&price=${item.price}&image=${encodeURIComponent(item.imageUrl || item.emoji)}&url=${encodeURIComponent(item.url || "")}`
-    );
+    hapticFeedback.impact("medium");
+    setPickerSourceId(item.id);
+    setPickerItem({
+      name: item.name,
+      description: item.description,
+      imageUrl: item.imageUrl,
+      emoji: item.emoji,
+      price: item.price,
+      currency: "$",
+      url: item.url,
+    });
   };
 
   const progress = ((currentStep + (showResults ? 1 : 0)) / questions.length) * 100;
@@ -202,6 +211,15 @@ export default function FindGiftPage() {
         </div>
 
         <BottomNavBar />
+
+        <PickWishlistModal
+          isOpen={!!pickerItem}
+          item={pickerItem}
+          onClose={() => { setPickerItem(null); setPickerSourceId(null); }}
+          onAdded={() => {
+            if (pickerSourceId) setAddedIds((prev) => new Set([...prev, pickerSourceId]));
+          }}
+        />
       </div>
     );
   }

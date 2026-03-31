@@ -1,7 +1,8 @@
 import { useState, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
 import { hapticFeedback } from "../utils/telegram";
 import BottomNavBar from "../components/BottomNavBar";
+import PickWishlistModal from "../components/PickWishlistModal";
+import type { PrefilledGiftItem } from "../components/PickWishlistModal";
 import { giftCatalog, GiftItem } from "../data/giftCatalog";
 import "./InspirationPage.css";
 
@@ -79,10 +80,10 @@ const collections: Collection[] = [
 ];
 
 export default function InspirationPage() {
-  const navigate = useNavigate();
   const [activeCategory, setActiveCategory] = useState("all");
   const [activeCollection, setActiveCollection] = useState<string | null>(null);
   const [addedIds, setAddedIds] = useState<Set<string>>(new Set());
+  const [pickerItem, setPickerItem] = useState<PrefilledGiftItem | null>(null);
 
   const handleCategoryClick = (id: string) => {
     hapticFeedback.selection();
@@ -101,11 +102,16 @@ export default function InspirationPage() {
   };
 
   const handleAdd = (item: GiftItem) => {
-    hapticFeedback.notification("success");
-    setAddedIds((prev) => new Set([...prev, item.id]));
-    navigate(
-      `/wishlists?action=add&name=${encodeURIComponent(item.name)}&price=${item.price}&image=${encodeURIComponent(item.imageUrl || item.emoji)}&url=${encodeURIComponent(item.url || "")}`
-    );
+    hapticFeedback.impact("medium");
+    setPickerItem({
+      name: item.name,
+      description: item.description,
+      imageUrl: item.imageUrl,
+      emoji: item.emoji,
+      price: item.price,
+      currency: "$",
+      url: item.url,
+    });
   };
 
   const filteredItems = useMemo(() => {
@@ -224,6 +230,19 @@ export default function InspirationPage() {
       </section>
 
       <BottomNavBar />
+
+      <PickWishlistModal
+        isOpen={!!pickerItem}
+        item={pickerItem}
+        onClose={() => setPickerItem(null)}
+        onAdded={() => {
+          if (pickerItem) {
+            // find the catalog item id to mark as added
+            const match = giftCatalog.find((g) => g.name === pickerItem.name);
+            if (match) setAddedIds((prev) => new Set([...prev, match.id]));
+          }
+        }}
+      />
     </div>
   );
 }
