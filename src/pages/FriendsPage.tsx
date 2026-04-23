@@ -6,7 +6,6 @@ import {
   searchUsers,
   addFriend,
   removeFriend,
-  getUserByUsername,
   getReferralStats,
 } from "../services/supabase-api";
 import {
@@ -25,7 +24,6 @@ export default function FriendsPage() {
   const { setLoading, isLoading } = useStore();
   const [activeTab, setActiveTab] = useState<TabType>("following");
   const [searchQuery, setSearchQuery] = useState("");
-  const [usernameInput, setUsernameInput] = useState("");
 
   // Data states
   const [following, setFollowing] = useState<Friend[]>([]);
@@ -81,28 +79,23 @@ export default function FriendsPage() {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  const handleFollow = async (userId: number) => {
+  const handleFollow = async (user: Friend) => {
     try {
       hapticFeedback.impact("medium");
-      await addFriend(userId);
+      await addFriend(user.id);
 
-      // Update local state
+      // Add to following list immediately
       setFollowing((prev) => {
-        const user = [...searchResults, ...followers].find(
-          (u) => u.id === userId
-        );
-        if (user) {
-          return [...prev, { ...user, isFollowing: true }];
-        }
-        return prev;
+        if (prev.some((u) => u.id === user.id)) return prev;
+        return [...prev, { ...user, isFollowing: true }];
       });
 
       setSearchResults((prev) =>
-        prev.map((u) => (u.id === userId ? { ...u, isFollowing: true } : u))
+        prev.map((u) => (u.id === user.id ? { ...u, isFollowing: true } : u))
       );
 
       setFollowers((prev) =>
-        prev.map((u) => (u.id === userId ? { ...u, isFollowing: true } : u))
+        prev.map((u) => (u.id === user.id ? { ...u, isFollowing: true } : u))
       );
 
       hapticFeedback.notification("success");
@@ -133,39 +126,6 @@ export default function FriendsPage() {
     } catch (error) {
       console.error("Error unfollowing:", error);
       showTelegramAlert("Failed to unfollow user");
-    }
-  };
-
-  const handleAddByUsername = async () => {
-    if (!usernameInput.trim()) {
-      showTelegramAlert("Please enter a username");
-      return;
-    }
-
-    try {
-      setLoading(true);
-      const user = await getUserByUsername(usernameInput);
-
-      if (!user) {
-        showTelegramAlert(
-          "User not found. Make sure they're using WishBucket!"
-        );
-        return;
-      }
-
-      if (user.isFollowing) {
-        showTelegramAlert("You're already following this user");
-        return;
-      }
-
-      await handleFollow(user.id);
-      setUsernameInput("");
-      showTelegramAlert(`You're now following ${user.firstName}!`);
-    } catch (error) {
-      console.error("Error adding by username:", error);
-      showTelegramAlert("Failed to find user");
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -238,7 +198,7 @@ export default function FriendsPage() {
           className="follow-btn"
           onClick={(e) => {
             e.stopPropagation();
-            handleFollow(user.id);
+            handleFollow(user);
           }}
         >
           {user.isFollowedBy ? "Follow Back" : "Follow"}
@@ -435,31 +395,6 @@ export default function FriendsPage() {
 
         {activeTab === "search" && (
           <div className="search-content">
-            {/* Search by username */}
-            <div className="add-by-username">
-              <h3>Add by Username</h3>
-              <p>Enter a Telegram username to find them</p>
-              <div className="username-input-wrapper">
-                <span className="at-symbol">@</span>
-                <input
-                  type="text"
-                  placeholder="username"
-                  value={usernameInput}
-                  onChange={(e) =>
-                    setUsernameInput(e.target.value.replace("@", ""))
-                  }
-                  onKeyDown={(e) => e.key === "Enter" && handleAddByUsername()}
-                />
-                <button
-                  className="add-btn"
-                  onClick={handleAddByUsername}
-                  disabled={isLoading}
-                >
-                  {isLoading ? "..." : "Add"}
-                </button>
-              </div>
-            </div>
-
             {/* Search users */}
             <div className="search-section">
               <h3>Search Users</h3>
