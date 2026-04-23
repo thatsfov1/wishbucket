@@ -57,6 +57,7 @@ export default function FriendProfilePage() {
   );
   const [isLoading, setIsLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [selectedItem, setSelectedItem] = useState<WishlistItem | null>(null);
 
   useEffect(() => {
     if (!userId) return;
@@ -377,6 +378,10 @@ export default function FriendProfilePage() {
                       key={item.id}
                       className={`item-card ${item.status !== "available" ? "item-taken" : ""}`}
                       style={{ animationDelay: `${index * 0.05}s` }}
+                      onClick={() => {
+                        hapticFeedback.selection();
+                        setSelectedItem(item);
+                      }}
                     >
                       <div className="item-image">
                         {item.imageUrl ? (
@@ -407,7 +412,10 @@ export default function FriendProfilePage() {
                         )}
                       </div>
 
-                      <div className="item-actions">
+                      <div
+                        className="item-actions"
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         {item.status === "available" ? (
                           <button
                             className="reserve-btn"
@@ -432,29 +440,6 @@ export default function FriendProfilePage() {
                               : "Reserved"}
                           </span>
                         )}
-
-                        {item.url && (
-                          <a
-                            href={extractUrl(item.url)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="buy-link"
-                            onClick={() => hapticFeedback.impact("light")}
-                          >
-                            <svg
-                              width="16"
-                              height="16"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                            >
-                              <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6" />
-                              <polyline points="15,3 21,3 21,9" />
-                              <line x1="10" y1="14" x2="21" y2="3" />
-                            </svg>
-                          </a>
-                        )}
                       </div>
                     </div>
                   ))}
@@ -463,6 +448,91 @@ export default function FriendProfilePage() {
             </div>
           )}
         </>
+      )}
+
+      {selectedItem && (
+        <div
+          className="item-detail-overlay"
+          onClick={() => setSelectedItem(null)}
+        >
+          <div
+            className="item-detail-modal"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              className="close-detail-btn"
+              onClick={() => setSelectedItem(null)}
+            >
+              ✕
+            </button>
+
+            {selectedItem.imageUrl &&
+              (selectedItem.imageUrl.startsWith("http") ||
+                selectedItem.imageUrl.startsWith("data:")) && (
+                <div className="detail-image-container">
+                  <img src={selectedItem.imageUrl} alt={selectedItem.name} />
+                </div>
+              )}
+
+            <div className="detail-content">
+              <h2>{selectedItem.name}</h2>
+
+              {selectedItem.price && (
+                <div className="detail-price">
+                  {selectedItem.currency || "$"}
+                  {selectedItem.price.toFixed(2)}
+                </div>
+              )}
+
+              {selectedItem.description && (
+                <p className="detail-desc">{selectedItem.description}</p>
+              )}
+
+              <div className="detail-meta">
+                {getItemStatusBadge(selectedItem)}
+              </div>
+
+              {selectedItem.url && (
+                <a
+                  href={extractUrl(selectedItem.url)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="detail-link-btn"
+                  onClick={() => hapticFeedback.impact("light")}
+                >
+                  🔗 View Product
+                </a>
+              )}
+
+              <div className="detail-actions">
+                {selectedItem.status === "available" ? (
+                  <button
+                    className="reserve-btn"
+                    onClick={() => {
+                      setSelectedItem(null);
+                      handleReserveItem(selectedItem);
+                    }}
+                    disabled={actionLoading === selectedItem.id}
+                  >
+                    {actionLoading === selectedItem.id ? "..." : "🎁 Reserve as Gift"}
+                  </button>
+                ) : selectedItem.status === "reserved" &&
+                  selectedItem.reservedBy === currentUserId ? (
+                  <button
+                    className="gifted-btn"
+                    onClick={() => {
+                      setSelectedItem(null);
+                      handleMarkPurchased(selectedItem);
+                    }}
+                    disabled={actionLoading === selectedItem.id}
+                  >
+                    {actionLoading === selectedItem.id ? "..." : "✓ Mark as Gifted"}
+                  </button>
+                ) : null}
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       <BottomNavBar />

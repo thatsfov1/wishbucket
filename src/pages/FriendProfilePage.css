@@ -481,3 +481,126 @@
   background: rgba(212, 237, 218, 0.15);
   color: #6bcb77;
 }
+
+/* Item Detail Modal */
+.item-detail-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.item-detail-modal {
+  background: var(--bg-primary);
+  border-radius: 24px 24px 0 0;
+  width: 100%;
+  max-width: 480px;
+  max-height: 85vh;
+  overflow-y: auto;
+  animation: slideUp 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  position: relative;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+.close-detail-btn {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+}
+
+.detail-image-container {
+  width: 100%;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border-radius: 24px 24px 0 0;
+}
+
+.detail-image-container img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.detail-content {
+  padding: 20px;
+}
+
+.detail-content h2 {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 8px;
+}
+
+.detail-price {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--accent-color, #fa7070);
+  margin-bottom: 12px;
+}
+
+.detail-desc {
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin: 0 0 16px;
+}
+
+.detail-meta {
+  margin-bottom: 16px;
+}
+
+.detail-link-btn {
+  display: block;
+  text-align: center;
+  padding: 14px;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border-radius: 14px;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 15px;
+  margin-bottom: 12px;
+}
+
+.detail-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.detail-actions .reserve-btn,
+.detail-actions .gifted-btn {
+  width: 100%;
+  padding: 14px;
+  border-radius: 14px;
+  border: none;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
