@@ -658,7 +658,7 @@
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.6);
-  z-index: 300;
+  z-index: 1100;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -780,6 +780,7 @@
 .detail-actions {
   display: flex;
   gap: 10px;
+  padding-bottom: env(safe-area-inset-bottom, 8px);
 }
 
 .detail-delete-btn {
