@@ -90,12 +90,10 @@ export default function AddItemModal({
       );
       setShowQuickCreate(false);
       setNewWishlistName("");
-      // Reset scraping state
       setIsScrapingUrl(false);
       setScrapeError(null);
       setScrapedCurrency(null);
       lastScrapedUrlRef.current = "";
-      // Load user's notification preference
       const savedNotifyPref = localStorage.getItem("notifyOnAdd");
       setNotifyFollowers(savedNotifyPref !== "false");
     } else {
@@ -116,11 +114,10 @@ export default function AddItemModal({
     async (urlToScrape: string, isNewUrl: boolean = false) => {
       if (!urlToScrape.trim()) return;
 
-      // Validate URL
       try {
         new URL(urlToScrape);
       } catch {
-        return; // Invalid URL, don't scrape
+        return;
       }
 
       setIsScrapingUrl(true);
@@ -139,8 +136,6 @@ export default function AddItemModal({
           result.price ||
           result.description
         ) {
-          // If it's a new URL paste, always update fields with scraped data
-          // Otherwise only fill if fields are empty (first time)
           if (result.title && (isNewUrl || !name)) {
             setName(result.title);
           }
@@ -154,7 +149,6 @@ export default function AddItemModal({
             setCustomImage(result.imageUrl);
             setSelectedEmoji("");
           }
-          // Map currency code to symbol and track for mismatch warning
           if (result.currency) {
             const currencyMap: Record<string, string> = {
               USD: "$",
@@ -168,7 +162,6 @@ export default function AddItemModal({
             };
             const detectedSymbol = currencyMap[result.currency] || result.currency;
             setScrapedCurrency(detectedSymbol);
-            // If new URL, reset currency to default so warning shows
             if (isNewUrl) {
               setCurrency("$");
             }
@@ -178,7 +171,6 @@ export default function AddItemModal({
 
           hapticFeedback.notification("success");
         } else {
-          // No useful data found
           setScrapeError("Could not find product info. Fill manually.");
         }
       } catch (error) {
@@ -191,25 +183,21 @@ export default function AddItemModal({
     [name, description, price, customImage],
   );
 
-  // Effect to auto-scrape when URL changes
   useEffect(() => {
     const urlValue = url.trim();
 
-    // Clear any pending debounce
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
     }
 
-    // Only scrape if URL is valid and different from last scraped
     if (urlValue && urlValue !== lastScrapedUrlRef.current) {
       try {
         new URL(urlValue);
-        // Debounce to avoid too many requests while typing
         debounceTimerRef.current = setTimeout(() => {
           scrapeUrl(urlValue);
         }, 500);
       } catch {
-        // Invalid URL, don't scrape
+        // invalid URL
       }
     }
 
@@ -477,28 +465,20 @@ export default function AddItemModal({
               setUrl(newUrl);
             }}
             onPaste={(e) => {
-              // Get pasted text and immediately trigger scrape
               const pastedText = e.clipboardData.getData("text").trim();
-              console.log("📋 Pasted text:", pastedText);
               if (pastedText) {
                 try {
                   new URL(pastedText);
-                  // Clear any pending debounce first to prevent double scrape
                   if (debounceTimerRef.current) {
                     clearTimeout(debounceTimerRef.current);
                     debounceTimerRef.current = null;
                   }
-                  // Check if this is a new/different URL
                   const isNewUrl = pastedText !== url && lastScrapedUrlRef.current !== "";
-                  // Mark as already scraped to prevent useEffect from triggering another scrape
                   lastScrapedUrlRef.current = pastedText;
-                  // Set the URL
                   setUrl(pastedText);
-                  // Valid URL pasted - scrape immediately (pass isNewUrl flag)
                   scrapeUrl(pastedText, isNewUrl);
                 } catch {
-                  // Not a valid URL, let normal flow handle it
-                  console.log("❌ Invalid URL pasted");
+                  // not a valid URL
                 }
               }
             }}

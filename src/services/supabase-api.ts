@@ -129,7 +129,6 @@ export const getHomePageData = async (): Promise<HomePageData> => {
     throw new Error("User not authenticated");
   }
 
-  // Run ALL queries in parallel - including item statuses for all user's wishlists
   const [
     wishlistsResult,
     itemsResult,
@@ -137,7 +136,6 @@ export const getHomePageData = async (): Promise<HomePageData> => {
     followersCountResult,
     notificationsResult,
   ] = await Promise.all([
-    // Get wishlists
     supabase
       .from("wishlists")
       .select(
@@ -145,26 +143,18 @@ export const getHomePageData = async (): Promise<HomePageData> => {
       )
       .eq("user_id", userId)
       .order("created_at", { ascending: false }),
-
-    // Get ALL items for user's wishlists (via join) - only status needed for counting
     supabase
       .from("wishlist_items")
       .select("wishlist_id, status, wishlists!inner(user_id)")
       .eq("wishlists.user_id", userId),
-
-    // Count friends
     supabase
       .from("friends")
       .select("*", { count: "exact", head: true })
       .eq("user_id", userId),
-
-    // Count followers
     supabase
       .from("friends")
       .select("*", { count: "exact", head: true })
       .eq("friend_id", userId),
-
-    // Count unread notifications
     supabase
       .from("notifications")
       .select("*", { count: "exact", head: true })
@@ -697,7 +687,6 @@ export const addFriend = async (friendId: number): Promise<void> => {
     throw new Error("Cannot add yourself as a friend");
   }
 
-  // Check if they already follow us (for "follow back" notification)
   const { data: existingFollow } = await supabase
     .from("friends")
     .select("id")
@@ -714,17 +703,14 @@ export const addFriend = async (friendId: number): Promise<void> => {
 
   if (error) {
     if (error.code === "23505") {
-      // Unique constraint violation
       throw new Error("Friend already added");
     }
     throw new Error(`Failed to add friend: ${error.message}`);
   }
 
-  // Get current user's data for notification
   const telegramUser = getTelegramUser();
   const userName = telegramUser?.first_name || "Someone";
 
-  // Send notification to the person being followed
   try {
     await createNotification(
       friendId,
@@ -774,7 +760,6 @@ export const getFriendsPageData = async (): Promise<FriendsPageData> => {
     throw new Error("User not authenticated");
   }
 
-  // Single parallel fetch for all data
   const [followingResult, followersResult] = await Promise.all([
     supabase
       .from("friends")
@@ -815,7 +800,6 @@ export const getFriendsPageData = async (): Promise<FriendsPageData> => {
     );
   }
 
-  // Build sets for cross-referencing
   const followingIds = new Set(
     followingResult.data?.map((f) => f.friend_id) || [],
   );
@@ -823,7 +807,6 @@ export const getFriendsPageData = async (): Promise<FriendsPageData> => {
     followersResult.data?.map((f) => f.user_id) || [],
   );
 
-  // Map following
   const following: Friend[] = (followingResult.data || []).map((f) => {
     const telegramData =
       typeof f.friend.telegram_data === "string"
@@ -842,7 +825,6 @@ export const getFriendsPageData = async (): Promise<FriendsPageData> => {
     };
   });
 
-  // Map followers
   const followers: Friend[] = (followersResult.data || []).map((f) => {
     const telegramData =
       typeof f.user.telegram_data === "string"
@@ -1584,7 +1566,6 @@ export const addItem = async (
     throw new Error(`Failed to add item: ${error.message}`);
   }
 
-  // Check if wishlist is public and notify followers
   if (notifyFollowersFlag && userId) {
     try {
       const { data: wishlist } = await supabase
@@ -1623,7 +1604,6 @@ export const addItemToMultipleWishlists = async (
   const userId = getCurrentUserId();
   const addedItems: WishlistItem[] = [];
 
-  // Add item to each wishlist without sending notifications
   for (const wishlistId of wishlistIds) {
     const result = await addItem(
       wishlistId,
@@ -1633,10 +1613,8 @@ export const addItemToMultipleWishlists = async (
     addedItems.push(result);
   }
 
-  // Send a single combined notification for all public wishlists
   if (notifyFollowersFlag && userId && wishlistIds.length > 0) {
     try {
-      // Get names of all public wishlists
       const { data: wishlists } = await supabase
         .from("wishlists")
         .select("id, name, is_public")

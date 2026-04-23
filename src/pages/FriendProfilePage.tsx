@@ -30,15 +30,15 @@ const extractUrl = (raw: string): string => {
 function formatBirthday(birthday: string): string {
   try {
     const date = new Date(birthday);
-    const month = date.toLocaleDateString('en-US', { month: 'long' });
+    const month = date.toLocaleDateString("en-US", { month: "long" });
     const day = date.getDate();
     const year = date.getFullYear();
-    
+
     // If year is 1900 or earlier, it's likely a placeholder (no year provided)
     if (year <= 1900) {
       return `${month} ${day}`;
     }
-    
+
     return `${month} ${day}, ${year}`;
   } catch {
     return birthday;
@@ -302,9 +302,7 @@ export default function FriendProfilePage() {
         </h2>
         {user.username && <p className="username">@{user.username}</p>}
         {user.birthday && (
-          <p className="user-birthday">
-            🎂 {formatBirthday(user.birthday)}
-          </p>
+          <p className="user-birthday">🎂 {formatBirthday(user.birthday)}</p>
         )}
 
         <div className="user-stats">

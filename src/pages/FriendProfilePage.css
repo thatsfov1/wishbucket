@@ -63,7 +63,9 @@
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .loading-state p,
@@ -373,12 +375,12 @@
 }
 
 .status-badge.reserved {
-  background: #FFF3CD;
+  background: #fff3cd;
   color: #856404;
 }
 
 .status-badge.purchased {
-  background: #D4EDDA;
+  background: #d4edda;
   color: #155724;
 }
 
@@ -467,12 +469,10 @@
 /* Dark mode adjustments */
 [data-theme="dark"] .status-badge.reserved {
   background: rgba(255, 243, 205, 0.15);
-  color: #FFD93D;
+  color: #ffd93d;
 }
 
 [data-theme="dark"] .status-badge.purchased {
   background: rgba(212, 237, 218, 0.15);
-  color: #6BCB77;
+  color: #6bcb77;
 }
-
-
