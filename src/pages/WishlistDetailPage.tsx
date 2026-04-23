@@ -19,6 +19,15 @@ import AddItemModal from "../components/AddItemModal";
 import { generateAffiliateLink } from "../utils/affiliate";
 import "./WishlistDetailPage.css";
 
+// Extract a valid absolute URL from a potentially malformed stored value.
+// Handles items saved with "Title: https://..." pattern due to paste bug.
+const extractUrl = (raw: string): string => {
+  if (!raw) return raw;
+  if (/^https?:\/\//i.test(raw)) return raw;
+  const match = raw.match(/https?:\/\/\S+/i);
+  return match ? match[0] : raw;
+};
+
 const DELETE_REASONS = [
   {
     id: "received",
@@ -570,7 +579,7 @@ export default function WishlistDetailPage() {
 
               {selectedItem.url && (
                 <a
-                  href={selectedItem.url}
+                  href={extractUrl(selectedItem.url)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="detail-link-btn"

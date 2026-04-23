@@ -45,16 +45,29 @@ const sanitizeUrl = (url: string): string => {
   const trimmed = url.trim();
   if (!trimmed) return trimmed;
 
-  const encodedIndex = trimmed.search(/https?%3A%2F%2F/i);
-  if (encodedIndex > 0) {
-    console.log("🧹 Cut URL-encoded duplicate:", trimmed.substring(0, encodedIndex));
-    return trimmed.substring(0, encodedIndex);
+  // String starts with http — handle Telegram WebView URL duplication
+  if (/^https?:\/\//i.test(trimmed)) {
+    // Check for URL-encoded duplicate: https://x.com https%3A%2F%2Fx.com
+    const encodedIndex = trimmed.search(/https?%3A%2F%2F/i);
+    if (encodedIndex > 0) {
+      return trimmed.substring(0, encodedIndex).trim();
+    }
+
+    // Check for literal duplicate: https://x.com https://x.com
+    // Start search after the first "://" to avoid cutting on the initial scheme
+    const secondHttp = trimmed.indexOf("http", 8);
+    if (secondHttp > 0 && /https?:\/\//.test(trimmed.substring(secondHttp))) {
+      return trimmed.substring(0, secondHttp).trim();
+    }
+
+    return trimmed;
   }
 
-  const secondHttp = trimmed.indexOf("http", 1);
-  if (secondHttp > 0 && /https?:\/\//.test(trimmed.substring(secondHttp))) {
-    console.log("🧹 Cut literal duplicate:", trimmed.substring(0, secondHttp));
-    return trimmed.substring(0, secondHttp);
+  // Doesn't start with http — extract embedded URL if present
+  // (e.g. "Article title: https://shop.com/product" pasted from Telegram)
+  const httpIndex = trimmed.search(/https?:\/\//i);
+  if (httpIndex >= 0) {
+    return trimmed.substring(httpIndex).trim();
   }
 
   return trimmed;

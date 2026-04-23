@@ -17,6 +17,15 @@ import { Friend, Wishlist, WishlistItem } from "../types";
 import BottomNavBar from "../components/BottomNavBar";
 import "./FriendProfilePage.css";
 
+// Extract a valid absolute URL from a potentially malformed stored value.
+// Handles items saved with "Title: https://..." pattern due to paste bug.
+const extractUrl = (raw: string): string => {
+  if (!raw) return raw;
+  if (/^https?:\/\//i.test(raw)) return raw;
+  const match = raw.match(/https?:\/\/\S+/i);
+  return match ? match[0] : raw;
+};
+
 // Format birthday for display (with or without year)
 function formatBirthday(birthday: string): string {
   try {
@@ -428,7 +437,7 @@ export default function FriendProfilePage() {
 
                         {item.url && (
                           <a
-                            href={item.url}
+                            href={extractUrl(item.url)}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="buy-link"
