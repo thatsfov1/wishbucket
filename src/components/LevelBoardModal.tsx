@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Level, getLevelProgress, LEVELS } from "../config/levels";
 import "./LevelBoardModal.css";
 
@@ -7,8 +7,6 @@ interface LevelBoardModalProps {
   onClose: () => void;
   currentLevel: Level;
   referrals: number;
-  completedTaskIds: string[];
-  onMarkChannelDone: (channelId: string) => void;
   onInviteFriends: () => void;
 }
 
@@ -17,19 +15,14 @@ export default function LevelBoardModal({
   onClose,
   currentLevel,
   referrals,
-  completedTaskIds,
-  onMarkChannelDone,
   onInviteFriends,
 }: LevelBoardModalProps) {
-  const [clickedTasks, setClickedTasks] = useState<Record<string, boolean>>({});
-  const [loadingTasks, setLoadingTasks] = useState<Record<string, boolean>>({});
-
   const nextLevel =
     currentLevel.level < LEVELS.length - 1
       ? LEVELS[currentLevel.level + 1]
       : null;
 
-  const progress = getLevelProgress(referrals, completedTaskIds, currentLevel);
+  const progress = getLevelProgress(referrals, currentLevel);
 
   // Lock body scroll when open
   useEffect(() => {
@@ -54,7 +47,6 @@ export default function LevelBoardModal({
 
   const heroGradient = `linear-gradient(135deg, ${currentLevel.gradientStart} 0%, ${currentLevel.gradientEnd} 100%)`;
 
-  // All levels except 0 shown in the journey row
   const levelJourney = LEVELS;
 
   return (
@@ -66,14 +58,13 @@ export default function LevelBoardModal({
       aria-label="Level Board"
     >
       <div className="lbm-sheet" onClick={(e) => e.stopPropagation()}>
-        {/* Hero header – drag handle lives inside so gradient covers the top */}
+        {/* Hero header */}
         <div className="lbm-hero" style={{ background: heroGradient }}>
           <div className="lbm-drag-handle" />
           <button className="lbm-close" onClick={onClose} aria-label="Close">
             ✕
           </button>
 
-          {/* Level number circle */}
           <div
             className="lbm-level-circle"
             style={{
@@ -223,131 +214,53 @@ export default function LevelBoardModal({
             </div>
           )}
 
-          {/* Tasks to reach next level */}
-          {nextLevel && (
+          {/* Task to reach next level */}
+          {nextLevel && nextLevel.requirement && (
             <div className="lbm-tasks-section">
               <h3 className="lbm-tasks-title">
                 Complete to unlock Level {nextLevel.level}
               </h3>
 
-              {nextLevel.requirements.map((req, idx) => {
-                if (req.type === "referrals") {
-                  const done = referrals >= (req.count ?? 0);
-                  const pct = Math.min(
-                    Math.round((referrals / (req.count ?? 1)) * 100),
-                    100,
-                  );
-                  return (
-                    <div
-                      key={idx}
-                      className={`lbm-task-card ${done ? "done" : ""}`}
-                    >
-                      <div className="lbm-task-icon">👥</div>
-                      <div className="lbm-task-info">
-                        <span className="lbm-task-label">{req.label}</span>
-                        <div className="lbm-task-sub-track">
-                          <div
-                            className="lbm-task-sub-fill"
-                            style={{
-                              width: `${pct}%`,
-                              background: heroGradient,
-                            }}
-                          />
-                        </div>
-                        <span className="lbm-task-progress-text">
-                          {referrals} / {req.count} friends
-                        </span>
-                      </div>
-                      {done ? (
-                        <div className="lbm-task-check">✓</div>
-                      ) : (
-                        <button
-                          className="lbm-task-action"
+              {(() => {
+                const req = nextLevel.requirement;
+                const done = referrals >= req.count;
+                const pct = Math.min(
+                  Math.round((referrals / req.count) * 100),
+                  100,
+                );
+                return (
+                  <div className={`lbm-task-card ${done ? "done" : ""}`}>
+                    <div className="lbm-task-icon">👥</div>
+                    <div className="lbm-task-info">
+                      <span className="lbm-task-label">{req.label}</span>
+                      <div className="lbm-task-sub-track">
+                        <div
+                          className="lbm-task-sub-fill"
                           style={{
+                            width: `${pct}%`,
                             background: heroGradient,
                           }}
-                          onClick={onInviteFriends}
-                        >
-                          Invite
-                        </button>
-                      )}
-                    </div>
-                  );
-                }
-
-                if (req.type === "social_task") {
-                  const taskId = req.taskId ?? "";
-                  const done = completedTaskIds.includes(taskId);
-                  const isClicked = clickedTasks[taskId];
-                  const isLoading = loadingTasks[taskId];
-
-                  const handleSocialClick = () => {
-                    if (req.platform === "twitter") {
-                      setTimeout(() => {
-                        onMarkChannelDone(taskId);
-                      }, 2000);
-                    } else if (req.platform === "telegram") {
-                      // Mark as clicked to show the Check button
-                      setClickedTasks((prev) => ({ ...prev, [taskId]: true }));
-                    }
-                  };
-
-                  const handleCheckClick = () => {
-                    setLoadingTasks((prev) => ({ ...prev, [taskId]: true }));
-                    // Simulate backend check
-                    setTimeout(() => {
-                      setLoadingTasks((prev) => ({ ...prev, [taskId]: false }));
-                      onMarkChannelDone(taskId);
-                    }, 1500);
-                  };
-
-                  return (
-                    <div
-                      key={idx}
-                      className={`lbm-task-card ${done ? "done" : ""}`}
-                    >
-                      <div className="lbm-task-icon">
-                        {req.platform === "twitter" ? "🐦" : "📢"}
+                        />
                       </div>
-                      <div className="lbm-task-info">
-                        <span className="lbm-task-label">{req.label}</span>
-                        <span className="lbm-task-sub-label">{req.name}</span>
-                      </div>
-                      {done ? (
-                        <div className="lbm-task-check">✓</div>
-                      ) : isClicked && req.platform === "telegram" ? (
-                        <div className="lbm-task-actions">
-                          <button
-                            className="lbm-task-action"
-                            style={{ background: heroGradient }}
-                            onClick={handleCheckClick}
-                            disabled={isLoading}
-                          >
-                            {isLoading ? "Checking..." : "Check"}
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="lbm-task-actions">
-                          <a
-                            className="lbm-task-action"
-                            style={{ background: heroGradient }}
-                            href={req.url}
-                            target="_blank"
-                            rel="noreferrer"
-                            onClick={handleSocialClick}
-                          >
-                            {req.platform === "twitter" ? "Follow" : "Join"}
-                          </a>
-                        </div>
-                      )}
+                      <span className="lbm-task-progress-text">
+                        {referrals} / {req.count} friends
+                      </span>
                     </div>
-                  );
-                }
+                    {done ? (
+                      <div className="lbm-task-check">✓</div>
+                    ) : (
+                      <button
+                        className="lbm-task-action"
+                        style={{ background: heroGradient }}
+                        onClick={onInviteFriends}
+                      >
+                        Invite
+                      </button>
+                    )}
+                  </div>
+                );
+              })()}
 
-                return null;
-              })}
-
-              {/* Invite friends CTA */}
               <button
                 className="lbm-invite-btn"
                 style={{ background: heroGradient }}

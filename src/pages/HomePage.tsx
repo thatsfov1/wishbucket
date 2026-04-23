@@ -5,9 +5,6 @@ import { getTelegramUser, hapticFeedback } from "../utils/telegram";
 import {
   createWishlist,
   getHomePageData,
-  getCompletedSocialTasks,
-  markSocialTaskCompleted,
-  syncCompletedSocialTasks,
   WishlistSummary,
 } from "../services/supabase-api";
 import BottomNavBar from "../components/BottomNavBar";
@@ -18,27 +15,6 @@ import LevelBoardModal from "../components/LevelBoardModal";
 import { LEVELS, getUserLevel, getWishlistLimit } from "../config/levels";
 import "./HomePage.css";
 
-const COMPLETED_TASKS_KEY = "wb_completed_tasks";
-
-function getCompletedTasksStorageKey(userId?: number): string {
-  return `${COMPLETED_TASKS_KEY}_${userId ?? "anon"}`;
-}
-
-function loadCompletedTasks(userId?: number): string[] {
-  try {
-    const raw = localStorage.getItem(getCompletedTasksStorageKey(userId));
-    return raw ? (JSON.parse(raw) as string[]) : [];
-  } catch {
-    return [];
-  }
-}
-
-function saveCompletedTasks(ids: string[], userId?: number): void {
-  localStorage.setItem(
-    getCompletedTasksStorageKey(userId),
-    JSON.stringify(ids),
-  );
-}
 
 export default function HomePage() {
   const navigate = useNavigate();
@@ -57,7 +33,6 @@ export default function HomePage() {
   const [error, setError] = useState<string | null>(null);
   const [friendsCount, setFriendsCount] = useState(0);
   const [followersCount, setFollowersCount] = useState(0);
-  const [completedTaskIds, setCompletedTaskIds] = useState<string[]>([]);
   const [isLevelLoading, setIsLevelLoading] = useState(true);
   // Use local state for fast wishlist summaries (no items loaded)
   const [wishlistSummaries, setWishlistSummaries] = useState<WishlistSummary[]>([]);
@@ -67,12 +42,10 @@ export default function HomePage() {
 
   const referrals = userProfile?.referrals ?? 0;
   const currentLevel =
-    !isLevelLoading && userProfile
-      ? getUserLevel(referrals, completedTaskIds)
-      : null;
+    !isLevelLoading && userProfile ? getUserLevel(referrals) : null;
   const resolvedLevel = currentLevel ?? LEVELS[0];
   const wishlistLimit = currentLevel
-    ? getWishlistLimit(referrals, completedTaskIds)
+    ? getWishlistLimit(referrals)
     : LEVELS[0].wishlistLimit;
 
   // Load data on mount - OPTIMIZED: single query for all home page data
@@ -81,10 +54,6 @@ export default function HomePage() {
       try {
         setLoading(true);
         setError(null);
-
-        // Use local storage for completed tasks first (instant)
-        const localTasks = loadCompletedTasks(telegramUser?.id);
-        setCompletedTaskIds(localTasks);
 
         // Single optimized query for all home page data
         const homeData = await getHomePageData();
@@ -112,19 +81,6 @@ export default function HomePage() {
           }))
         );
 
-        // Sync tasks in background (non-blocking, low priority)
-        getCompletedSocialTasks()
-          .then((remoteTasks) => {
-            const mergedTasks = Array.from(new Set([...remoteTasks, ...localTasks]));
-            if (mergedTasks.length !== localTasks.length) {
-              setCompletedTaskIds(mergedTasks);
-              saveCompletedTasks(mergedTasks, telegramUser?.id);
-              if (mergedTasks.length !== remoteTasks.length) {
-                syncCompletedSocialTasks(mergedTasks).catch(console.error);
-              }
-            }
-          })
-          .catch(console.error);
       } catch (err) {
         console.error("Error loading data:", err);
         if (err instanceof Error && !err.message.includes("not authenticated")) {
@@ -166,24 +122,6 @@ export default function HomePage() {
     }
     setCreateModalOpen(true);
   };
-
-  const handleMarkChannelDone = useCallback(
-    (channelId: string) => {
-      setCompletedTaskIds((prev) => {
-        if (prev.includes(channelId)) return prev;
-        const updated = [...prev, channelId];
-
-        saveCompletedTasks(updated, telegramUser?.id);
-
-        markSocialTaskCompleted(channelId).catch((err) => {
-          console.warn("Failed to save completed task to server:", err);
-        });
-
-        return updated;
-      });
-    },
-    [telegramUser?.id],
-  );
 
   const handleInviteFriends = useCallback(() => {
     const botUsername = "WishBucketBot"; // update to your actual bot username
@@ -482,8 +420,6 @@ export default function HomePage() {
         onClose={() => setLevelBoardOpen(false)}
         currentLevel={resolvedLevel}
         referrals={referrals}
-        completedTaskIds={completedTaskIds}
-        onMarkChannelDone={handleMarkChannelDone}
         onInviteFriends={handleInviteFriends}
       />
     </div>

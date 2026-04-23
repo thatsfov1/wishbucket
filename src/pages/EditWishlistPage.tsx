@@ -16,19 +16,8 @@ export default function EditWishlistPage() {
   const navigate = useNavigate();
   const { userProfile } = useStore();
 
-  // Compute level for image upload gate
-  const completedTaskIds: string[] = (() => {
-    try {
-      return JSON.parse(
-        localStorage.getItem("wb_completed_tasks") ?? "[]",
-      ) as string[];
-    } catch {
-      return [];
-    }
-  })();
   const referrals = userProfile?.referrals ?? 0;
-  const isImageUploadLocked =
-    getUserLevel(referrals, completedTaskIds).level < 1;
+  const isImageUploadLocked = getUserLevel(referrals).level < 1;
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -154,7 +143,7 @@ export default function EditWishlistPage() {
                   if (isImageUploadLocked) {
                     hapticFeedback.impact("medium");
                     showTelegramAlert(
-                      "Reach Level 1 to upload custom images! Invite 3 friends and follow our channel.",
+                      "Reach Level 1 to upload custom images! Invite 3 friends.",
                     );
                   } else {
                     fileInputRef.current?.click();
