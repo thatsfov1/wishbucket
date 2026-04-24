@@ -15,11 +15,23 @@ interface NotificationPayload {
   title: string;
   message: string;
   type: string;
-  data?: Record<string, any>;
+  data?: Record<string, any> | null;
 }
 
+// Telegram Mini App deep-link format:
+//   https://t.me/<bot_username>/<miniapp_short_name>?startapp=<param>
+// The Mini App reads the param from `initDataUnsafe.start_param`.
+const BOT_USERNAME =
+  Deno.env.get("TELEGRAM_BOT_USERNAME") ?? "wishbucket_bot";
+const MINIAPP_SHORT_NAME =
+  Deno.env.get("TELEGRAM_MINIAPP_SHORT_NAME") ?? "app";
+
+const miniAppUrl = (startParam?: string): string => {
+  const base = `https://t.me/${BOT_USERNAME}/${MINIAPP_SHORT_NAME}`;
+  return startParam ? `${base}?startapp=${startParam}` : base;
+};
+
 serve(async (req: Request) => {
-  // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
@@ -42,81 +54,26 @@ serve(async (req: Request) => {
     const payload: NotificationPayload = await req.json();
     const { userId, title, message, type, data } = payload;
 
-    // Get user's chat_id from the database (it's the same as userId for Telegram users)
     const chatId = userId;
+    const formattedMessage = `<b>${escapeHtml(title)}</b>\n\n${escapeHtml(message)}`;
 
-    // Format the message
-    let formattedMessage = `<b>${escapeHtml(title)}</b>\n\n${escapeHtml(message)}`;
+    const inlineKeyboard = await buildInlineKeyboard(supabase, type, data);
 
-    // Add action button based on notification type
-    let inlineKeyboard: any[][] = [];
-
-    switch (type) {
-      case "new_follower":
-        inlineKeyboard = [
-          [{ text: "👥 View Friends", callback_data: "view_friends" }],
-        ];
-        break;
-      case "item_reserved":
-      case "item_purchased":
-        if (data?.wishlistId) {
-          inlineKeyboard = [
-            [
-              {
-                text: "🎁 View Wishlist",
-                callback_data: `view_wishlist_${data.wishlistId}`,
-              },
-            ],
-          ];
-        }
-        break;
-      case "wishlist_shared":
-        if (data?.wishlistId) {
-          inlineKeyboard = [
-            [
-              {
-                text: "📋 Open Wishlist",
-                url: `https://t.me/wishbucket_bot?start=wishlist_${data.wishlistId}`,
-              },
-            ],
-          ];
-        }
-        break;
-      case "birthday_reminder":
-        inlineKeyboard = [
-          [
-            {
-              text: "🎂 View Friend's Wishlist",
-              callback_data: `birthday_${data?.friendId}`,
-            },
-          ],
-        ];
-        break;
-      case "referral_signup":
-        inlineKeyboard = [
-          [{ text: "🎉 Invite More Friends", callback_data: "invite_friends" }],
-        ];
-        break;
-      default:
-        inlineKeyboard = [
-          [{ text: "📱 Open WishBucket", url: "https://t.me/wishbucket_bot" }],
-        ];
+    const body: Record<string, unknown> = {
+      chat_id: chatId,
+      text: formattedMessage,
+      parse_mode: "HTML",
+    };
+    if (inlineKeyboard.length > 0) {
+      body.reply_markup = { inline_keyboard: inlineKeyboard };
     }
 
-    // Send the Telegram message
     const telegramResponse = await fetch(
       `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          chat_id: chatId,
-          text: formattedMessage,
-          parse_mode: "HTML",
-          reply_markup: {
-            inline_keyboard: inlineKeyboard,
-          },
-        }),
+        body: JSON.stringify(body),
       },
     );
 
@@ -124,7 +81,6 @@ serve(async (req: Request) => {
 
     if (!telegramResult.ok) {
       console.error("Telegram API error:", telegramResult);
-      // Don't throw - notification was saved to DB, just log the error
     }
 
     return new Response(JSON.stringify({ success: true, telegramResult }), {
@@ -133,12 +89,125 @@ serve(async (req: Request) => {
     });
   } catch (error) {
     console.error("Error sending notification:", error);
-    return new Response(JSON.stringify({ error: error.message }), {
+    return new Response(JSON.stringify({ error: (error as Error).message }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 500,
     });
   }
 });
+
+async function buildInlineKeyboard(
+  supabase: ReturnType<typeof createClient>,
+  type: string,
+  data?: Record<string, any> | null,
+): Promise<Array<Array<{ text: string; url: string }>>> {
+  switch (type) {
+    case "new_follower": {
+      // Open the new follower's profile directly inside the Mini App.
+      const followerId = data?.followerId;
+      if (!followerId) return [];
+      return [
+        [
+          {
+            text: "👤 View Profile",
+            url: miniAppUrl(`user_${followerId}`),
+          },
+        ],
+      ];
+    }
+
+    case "friend_added_item": {
+      // Prefer opening the specific wishlist the item was added to.
+      const wishlistId = data?.wishlistId;
+      if (wishlistId) {
+        return [
+          [
+            {
+              text: "🎁 Open Wishlist",
+              url: miniAppUrl(`wishlist_${wishlistId}`),
+            },
+          ],
+        ];
+      }
+      // If the item was added to multiple wishlists, open the author's profile.
+      const authorId = data?.userId;
+      if (authorId) {
+        return [
+          [
+            {
+              text: "👤 View Profile",
+              url: miniAppUrl(`user_${authorId}`),
+            },
+          ],
+        ];
+      }
+      return [];
+    }
+
+    case "wishlist_shared": {
+      // Only show a button if the wishlist actually has items — no point
+      // opening an empty wishlist.
+      const wishlistId = data?.wishlistId;
+      if (!wishlistId) return [];
+
+      const { count, error } = await supabase
+        .from("wishlist_items")
+        .select("id", { count: "exact", head: true })
+        .eq("wishlist_id", wishlistId);
+
+      if (error || !count || count === 0) return [];
+
+      return [
+        [
+          {
+            text: "📋 Open Wishlist",
+            url: miniAppUrl(`wishlist_${wishlistId}`),
+          },
+        ],
+      ];
+    }
+
+    case "item_reserved":
+    case "item_purchased": {
+      const wishlistId = data?.wishlistId;
+      if (!wishlistId) return [];
+      return [
+        [
+          {
+            text: "🎁 View Wishlist",
+            url: miniAppUrl(`wishlist_${wishlistId}`),
+          },
+        ],
+      ];
+    }
+
+    case "birthday_reminder": {
+      const friendId = data?.friendId;
+      if (!friendId) return [];
+      return [
+        [
+          {
+            text: "🎂 View Friend's Profile",
+            url: miniAppUrl(`user_${friendId}`),
+          },
+        ],
+      ];
+    }
+
+    case "referral_signup":
+    case "bonus_earned":
+    default:
+      // Generic fallback — open the Mini App.
+      return [
+        [
+          {
+            text: "📱 Open WishBucket",
+            url: miniAppUrl(),
+          },
+        ],
+      ];
+  }
+}
 
 function escapeHtml(text: string): string {
   return text

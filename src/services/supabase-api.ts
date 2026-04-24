@@ -2295,6 +2295,7 @@ export const createNotification = async (
         title,
         message,
         type,
+        data: data || null,
       },
     });
   } catch (e) {

@@ -247,3 +247,20 @@ export const getWishlistIdFromStart = (): string | null => {
 
   return null;
 };
+
+/**
+ * Parses user ID from start_param
+ * Link format: https://t.me/wishbucket_bot/app?startapp=user_ID
+ * Returns null if not a user-profile link
+ */
+export const getUserIdFromStart = (): string | null => {
+  const startParam = getStartParam();
+  if (!startParam) return null;
+
+  // Format: user_ID
+  if (startParam.startsWith("user_")) {
+    return startParam.substring(5); // Remove 'user_' prefix
+  }
+
+  return null;
+};

@@ -5,6 +5,7 @@ import {
   getTelegramUser,
   getReferralCodeFromStart,
   getWishlistIdFromStart,
+  getUserIdFromStart,
 } from "./utils/telegram";
 import { useStore } from "./store/useStore";
 import { getUserProfile, applyReferral } from "./services/supabase-api";
@@ -60,6 +61,12 @@ function App() {
         const wishlistId = getWishlistIdFromStart();
         if (wishlistId) {
           window.location.hash = `/wishlists/${wishlistId}`;
+        }
+
+        // Handle friend profile deeplink
+        const friendUserId = getUserIdFromStart();
+        if (friendUserId) {
+          window.location.hash = `/user/${friendUserId}`;
         }
       } catch (error) {
         console.error("Error initializing app:", error);
