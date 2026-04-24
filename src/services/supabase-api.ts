@@ -1812,6 +1812,30 @@ export const reserveItem = async (itemId: string): Promise<WishlistItem> => {
 };
 
 /**
+ * Скасовує резервацію item (робить його знову доступним)
+ */
+export const unreserveItem = async (itemId: string): Promise<WishlistItem> => {
+  const userId = getCurrentUserId();
+  if (!userId) {
+    throw new Error("User not authenticated");
+  }
+
+  const { data, error } = await supabase
+    .from("wishlist_items")
+    .update({ status: "available", reserved_by: null })
+    .eq("id", itemId)
+    .eq("reserved_by", userId)
+    .select()
+    .single();
+
+  if (error) {
+    throw new Error(`Failed to unreserve item: ${error.message}`);
+  }
+
+  return mapItem(data);
+};
+
+/**
  * Позначає item як куплений
  */
 export const purchaseItem = async (itemId: string): Promise<WishlistItem> => {

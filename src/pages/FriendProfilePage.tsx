@@ -5,6 +5,7 @@ import {
   addFriend,
   removeFriend,
   reserveItem,
+  unreserveItem,
   purchaseItem,
 } from "../services/supabase-api";
 import {
@@ -155,6 +156,45 @@ export default function FriendProfilePage() {
     } catch (error) {
       console.error("Error reserving item:", error);
       showTelegramAlert("Failed to reserve item");
+      hapticFeedback.notification("error");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleUnreserveItem = async (item: WishlistItem) => {
+    const confirmed = await showTelegramConfirm(
+      `Release "${item.name}"? It will be available again for others to gift to ${user?.firstName}.`,
+    );
+
+    if (!confirmed) return;
+
+    try {
+      setActionLoading(item.id);
+      hapticFeedback.impact("medium");
+
+      await unreserveItem(item.id);
+
+      if (selectedWishlist) {
+        setSelectedWishlist({
+          ...selectedWishlist,
+          items: selectedWishlist.items.map((i) =>
+            i.id === item.id
+              ? {
+                  ...i,
+                  status: "available",
+                  reservedBy: undefined,
+                }
+              : i,
+          ),
+        });
+      }
+
+      hapticFeedback.notification("success");
+      showTelegramAlert("Reservation released.");
+    } catch (error) {
+      console.error("Error unreserving item:", error);
+      showTelegramAlert("Failed to release reservation");
       hapticFeedback.notification("error");
     } finally {
       setActionLoading(null);
@@ -426,13 +466,22 @@ export default function FriendProfilePage() {
                           </button>
                         ) : item.status === "reserved" &&
                           item.reservedBy === currentUserId ? (
-                          <button
-                            className="gifted-btn"
-                            onClick={() => handleMarkPurchased(item)}
-                            disabled={actionLoading === item.id}
-                          >
-                            {actionLoading === item.id ? "..." : "Mark Gifted"}
-                          </button>
+                          <>
+                            <button
+                              className="gifted-btn"
+                              onClick={() => handleMarkPurchased(item)}
+                              disabled={actionLoading === item.id}
+                            >
+                              {actionLoading === item.id ? "..." : "Mark Gifted"}
+                            </button>
+                            <button
+                              className="unreserve-btn"
+                              onClick={() => handleUnreserveItem(item)}
+                              disabled={actionLoading === item.id}
+                            >
+                              Unreserve
+                            </button>
+                          </>
                         ) : (
                           <span className="taken-label">
                             {item.status === "purchased"
@@ -518,16 +567,28 @@ export default function FriendProfilePage() {
                   </button>
                 ) : selectedItem.status === "reserved" &&
                   selectedItem.reservedBy === currentUserId ? (
-                  <button
-                    className="gifted-btn"
-                    onClick={() => {
-                      setSelectedItem(null);
-                      handleMarkPurchased(selectedItem);
-                    }}
-                    disabled={actionLoading === selectedItem.id}
-                  >
-                    {actionLoading === selectedItem.id ? "..." : "✓ Mark as Gifted"}
-                  </button>
+                  <>
+                    <button
+                      className="gifted-btn"
+                      onClick={() => {
+                        setSelectedItem(null);
+                        handleMarkPurchased(selectedItem);
+                      }}
+                      disabled={actionLoading === selectedItem.id}
+                    >
+                      {actionLoading === selectedItem.id ? "..." : "✓ Mark as Gifted"}
+                    </button>
+                    <button
+                      className="unreserve-btn"
+                      onClick={() => {
+                        setSelectedItem(null);
+                        handleUnreserveItem(selectedItem);
+                      }}
+                      disabled={actionLoading === selectedItem.id}
+                    >
+                      Release reservation
+                    </button>
+                  </>
                 ) : null}
               </div>
             </div>

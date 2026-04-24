@@ -447,6 +447,27 @@
   transform: scale(0.96);
 }
 
+.unreserve-btn {
+  padding: 4px 10px;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  letter-spacing: 0.2px;
+  transition: color 0.2s ease, opacity 0.2s ease;
+}
+
+.unreserve-btn:active {
+  opacity: 0.6;
+}
+
+.unreserve-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 .taken-label {
   font-size: 12px;
   color: var(--text-muted);
@@ -605,4 +626,27 @@
   font-size: 15px;
   font-weight: 600;
   cursor: pointer;
+}
+
+.detail-actions .unreserve-btn {
+  width: 100%;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border-color, rgba(0, 0, 0, 0.08));
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  letter-spacing: 0.2px;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.detail-actions .unreserve-btn:active {
+  background: var(--bg-secondary);
+}
+
+.detail-actions .unreserve-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
