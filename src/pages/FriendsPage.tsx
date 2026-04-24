@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useStore } from "../store/useStore";
 import {
   getFriendsPageData,
@@ -21,8 +21,25 @@ type TabType = "following" | "followers" | "search";
 
 export default function FriendsPage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { setLoading, isLoading } = useStore();
-  const [activeTab, setActiveTab] = useState<TabType>("following");
+  const initialTab = ((): TabType => {
+    const t = searchParams.get("tab");
+    return t === "followers" || t === "search" || t === "following"
+      ? t
+      : "following";
+  })();
+  const [activeTab, setActiveTab] = useState<TabType>(initialTab);
+
+  // Keep state in sync if the query param changes after mount (e.g. user
+  // navigates from Home → Friends with a different ?tab=).
+  useEffect(() => {
+    const t = searchParams.get("tab");
+    if ((t === "followers" || t === "search" || t === "following") && t !== activeTab) {
+      setActiveTab(t);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
   const [searchQuery, setSearchQuery] = useState("");
 
   // Data states
@@ -151,6 +168,7 @@ export default function FriendsPage() {
   const handleTabChange = (tab: TabType) => {
     hapticFeedback.selection();
     setActiveTab(tab);
+    setSearchParams({ tab }, { replace: true });
   };
 
   const handleViewProfile = (userId: number) => {

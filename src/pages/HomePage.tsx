@@ -218,18 +218,39 @@ export default function HomePage() {
         className="stats-row animate-slide-up"
         style={{ animationDelay: "0.05s" }}
       >
-        <div className="stat-card">
+        <button
+          type="button"
+          className="stat-card"
+          onClick={() => {
+            hapticFeedback.selection();
+            navigate("/wishlists");
+          }}
+        >
           <span className="stat-number">{stats.wishlists}</span>
           <span className="stat-text">Wishlists</span>
-        </div>
-        <div className="stat-card">
+        </button>
+        <button
+          type="button"
+          className="stat-card"
+          onClick={() => {
+            hapticFeedback.selection();
+            navigate("/friends?tab=following");
+          }}
+        >
           <span className="stat-number">{stats.friends}</span>
-          <span className="stat-text">Friends</span>
-        </div>
-        <div className="stat-card">
+          <span className="stat-text">Following</span>
+        </button>
+        <button
+          type="button"
+          className="stat-card"
+          onClick={() => {
+            hapticFeedback.selection();
+            navigate("/friends?tab=followers");
+          }}
+        >
           <span className="stat-number">{stats.followers}</span>
           <span className="stat-text">Followers</span>
-        </div>
+        </button>
       </div>
 
       {/* Main Content */}
