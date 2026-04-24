@@ -712,15 +712,11 @@ export const addFriend = async (friendId: number): Promise<void> => {
   const userName = telegramUser?.first_name || "Someone";
 
   try {
-    await createNotification(
-      friendId,
-      isFollowBack ? "new_follower" : "new_follower",
-      isFollowBack ? "🎉 New Follower!" : "👤 New Follower!",
-      isFollowBack
-        ? `${userName} followed you back!`
-        : `${userName} started following you`,
-      { followerId: userId, isFollowBack },
-    );
+    await createNotification(friendId, "new_follower", {
+      actorName: userName,
+      followerId: userId,
+      isFollowBack,
+    });
   } catch (e) {
     console.error("Failed to send follow notification:", e);
   }
@@ -1379,19 +1375,17 @@ export const getWishlist = async (wishlistId: string): Promise<Wishlist> => {
  * Створює новий wishlist
  */
 /**
- * Notifies all followers about an event
+ * Notifies all followers about an event. Title/message are localized
+ * per-recipient inside the `send-telegram-notification` edge function.
  */
 const notifyFollowers = async (
   type: NotificationType,
-  title: string,
-  message: string,
   data?: Record<string, any>,
 ): Promise<void> => {
   const userId = getCurrentUserId();
   if (!userId) return;
 
   try {
-    // Get all followers
     const { data: followers } = await supabase
       .from("friends")
       .select("user_id")
@@ -1399,11 +1393,8 @@ const notifyFollowers = async (
 
     if (!followers || followers.length === 0) return;
 
-    // Create notification for each follower
     await Promise.all(
-      followers.map((f) =>
-        createNotification(f.user_id, type, title, message, data),
-      ),
+      followers.map((f) => createNotification(f.user_id, type, data)),
     );
   } catch (e) {
     console.error("Failed to notify followers:", e);
@@ -1451,12 +1442,12 @@ export const createWishlist = async (
     const telegramUser = getTelegramUser();
     const userName = telegramUser?.first_name || "Someone";
 
-    notifyFollowers(
-      "wishlist_shared",
-      "📝 New Wishlist!",
-      `${userName} created a new wishlist: "${wishlist.name}"`,
-      { wishlistId: data.id, userId },
-    );
+    notifyFollowers("wishlist_shared", {
+      actorName: userName,
+      wishlistName: wishlist.name,
+      wishlistId: data.id,
+      userId,
+    });
   }
 
   return mapWishlist(data, []);
@@ -1578,12 +1569,14 @@ export const addItem = async (
         const telegramUser = getTelegramUser();
         const userName = telegramUser?.first_name || "Someone";
 
-        notifyFollowers(
-          "friend_added_item",
-          "✨ New Item Added!",
-          `${userName} added "${item.name}" to their wishlist "${wishlist.name}"`,
-          { wishlistId, itemId: data.id, userId },
-        );
+        notifyFollowers("friend_added_item", {
+          actorName: userName,
+          itemName: item.name,
+          wishlistName: wishlist.name,
+          wishlistId,
+          itemId: data.id,
+          userId,
+        });
       }
     } catch (e) {
       console.error("Failed to check wishlist publicity:", e);
@@ -1626,21 +1619,16 @@ export const addItemToMultipleWishlists = async (
         const telegramUser = getTelegramUser();
         const userName = telegramUser?.first_name || "Someone";
 
-        let message: string;
-        if (publicWishlists.length === 1) {
-          message = `${userName} added "${item.name}" to their wishlist "${publicWishlists[0].name}"`;
-        } else if (publicWishlists.length === 2) {
-          message = `${userName} added "${item.name}" to wishlists "${publicWishlists[0].name}" and "${publicWishlists[1].name}"`;
-        } else {
-          const lastWishlist = publicWishlists[publicWishlists.length - 1];
-          const otherWishlists = publicWishlists
-            .slice(0, -1)
-            .map((w) => `"${w.name}"`)
-            .join(", ");
-          message = `${userName} added "${item.name}" to wishlists ${otherWishlists}, and "${lastWishlist.name}"`;
-        }
+        // For a single wishlist we can pass `wishlistId` (deep-link).
+        // For multiple wishlists we omit it; the edge function falls back to
+        // a generic "added to their wishlists" copy and a "View Profile" CTA.
+        const single = publicWishlists.length === 1 ? publicWishlists[0] : null;
 
-        notifyFollowers("friend_added_item", "✨ New Item Added!", message, {
+        notifyFollowers("friend_added_item", {
+          actorName: userName,
+          itemName: item.name,
+          wishlistName: single?.name,
+          wishlistId: single?.id,
           wishlistIds: publicWishlists.map((w) => w.id),
           userId,
         });
@@ -2265,42 +2253,30 @@ export const getUnreadNotificationsCount = async (): Promise<number> => {
 };
 
 /**
- * Створює нотифікацію (викликається з бекенду)
+ * Creates a notification.
+ *
+ * Title/message are NOT supplied by the caller — the `send-telegram-notification`
+ * edge function looks up the recipient's language and renders the localized
+ * copy from a translation table, then inserts the row into `notifications`
+ * AND sends the Telegram message. Pass any context (names, item names,
+ * wishlist IDs, etc.) via `data`.
  */
 export const createNotification = async (
   targetUserId: number,
   type: NotificationType,
-  title: string,
-  message: string,
   data?: Record<string, any>,
 ): Promise<void> => {
-  const { error } = await supabase.from("notifications").insert({
-    user_id: targetUserId,
-    type,
-    title,
-    message,
-    data: data || null,
-    read: false,
-  });
-
-  if (error) {
-    throw new Error(`Failed to create notification: ${error.message}`);
-  }
-
-  // Trigger Telegram notification via Edge Function
   try {
     await supabase.functions.invoke("send-telegram-notification", {
       body: {
         userId: targetUserId,
-        title,
-        message,
         type,
         data: data || null,
       },
     });
   } catch (e) {
-    console.error("Failed to send Telegram notification:", e);
-    // Don't throw - notification was still saved
+    console.error("Failed to send notification:", e);
+    // Don't throw — notifications must never block the parent action.
   }
 };
 
@@ -2588,12 +2564,9 @@ export const applyReferral = async (
     .eq("user_id", userId);
 
   // Notify referrer
-  await createNotification(
-    referrer.user_id,
-    "referral_signup",
-    "🎉 New Referral!",
-    `Someone joined using your referral code! You earned ${bonusForReferrer} bonus points.`,
-  );
+  await createNotification(referrer.user_id, "referral_signup", {
+    bonusPoints: bonusForReferrer,
+  });
 
   return {
     success: true,

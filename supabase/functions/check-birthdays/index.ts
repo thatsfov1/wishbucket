@@ -1,3 +1,11 @@
+// Birthday reminder scheduler.
+//
+// For every user with a birthday today or in 7 days, this function notifies
+// each of their followers — exactly once per (follower, friend, kind, date)
+// triple. The actual notification copy + Telegram delivery is handled by the
+// `send-telegram-notification` edge function so the message is rendered in
+// each follower's chosen language (en/uk/ru).
+
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -23,64 +31,10 @@ function parseTelegramData(raw: unknown): Record<string, unknown> {
       return {};
     }
   }
-
   if (raw && typeof raw === "object") {
     return raw as Record<string, unknown>;
   }
-
   return {};
-}
-
-function buildReminderMessage(
-  name: string,
-  kind: ReminderKind,
-): { title: string; message: string } {
-  if (kind === "week_before") {
-    return {
-      title: `⏰ ${name}'s birthday is in 1 week`,
-      message: `It's time to look at ${name}'s wishlists and prepare a gift.`,
-    };
-  }
-
-  return {
-    title: `🎉 It's ${name}'s birthday today!`,
-    message: `Celebrate ${name} and check their wishlists for a perfect gift.`,
-  };
-}
-
-async function sendTelegramMessage(
-  botToken: string,
-  chatId: number,
-  title: string,
-  message: string,
-): Promise<void> {
-  const response = await fetch(
-    `https://api.telegram.org/bot${botToken}/sendMessage`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        chat_id: chatId,
-        text: `<b>${title}</b>\n\n${message}`,
-        parse_mode: "HTML",
-        reply_markup: {
-          inline_keyboard: [
-            [
-              {
-                text: "🎁 Open wishbucket",
-                url: "https://t.me/wishbucket_bot/app",
-              },
-            ],
-          ],
-        },
-      }),
-    },
-  );
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error("Failed to send Telegram message", { chatId, errorText });
-  }
 }
 
 serve(async (req) => {
@@ -91,14 +45,9 @@ serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    const botToken = Deno.env.get("TELEGRAM_BOT_TOKEN");
 
     if (!supabaseUrl || !serviceRoleKey) {
       throw new Error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY");
-    }
-
-    if (!botToken) {
-      throw new Error("Missing telegram bot token env variable");
     }
 
     const supabase = createClient(supabaseUrl, serviceRoleKey);
@@ -120,8 +69,7 @@ serve(async (req) => {
       throw usersError;
     }
 
-    let remindersInserted = 0;
-    let telegramMessagesSent = 0;
+    let notificationsTriggered = 0;
 
     for (const user of users ?? []) {
       if (!user.birthday) continue;
@@ -140,7 +88,6 @@ serve(async (req) => {
 
       const telegramData = parseTelegramData(user.telegram_data);
       const firstName = (telegramData.first_name as string) || "Your friend";
-      const reminder = buildReminderMessage(firstName, kind);
 
       const { data: followers, error: followersError } = await supabase
         .from("friends")
@@ -156,23 +103,17 @@ serve(async (req) => {
       }
 
       for (const follower of followers ?? []) {
-        const dedupeData = {
-          friendUserId: user.user_id,
-          reminderKind: kind,
-          reminderDate: runDate,
-        };
-
-        const { data: existingNotification, error: existingError } =
-          await supabase
-            .from("notifications")
-            .select("id")
-            .eq("user_id", follower.user_id)
-            .eq("type", "birthday_reminder")
-            .eq("data->>friendUserId", String(user.user_id))
-            .eq("data->>reminderKind", kind)
-            .eq("data->>reminderDate", runDate)
-            .limit(1)
-            .maybeSingle();
+        // Dedupe: skip if we already inserted this exact reminder today.
+        const { data: existing, error: existingError } = await supabase
+          .from("notifications")
+          .select("id")
+          .eq("user_id", follower.user_id)
+          .eq("type", "birthday_reminder")
+          .eq("data->>friendUserId", String(user.user_id))
+          .eq("data->>reminderKind", kind)
+          .eq("data->>reminderDate", runDate)
+          .limit(1)
+          .maybeSingle();
 
         if (existingError) {
           console.error("Failed dedupe check", {
@@ -182,38 +123,37 @@ serve(async (req) => {
           continue;
         }
 
-        if (existingNotification) {
-          continue;
-        }
+        if (existing) continue;
 
-        const { error: insertError } = await supabase
-          .from("notifications")
-          .insert({
-            user_id: follower.user_id,
-            type: "birthday_reminder",
-            title: reminder.title,
-            message: reminder.message,
-            data: dedupeData,
-            read: false,
-          });
-
-        if (insertError) {
-          console.error("Failed inserting notification", {
-            followerId: follower.user_id,
-            insertError,
-          });
-          continue;
-        }
-
-        remindersInserted += 1;
-
-        await sendTelegramMessage(
-          botToken,
-          follower.user_id,
-          reminder.title,
-          reminder.message,
+        // Delegate localization, DB insert, and Telegram delivery to the
+        // shared notification function.
+        const { error: invokeError } = await supabase.functions.invoke(
+          "send-telegram-notification",
+          {
+            body: {
+              userId: follower.user_id,
+              type: "birthday_reminder",
+              data: {
+                actorName: firstName,
+                friendId: user.user_id,
+                reminderKind: kind,
+                // Kept for the dedupe lookup above on subsequent runs.
+                friendUserId: user.user_id,
+                reminderDate: runDate,
+              },
+            },
+          },
         );
-        telegramMessagesSent += 1;
+
+        if (invokeError) {
+          console.error("Failed to trigger notification", {
+            followerId: follower.user_id,
+            invokeError,
+          });
+          continue;
+        }
+
+        notificationsTriggered += 1;
       }
     }
 
@@ -221,8 +161,7 @@ serve(async (req) => {
       JSON.stringify({
         ok: true,
         runDate,
-        remindersInserted,
-        telegramMessagesSent,
+        notificationsTriggered,
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
