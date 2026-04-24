@@ -410,6 +410,128 @@
   background: rgba(255, 100, 100, 0.2);
 }
 
+/* ── Item card wrapper + expandable actions strip ───────────────── */
+.item-card-wrapper {
+  background: var(--bg-secondary);
+  border-radius: 16px;
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  transition: box-shadow 0.2s ease;
+}
+
+.item-card-wrapper.expanded {
+  box-shadow: var(--shadow-md);
+}
+
+/* Card itself loses its own background/shadow now that wrapper owns it */
+.item-card-wrapper .item-card {
+  background: transparent;
+  box-shadow: none;
+  border-radius: 0;
+}
+
+/* Chevron toggle button */
+.item-chevron-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.25s ease, background 0.2s ease, color 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.item-chevron-btn:active {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.item-chevron-btn.open {
+  transform: rotate(180deg);
+  color: var(--text-primary);
+}
+
+/* The strip uses max-height + opacity for a smooth slide-down */
+.item-actions-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 0 14px;
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  pointer-events: none;
+  transition: max-height 0.28s ease, opacity 0.2s ease, padding 0.25s ease;
+}
+
+.item-card-wrapper.expanded .item-actions-strip {
+  max-height: 80px;
+  opacity: 1;
+  padding: 10px 14px 12px;
+  pointer-events: auto;
+  border-top: 1px solid var(--border-color);
+}
+
+.strip-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 10px;
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.2s ease, transform 0.15s ease, opacity 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.strip-action:active {
+  transform: scale(0.96);
+  opacity: 0.85;
+}
+
+.strip-action.danger {
+  background: rgba(255, 100, 100, 0.1);
+  color: #ff6b6b;
+}
+
+.strip-action.danger:active {
+  background: rgba(255, 100, 100, 0.18);
+}
+
+/* Edit button inside the detail modal */
+.detail-edit-btn {
+  flex: 1;
+  padding: 12px;
+  background: var(--bg-tertiary);
+  border: none;
+  border-radius: 12px;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: background 0.2s ease, transform 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.detail-edit-btn:active {
+  transform: scale(0.98);
+  background: var(--bg-secondary);
+}
+
 /* Delete Item Modal */
 .delete-modal-overlay {
   position: fixed;

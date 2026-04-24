@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { hapticFeedback } from "../utils/telegram";
 import { useStore } from "../store/useStore";
 import { createWishlist, scrapeProductUrl } from "../services/supabase-api";
+import type { WishlistItem } from "../types";
 import "./AddItemModal.css";
 
 interface AddItemModalProps {
@@ -18,6 +19,22 @@ interface AddItemModalProps {
     notifyFollowers: boolean;
   }) => void;
   preselectedWishlistId?: string;
+  /**
+   * When provided, the modal switches to edit mode:
+   *  - prefills every field from the item
+   *  - hides the wishlist picker and the notify-followers toggle
+   *  - calls `onUpdateItem` (instead of `onAddItem`) on submit
+   *  - shows "Edit item" / "Save changes" copy
+   */
+  editingItem?: WishlistItem | null;
+  onUpdateItem?: (updates: {
+    name: string;
+    description?: string;
+    imageUrl?: string;
+    price?: number;
+    currency: string;
+    url?: string;
+  }) => void;
 }
 
 const currencies = ["$", "€", "£", "₴", "zł", "₽", "¥", "₿"];
@@ -39,7 +56,10 @@ export default function AddItemModal({
   onClose,
   onAddItem,
   preselectedWishlistId,
+  editingItem,
+  onUpdateItem,
 }: AddItemModalProps) {
+  const isEditMode = Boolean(editingItem);
   const { wishlists, addWishlist } = useStore();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -75,16 +95,38 @@ export default function AddItemModal({
         document.body.style.paddingRight = `${scrollbarWidth}px`;
       }
       document.body.style.overflow = "hidden";
-      setName("");
-      setDescription("");
-      setSelectedEmoji("🎁");
-      setCustomImage(null);
-      setPrice("");
-      // Load default currency from settings
-      const savedCurrencyCode = localStorage.getItem("defaultCurrency") || "USD";
-      const defaultSymbol = currencyCodeToSymbol[savedCurrencyCode] || "$";
-      setCurrency(defaultSymbol);
-      setUrl("");
+
+      if (editingItem) {
+        // Prefill from the item being edited.
+        setName(editingItem.name || "");
+        setDescription(editingItem.description || "");
+        const img = editingItem.imageUrl || "";
+        const isUrlImage = img.startsWith("http") || img.startsWith("data:");
+        setCustomImage(isUrlImage ? img : null);
+        setSelectedEmoji(!isUrlImage && img ? img : "🎁");
+        setPrice(
+          editingItem.price !== undefined && editingItem.price !== null
+            ? String(editingItem.price)
+            : "",
+        );
+        setCurrency(editingItem.currency || "$");
+        setUrl(editingItem.originalUrl || editingItem.url || "");
+        // Don't auto-scrape on edit — user already filled this in.
+        lastScrapedUrlRef.current = editingItem.originalUrl || editingItem.url || "";
+      } else {
+        setName("");
+        setDescription("");
+        setSelectedEmoji("🎁");
+        setCustomImage(null);
+        setPrice("");
+        // Load default currency from settings
+        const savedCurrencyCode = localStorage.getItem("defaultCurrency") || "USD";
+        const defaultSymbol = currencyCodeToSymbol[savedCurrencyCode] || "$";
+        setCurrency(defaultSymbol);
+        setUrl("");
+        lastScrapedUrlRef.current = "";
+      }
+
       setSelectedWishlists(
         preselectedWishlistId ? [preselectedWishlistId] : [],
       );
@@ -93,7 +135,6 @@ export default function AddItemModal({
       setIsScrapingUrl(false);
       setScrapeError(null);
       setScrapedCurrency(null);
-      lastScrapedUrlRef.current = "";
       const savedNotifyPref = localStorage.getItem("notifyOnAdd");
       setNotifyFollowers(savedNotifyPref !== "false");
     } else {
@@ -107,7 +148,7 @@ export default function AddItemModal({
         clearTimeout(debounceTimerRef.current);
       }
     };
-  }, [isOpen, preselectedWishlistId]);
+  }, [isOpen, preselectedWishlistId, editingItem]);
 
   // Auto-scrape URL when pasted/changed
   const scrapeUrl = useCallback(
@@ -222,22 +263,31 @@ export default function AddItemModal({
       hapticFeedback.notification("error");
       return;
     }
-    if (selectedWishlists.length === 0) {
+    if (!isEditMode && selectedWishlists.length === 0) {
       hapticFeedback.notification("error");
       return;
     }
 
     hapticFeedback.notification("success");
-    onAddItem({
+
+    const payload = {
       name: name.trim(),
       description: description.trim() || undefined,
       imageUrl: customImage || selectedEmoji,
       price: price ? parseFloat(price) : undefined,
       currency,
       url: url.trim() || undefined,
-      wishlistIds: selectedWishlists,
-      notifyFollowers,
-    });
+    };
+
+    if (isEditMode && onUpdateItem) {
+      onUpdateItem(payload);
+    } else {
+      onAddItem({
+        ...payload,
+        wishlistIds: selectedWishlists,
+        notifyFollowers,
+      });
+    }
     handleClose();
   };
 
@@ -306,8 +356,12 @@ export default function AddItemModal({
         <div className="modal-handle" />
 
         <div className="modal-header">
-          <h2>Add Item</h2>
-          <p>Add a new item to your wishlist</p>
+          <h2>{isEditMode ? "Edit item" : "Add Item"}</h2>
+          <p>
+            {isEditMode
+              ? "Update the details of this item"
+              : "Add a new item to your wishlist"}
+          </p>
         </div>
 
         {/* Image Selection */}
@@ -503,7 +557,8 @@ export default function AddItemModal({
           />
         </div>
 
-        {/* Wishlist Selection */}
+        {/* Wishlist Selection — hidden when editing */}
+        {!isEditMode && (
         <div className="form-section">
           <label className="form-label">Add to Wishlist *</label>
 
@@ -612,9 +667,10 @@ export default function AddItemModal({
             </div>
           )}
         </div>
+        )}
 
-        {/* Notify Toggle */}
-        {selectedWishlists.length > 0 && (
+        {/* Notify Toggle — hidden when editing */}
+        {!isEditMode && selectedWishlists.length > 0 && (
           <div className="form-section notify-section">
             <div className="notify-toggle">
               <div className="notify-info">
@@ -652,9 +708,12 @@ export default function AddItemModal({
           <button
             className="add-btn"
             onClick={handleAdd}
-            disabled={!name.trim() || selectedWishlists.length === 0}
+            disabled={
+              !name.trim() ||
+              (!isEditMode && selectedWishlists.length === 0)
+            }
           >
-            Add Item
+            {isEditMode ? "Save changes" : "Add Item"}
           </button>
         </div>
       </div>

@@ -8,7 +8,9 @@ import {
   addItemToMultipleWishlists,
   deleteItem,
   markItemAsReceivedAcrossWishlists,
+  updateItem,
 } from "../services/supabase-api";
+import type { WishlistItem } from "../types";
 import {
   openTelegramLink,
   hapticFeedback,
@@ -49,6 +51,8 @@ export default function WishlistDetailPage() {
   const [selectedItem, setSelectedItem] = useState<
     (typeof currentWishlist.items)[0] | null
   >(null);
+  const [expandedItemId, setExpandedItemId] = useState<string | null>(null);
+  const [editingItem, setEditingItem] = useState<WishlistItem | null>(null);
   const [deleteItemModal, setDeleteItemModal] = useState<{
     isOpen: boolean;
     itemId: string | null;
@@ -162,6 +166,71 @@ export default function WishlistDetailPage() {
   const handleBack = () => {
     hapticFeedback.impact("light");
     navigate(-1);
+  };
+
+  const openEditItem = (item: WishlistItem) => {
+    hapticFeedback.impact("light");
+    setExpandedItemId(null);
+    setSelectedItem(null);
+    setEditingItem(item);
+  };
+
+  const handleUpdateItem = async (updates: {
+    name: string;
+    description?: string;
+    imageUrl?: string;
+    price?: number;
+    currency: string;
+    url?: string;
+  }) => {
+    if (!editingItem || !currentWishlist) return;
+
+    const previousItems = currentWishlist.items;
+    // Optimistic update
+    setCurrentWishlist({
+      ...currentWishlist,
+      items: currentWishlist.items.map((it) =>
+        it.id === editingItem.id
+          ? {
+              ...it,
+              name: updates.name,
+              description: updates.description,
+              imageUrl: updates.imageUrl,
+              price: updates.price,
+              currency: updates.currency || it.currency,
+              url: updates.url || "",
+              originalUrl: updates.url || "",
+            }
+          : it,
+      ),
+    });
+    setEditingItem(null);
+
+    try {
+      const cleanUrl = updates.url?.trim() || "";
+      const affiliateResult = cleanUrl
+        ? generateAffiliateLink(cleanUrl)
+        : { affiliateUrl: cleanUrl, hasAffiliate: false as const };
+      const finalUrl = affiliateResult.affiliateUrl || cleanUrl;
+
+      await updateItem(editingItem.id, {
+        name: updates.name,
+        description: updates.description ?? "",
+        imageUrl: updates.imageUrl,
+        price: updates.price,
+        currency: updates.currency,
+        url: finalUrl,
+        affiliateUrl: affiliateResult.hasAffiliate
+          ? affiliateResult.affiliateUrl
+          : undefined,
+      });
+      hapticFeedback.notification("success");
+    } catch (error) {
+      console.error("Error updating item:", error);
+      hapticFeedback.notification("error");
+      // Revert on failure
+      setCurrentWishlist({ ...currentWishlist, items: previousItems });
+    }
   };
 
   const openDeleteItemModal = (itemId: string, itemName: string) => {
@@ -464,68 +533,161 @@ export default function WishlistDetailPage() {
           <div className="items-list">
             {currentWishlist.items
               .filter((i) => i.status !== "purchased")
-              .map((item, index) => (
-                <div
-                  key={item.id}
-                  className="item-card animate-slide-up"
-                  style={{ animationDelay: `${index * 0.05}s` }}
-                  onClick={() => {
-                    hapticFeedback.selection();
-                    setSelectedItem(item);
-                  }}
-                >
-                  <div className="item-image">
-                    {item.imageUrl ? (
-                      item.imageUrl.startsWith("http") ||
-                      item.imageUrl.startsWith("data:") ? (
-                        <img src={item.imageUrl} alt={item.name} />
-                      ) : (
-                        <span className="item-emoji">{item.imageUrl}</span>
-                      )
-                    ) : (
-                      <span className="item-emoji">🎁</span>
-                    )}
-                  </div>
-                  <div className="item-info">
-                    <h3>{item.name}</h3>
-                    {item.description && (
-                      <p className="item-desc">{item.description}</p>
-                    )}
-                    {item.price && (
-                      <span className="item-price">
-                        {item.currency || "$"}
-                        {item.price.toFixed(2)}
-                      </span>
-                    )}
-                  </div>
-                  <div className="item-actions">
-                    <span className={`item-status status-${item.status}`}>
-                      {item.status === "available" && "✓"}
-                      {item.status === "reserved" && "⏳"}
-                      {item.status === "purchased" && "✓✓"}
-                    </span>
-                    <button
-                      className="item-delete-btn"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        openDeleteItemModal(item.id, item.name);
+              .map((item, index) => {
+                const isExpanded = expandedItemId === item.id;
+                return (
+                  <div
+                    key={item.id}
+                    className={`item-card-wrapper animate-slide-up ${isExpanded ? "expanded" : ""}`}
+                    style={{ animationDelay: `${index * 0.05}s` }}
+                  >
+                    <div
+                      className="item-card"
+                      onClick={() => {
+                        hapticFeedback.selection();
+                        setSelectedItem(item);
                       }}
                     >
-                      <svg
-                        width="16"
-                        height="16"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
+                      <div className="item-image">
+                        {item.imageUrl ? (
+                          item.imageUrl.startsWith("http") ||
+                          item.imageUrl.startsWith("data:") ? (
+                            <img src={item.imageUrl} alt={item.name} />
+                          ) : (
+                            <span className="item-emoji">{item.imageUrl}</span>
+                          )
+                        ) : (
+                          <span className="item-emoji">🎁</span>
+                        )}
+                      </div>
+                      <div className="item-info">
+                        <h3>{item.name}</h3>
+                        {item.description && (
+                          <p className="item-desc">{item.description}</p>
+                        )}
+                        {item.price && (
+                          <span className="item-price">
+                            {item.currency || "$"}
+                            {item.price.toFixed(2)}
+                          </span>
+                        )}
+                      </div>
+                      <div className="item-actions">
+                        <span className={`item-status status-${item.status}`}>
+                          {item.status === "available" && "✓"}
+                          {item.status === "reserved" && "⏳"}
+                          {item.status === "purchased" && "✓✓"}
+                        </span>
+                        <button
+                          className={`item-chevron-btn ${isExpanded ? "open" : ""}`}
+                          aria-label={isExpanded ? "Hide actions" : "Show actions"}
+                          aria-expanded={isExpanded}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            hapticFeedback.selection();
+                            setExpandedItemId(isExpanded ? null : item.id);
+                          }}
+                        >
+                          <svg
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2.2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
+                            <polyline points="6,9 12,15 18,9" />
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Expandable actions strip */}
+                    <div
+                      className="item-actions-strip"
+                      role="region"
+                      aria-hidden={!isExpanded}
+                    >
+                      <button
+                        className="strip-action"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openEditItem(item);
+                        }}
                       >
-                        <polyline points="3,6 5,6 21,6" />
-                        <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
-                      </svg>
-                    </button>
+                        <svg
+                          width="16"
+                          height="16"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
+                          <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
+                        </svg>
+                        <span>Edit</span>
+                      </button>
+
+                      {item.url && (
+                        <a
+                          className="strip-action"
+                          href={extractUrl(item.url)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            hapticFeedback.impact("light");
+                          }}
+                        >
+                          <svg
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
+                            <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71" />
+                            <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71" />
+                          </svg>
+                          <span>Open link</span>
+                        </a>
+                      )}
+
+                      <button
+                        className="strip-action danger"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setExpandedItemId(null);
+                          openDeleteItemModal(item.id, item.name);
+                        }}
+                      >
+                        <svg
+                          width="16"
+                          height="16"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <polyline points="3,6 5,6 21,6" />
+                          <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
+                        </svg>
+                        <span>Delete</span>
+                      </button>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
           </div>
         )}
       </div>
@@ -591,6 +753,25 @@ export default function WishlistDetailPage() {
 
               <div className="detail-actions">
                 <button
+                  className="detail-edit-btn"
+                  onClick={() => openEditItem(selectedItem)}
+                >
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
+                    <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
+                  </svg>
+                  Edit
+                </button>
+                <button
                   className="detail-delete-btn"
                   onClick={() => {
                     openDeleteItemModal(selectedItem.id, selectedItem.name);
@@ -654,6 +835,14 @@ export default function WishlistDetailPage() {
         onClose={() => setShowAddItemModal(false)}
         onAddItem={handleAddItem}
         preselectedWishlistId={id}
+      />
+
+      <AddItemModal
+        isOpen={editingItem !== null}
+        onClose={() => setEditingItem(null)}
+        onAddItem={() => {}}
+        editingItem={editingItem}
+        onUpdateItem={handleUpdateItem}
       />
     </div>
   );
