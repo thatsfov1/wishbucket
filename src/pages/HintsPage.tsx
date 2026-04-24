@@ -168,7 +168,7 @@ export default function HintsPage() {
               <h4>How it works:</h4>
               <ol>
                 <li>Someone says "I really want that bag!" in chat</li>
-                <li>Long press → Forward → Select WishBucket bot</li>
+                <li>Long press → Forward → Select wishbucket bot</li>
                 <li>The hint is saved automatically!</li>
               </ol>
             </div>

@@ -201,7 +201,7 @@ async function buildInlineKeyboard(
       return [
         [
           {
-            text: "📱 Open WishBucket",
+            text: "📱 Open wishbucket",
             url: miniAppUrl(),
           },
         ],

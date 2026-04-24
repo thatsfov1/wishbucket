@@ -128,9 +128,9 @@ Deno.serve(async (req: Request) => {
     const webhookSecretToken = Deno.env.get("TELEGRAM_WEBHOOK_SECRET_TOKEN");
 
     const commands = [
-      { command: "start", description: "Open WishBucket menu" },
+      { command: "start", description: "Open wishbucket menu" },
       { command: "hints", description: "Show recent gift hints" },
-      { command: "instructions", description: "How to use WishBucket" },
+      { command: "instructions", description: "How to use wishbucket" },
       { command: "help", description: "Show help and instructions" },
     ];
 
@@ -149,7 +149,7 @@ Deno.serve(async (req: Request) => {
     const setChatMenuButton = await telegramPost(token, "setChatMenuButton", {
       menu_button: {
         type: "web_app",
-        text: "Open WishBucket",
+        text: "Open wishbucket",
         web_app: { url: webAppUrl },
       },
     });

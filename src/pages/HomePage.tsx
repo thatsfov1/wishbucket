@@ -124,10 +124,10 @@ export default function HomePage() {
   };
 
   const handleInviteFriends = useCallback(() => {
-    const botUsername = "WishBucketBot"; // update to your actual bot username
+    const botUsername = "wishbucket_bot";
     const userId = telegramUser?.id ?? 0;
-    const shareText = `🎁 Join me on WishBucket – the best wishlist app for Telegram!`;
-    const botUrl = `https://t.me/${botUsername}/wishbucket?startapp=ref_${userId}`;
+    const shareText = `🎁 Join me on wishbucket – the best wishlist app for Telegram!`;
+    const botUrl = `https://t.me/${botUsername}/app?startapp=ref_${userId}`;
     const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(botUrl)}&text=${encodeURIComponent(shareText)}`;
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any

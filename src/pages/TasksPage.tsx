@@ -113,7 +113,7 @@ export default function TasksPage() {
       `https://t.me/share/url?url=${encodeURIComponent(
         "https://t.me/wishbucket_bot"
       )}&text=${encodeURIComponent(
-        "Check out WishBucket - create and share wishlists with friends! 🎁"
+        "Check out wishbucket - create and share wishlists with friends! 🎁"
       )}`
     );
     hapticFeedback.notification("success");

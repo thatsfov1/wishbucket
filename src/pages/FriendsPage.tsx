@@ -131,7 +131,7 @@ export default function FriendsPage() {
 
   const handleShareInvite = () => {
     hapticFeedback.impact("medium");
-    const message = `Join me on WishBucket! Create and share wishlists with friends 🎁`;
+    const message = `Join me on wishbucket! Create and share wishlists with friends 🎁`;
     const link = referralStats?.referralLink || "https://t.me/wishbucket_bot";
     openTelegramLink(
       `https://t.me/share/url?url=${encodeURIComponent(
@@ -464,7 +464,7 @@ export default function FriendsPage() {
                 <h4>Find from Contacts</h4>
                 <p>
                   Coming soon! We'll help you find friends from your Telegram
-                  contacts who use WishBucket.
+                  contacts who use wishbucket.
                 </p>
               </div>
             </div>

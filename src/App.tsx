@@ -1,5 +1,11 @@
 import { useEffect } from "react";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  Navigate,
+  useNavigate,
+} from "react-router-dom";
 import {
   initTelegram,
   getTelegramUser,
@@ -25,8 +31,9 @@ import TasksPage from "./pages/TasksPage";
 import HintsPage from "./pages/HintsPage";
 import EditWishlistPage from "./pages/EditWishlistPage";
 
-function App() {
+function AppRoutes() {
   const { setUserProfile } = useStore();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const tg = initTelegram();
@@ -40,12 +47,9 @@ function App() {
       if (!user) return;
 
       try {
-        // Only load user profile on app init (lightweight)
-        // HomePage handles its own optimized data loading
         const profile = await getUserProfile();
         setUserProfile(profile);
 
-        // Handle referral code in background (non-blocking)
         const referralCode = getReferralCodeFromStart();
         if (referralCode) {
           applyReferral(referralCode)
@@ -57,16 +61,18 @@ function App() {
             .catch(console.error);
         }
 
-        // Handle wishlist deeplink
+        // Deep link: open a specific wishlist (?startapp=wishlist_<id>)
         const wishlistId = getWishlistIdFromStart();
         if (wishlistId) {
-          window.location.hash = `/wishlists/${wishlistId}`;
+          navigate(`/wishlists/${wishlistId}`, { replace: true });
+          return;
         }
 
-        // Handle friend profile deeplink
+        // Deep link: open a friend's profile (?startapp=user_<id>)
         const friendUserId = getUserIdFromStart();
         if (friendUserId) {
-          window.location.hash = `/user/${friendUserId}`;
+          navigate(`/user/${friendUserId}`, { replace: true });
+          return;
         }
       } catch (error) {
         console.error("Error initializing app:", error);
@@ -74,28 +80,34 @@ function App() {
     };
 
     initApp();
-  }, [setUserProfile]);
+  }, [setUserProfile, navigate]);
 
   return (
+    <Routes>
+      <Route path="/" element={<HomePage />} />
+      <Route path="/wishlists" element={<WishlistsPage />} />
+      <Route path="/wishlists/:id" element={<WishlistDetailPage />} />
+      <Route path="/wishlists/:id/edit" element={<EditWishlistPage />} />
+      <Route path="/wishlists/:id/add-item" element={<AddItemPage />} />
+      <Route path="/secret-santa" element={<SecretSantaPage />} />
+      <Route path="/profile" element={<ProfilePage />} />
+      <Route path="/friends" element={<FriendsPage />} />
+      <Route path="/user/:userId" element={<FriendProfilePage />} />
+      <Route path="/crowdfunding" element={<CrowdfundingPage />} />
+      <Route path="/inspiration" element={<InspirationPage />} />
+      <Route path="/find-gift" element={<FindGiftPage />} />
+      <Route path="/market" element={<MarketPage />} />
+      <Route path="/tasks" element={<TasksPage />} />
+      <Route path="/hints" element={<HintsPage />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  );
+}
+
+function App() {
+  return (
     <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<HomePage />} />
-        <Route path="/wishlists" element={<WishlistsPage />} />
-        <Route path="/wishlists/:id" element={<WishlistDetailPage />} />
-        <Route path="/wishlists/:id/edit" element={<EditWishlistPage />} />
-        <Route path="/wishlists/:id/add-item" element={<AddItemPage />} />
-        <Route path="/secret-santa" element={<SecretSantaPage />} />
-        <Route path="/profile" element={<ProfilePage />} />
-        <Route path="/friends" element={<FriendsPage />} />
-        <Route path="/user/:userId" element={<FriendProfilePage />} />
-        <Route path="/crowdfunding" element={<CrowdfundingPage />} />
-        <Route path="/inspiration" element={<InspirationPage />} />
-        <Route path="/find-gift" element={<FindGiftPage />} />
-        <Route path="/market" element={<MarketPage />} />
-        <Route path="/tasks" element={<TasksPage />} />
-        <Route path="/hints" element={<HintsPage />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+      <AppRoutes />
     </BrowserRouter>
   );
 }

@@ -303,7 +303,7 @@ export default function FriendProfilePage() {
         <div className="error-state">
           <span className="error-icon">😕</span>
           <h3>User not found</h3>
-          <p>This user doesn't exist or hasn't joined WishBucket yet.</p>
+          <p>This user doesn't exist or hasn't joined wishbucket yet.</p>
         </div>
         <BottomNavBar />
       </div>

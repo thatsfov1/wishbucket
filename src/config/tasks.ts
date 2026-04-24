@@ -97,16 +97,16 @@ export const TASK_CATEGORIES: TaskCategoryInfo[] = [
 export const CHANNELS_TO_FOLLOW: TaskChannelInfo[] = [
   {
     id: "channel_wishbucket",
-    name: "WishBucket Channel",
+    name: "wishbucket Channel",
     username: "wishbucket_channel",
-    description: "Official WishBucket updates and news",
+    description: "Official wishbucket updates and news",
     pointsReward: 50,
     isActive: true,
     emoji: "🎁",
   },
   {
     id: "channel_wishbucket_news",
-    name: "WishBucket News",
+    name: "wishbucket News",
     username: "wishbucket_news",
     description: "Latest features and announcements",
     pointsReward: 30,
@@ -218,7 +218,7 @@ export const TASKS: Task[] = [
     id: "social_share_app",
     type: "social",
     category: "social",
-    title: "Share WishBucket",
+    title: "Share wishbucket",
     description: "Share the app with your contacts",
     emoji: "📲",
     pointsReward: 20,

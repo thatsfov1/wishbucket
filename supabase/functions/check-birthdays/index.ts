@@ -67,7 +67,7 @@ async function sendTelegramMessage(
           inline_keyboard: [
             [
               {
-                text: "🎁 Open WishBucket",
+                text: "🎁 Open wishbucket",
                 url: "https://t.me/wishbucket_bot/app",
               },
             ],

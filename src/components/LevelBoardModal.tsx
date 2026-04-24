@@ -276,7 +276,7 @@ export default function LevelBoardModal({
             <div className="lbm-max-level">
               <div className="lbm-max-crown">👑</div>
               <h3>Maximum Level Reached!</h3>
-              <p>You're a WishBucket Legend. Enjoy unlimited wishlists!</p>
+              <p>You're a wishbucket Legend. Enjoy unlimited wishlists!</p>
             </div>
           )}
         </div>

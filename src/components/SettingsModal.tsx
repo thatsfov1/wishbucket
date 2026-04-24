@@ -169,14 +169,14 @@ export default function SettingsModal({
   const handleInvite = () => {
     hapticFeedback.impact("medium");
     openTelegramLink(
-      "https://t.me/share/url?url=https://t.me/wishbucket_bot/app?startapp=invite&text=Join me on WishBucket! Create and share wishlists with friends 🎁",
+      "https://t.me/share/url?url=https://t.me/wishbucket_bot/app?startapp=invite&text=Join me on wishbucket! Create and share wishlists with friends 🎁",
     );
   };
 
   const handleShareProfile = () => {
     hapticFeedback.impact("medium");
     openTelegramLink(
-      "https://t.me/share/url?url=https://t.me/wishbucket_bot&text=Check out my wishlist on WishBucket!",
+      "https://t.me/share/url?url=https://t.me/wishbucket_bot&text=Check out my wishlist on wishbucket!",
     );
   };
 
@@ -534,7 +534,7 @@ export default function SettingsModal({
         </div>
 
         <div className="settings-footer">
-          <p className="settings-version">WishBucket v1.0.0</p>
+          <p className="settings-version">wishbucket v1.0.0</p>
           <p className="settings-credits">
             made by{" "}
             <button
