@@ -1,10 +1,11 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useStore } from "../store/useStore";
 import { getTelegramUser, hapticFeedback } from "../utils/telegram";
 import {
   createWishlist,
   getHomePageData,
+  HomePageData,
   WishlistSummary,
 } from "../services/supabase-api";
 import BottomNavBar from "../components/BottomNavBar";
@@ -15,56 +16,84 @@ import LevelBoardModal from "../components/LevelBoardModal";
 import { LEVELS, getUserLevel, getWishlistLimit } from "../config/levels";
 import "./HomePage.css";
 
+const HOME_CACHE_PREFIX = "wb_home_cache_v1_";
+
+const readHomeCache = (userId: number | undefined): HomePageData | null => {
+  if (!userId) return null;
+  try {
+    const raw = sessionStorage.getItem(`${HOME_CACHE_PREFIX}${userId}`);
+    return raw ? (JSON.parse(raw) as HomePageData) : null;
+  } catch {
+    return null;
+  }
+};
+
+const writeHomeCache = (userId: number | undefined, data: HomePageData) => {
+  if (!userId) return;
+  try {
+    sessionStorage.setItem(
+      `${HOME_CACHE_PREFIX}${userId}`,
+      JSON.stringify(data),
+    );
+  } catch {
+    /* ignore quota errors */
+  }
+};
 
 export default function HomePage() {
   const navigate = useNavigate();
-  const {
-    userProfile,
-    addWishlist,
-    setWishlists,
-    setLoading,
-    isLoading,
-    setUnreadNotificationsCount,
-  } = useStore();
+  const { userProfile, addWishlist, setWishlists } = useStore();
   const telegramUser = getTelegramUser();
+
+  const cachedHome = useMemo(
+    () => readHomeCache(telegramUser?.id),
+    [telegramUser?.id],
+  );
+
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [levelBoardOpen, setLevelBoardOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [friendsCount, setFriendsCount] = useState(0);
-  const [followersCount, setFollowersCount] = useState(0);
+  const [friendsCount, setFriendsCount] = useState(
+    cachedHome?.friendsCount ?? 0,
+  );
+  const [followersCount, setFollowersCount] = useState(
+    cachedHome?.followersCount ?? 0,
+  );
   const [isLevelLoading, setIsLevelLoading] = useState(true);
-  // Use local state for fast wishlist summaries (no items loaded)
-  const [wishlistSummaries, setWishlistSummaries] = useState<WishlistSummary[]>([]);
+  const [wishlistSummaries, setWishlistSummaries] = useState<WishlistSummary[]>(
+    cachedHome?.wishlists ?? [],
+  );
+  const [isHomeLoading, setIsHomeLoading] = useState(!cachedHome);
+  const [hasLoaded, setHasLoaded] = useState(!!cachedHome);
 
   const firstName = telegramUser?.first_name || "Guest";
   const photoUrl = telegramUser?.photo_url;
 
   const referrals = userProfile?.referrals ?? 0;
-  const currentLevel =
-    !isLevelLoading && userProfile ? getUserLevel(referrals) : null;
+  const currentLevel = !isLevelLoading && userProfile ? getUserLevel(referrals) : null;
   const resolvedLevel = currentLevel ?? LEVELS[0];
   const wishlistLimit = currentLevel
     ? getWishlistLimit(referrals)
     : LEVELS[0].wishlistLimit;
 
-  // Load data on mount - OPTIMIZED: single query for all home page data
   useEffect(() => {
+    if (!telegramUser) return;
+
+    let cancelled = false;
     const loadData = async () => {
       try {
-        setLoading(true);
         setError(null);
 
-        // Single optimized query for all home page data
         const homeData = await getHomePageData();
+        if (cancelled) return;
 
         setWishlistSummaries(homeData.wishlists);
-        setUnreadNotificationsCount(homeData.unreadNotifications);
         setFriendsCount(homeData.friendsCount);
         setFollowersCount(homeData.followersCount);
+        writeHomeCache(telegramUser.id, homeData);
 
-        // Also populate store wishlists for AddItemModal compatibility
-        const userId = telegramUser?.id || 0;
+        const userId = telegramUser.id || 0;
         setWishlists(
           homeData.wishlists.map((s) => ({
             id: s.id,
@@ -78,24 +107,27 @@ export default function HomePage() {
             createdAt: s.createdAt,
             updatedAt: s.createdAt,
             items: [],
-          }))
+          })),
         );
-
       } catch (err) {
+        if (cancelled) return;
         console.error("Error loading data:", err);
         if (err instanceof Error && !err.message.includes("not authenticated")) {
           setError(err.message);
         }
       } finally {
-        setLoading(false);
+        if (cancelled) return;
+        setIsHomeLoading(false);
+        setHasLoaded(true);
         setIsLevelLoading(false);
       }
     };
 
-    if (telegramUser) {
-      loadData();
-    }
-  }, [telegramUser, setLoading, setUnreadNotificationsCount, setWishlists]);
+    loadData();
+    return () => {
+      cancelled = true;
+    };
+  }, [telegramUser, setWishlists]);
 
   const stats = {
     wishlists: wishlistSummaries.length,
@@ -114,7 +146,6 @@ export default function HomePage() {
       return;
     }
 
-    // Enforce wishlist limit (-1 = unlimited)
     if (wishlistLimit !== -1 && wishlistSummaries.length >= wishlistLimit) {
       hapticFeedback.notification("warning");
       setLevelBoardOpen(true);
@@ -146,7 +177,6 @@ export default function HomePage() {
     notifyFollowers: boolean;
   }) => {
     try {
-      setLoading(true);
       const newWishlist = await createWishlist(
         {
           name: wishlistData.name,
@@ -159,26 +189,33 @@ export default function HomePage() {
         },
         wishlistData.notifyFollowers,
       );
-      // Add to local summary state
-      setWishlistSummaries(prev => [{
-        id: newWishlist.id,
-        name: newWishlist.name,
-        description: newWishlist.description,
-        imageUrl: newWishlist.imageUrl,
-        eventDate: newWishlist.eventDate,
-        isPublic: newWishlist.isPublic,
-        isDefault: newWishlist.isDefault,
-        itemCount: 0,
-        createdAt: newWishlist.createdAt,
-      }, ...prev]);
+
+      const updatedSummaries: WishlistSummary[] = [
+        {
+          id: newWishlist.id,
+          name: newWishlist.name,
+          description: newWishlist.description,
+          imageUrl: newWishlist.imageUrl,
+          eventDate: newWishlist.eventDate,
+          isPublic: newWishlist.isPublic,
+          isDefault: newWishlist.isDefault,
+          itemCount: 0,
+          createdAt: newWishlist.createdAt,
+        },
+        ...wishlistSummaries,
+      ];
+      setWishlistSummaries(updatedSummaries);
+      writeHomeCache(telegramUser?.id, {
+        wishlists: updatedSummaries,
+        friendsCount,
+        followersCount,
+      });
       addWishlist(newWishlist);
       hapticFeedback.notification("success");
       navigate(`/wishlists/${newWishlist.id}`);
     } catch (err) {
       console.error("Error creating wishlist:", err);
       hapticFeedback.notification("error");
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -189,7 +226,6 @@ export default function HomePage() {
 
   return (
     <div className="home-container">
-      {/* Header */}
       <header className="home-header animate-slide-up">
         <button className="user-avatar-btn" onClick={handleAvatarClick}>
           {photoUrl ? (
@@ -255,18 +291,119 @@ export default function HomePage() {
 
       {/* Main Content */}
       <div className="home-content">
-        {isLoading ? (
-          <div className="loading-state">
-            <div className="loading-spinner" />
-            <p>Loading...</p>
-          </div>
-        ) : error ? (
+        {error && hasLoaded ? (
           <div className="error-state">
             <span className="error-icon">⚠️</span>
             <p>{error}</p>
             <button onClick={() => window.location.reload()}>Try Again</button>
           </div>
-        ) : wishlistSummaries.length === 0 ? (
+        ) : !hasLoaded || isHomeLoading || wishlistSummaries.length > 0 ? (
+          <div
+            className="wishlists-section animate-slide-up"
+            style={{ animationDelay: "0.1s" }}
+          >
+            <div className="section-header">
+              <h2>My Wishlists</h2>
+              {hasLoaded && wishlistSummaries.length > 0 && (
+                <button
+                  className="see-all"
+                  onClick={() => navigate("/wishlists")}
+                >
+                  See all
+                </button>
+              )}
+            </div>
+            <div className="wishlists-grid">
+              {!hasLoaded ? (
+                <>
+                  {[0, 1, 2].map((i) => (
+                    <div
+                      key={`sk-${i}`}
+                      className="wishlist-card skeleton-card"
+                      style={{ animationDelay: `${i * 0.08}s` }}
+                      aria-hidden="true"
+                    >
+                      <div className="skeleton-shimmer skeleton-icon" />
+                      <div className="skeleton-shimmer skeleton-line skeleton-line-title" />
+                      <div className="skeleton-shimmer skeleton-line skeleton-line-sub" />
+                    </div>
+                  ))}
+                  <div
+                    className="wishlist-card add-card"
+                    onClick={handleOpenCreateModal}
+                  >
+                    <div className="add-icon">
+                      <svg
+                        width="24"
+                        height="24"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                      >
+                        <line x1="12" y1="5" x2="12" y2="19" />
+                        <line x1="5" y1="12" x2="19" y2="12" />
+                      </svg>
+                    </div>
+                    <h3>New List</h3>
+                  </div>
+                </>
+              ) : (
+                <>
+                  {wishlistSummaries.slice(0, 4).map((wishlist, index) => (
+                    <div
+                      key={wishlist.id}
+                      className="wishlist-card wishlist-card-fade-in"
+                      style={{ animationDelay: `${index * 0.05}s` }}
+                      onClick={() => handleWishlistClick(wishlist.id)}
+                    >
+                      <div className="wishlist-icon">
+                        {wishlist.imageUrl ? (
+                          wishlist.imageUrl.startsWith("http") ||
+                          wishlist.imageUrl.startsWith("data:") ? (
+                            <img src={wishlist.imageUrl} alt={wishlist.name} />
+                          ) : (
+                            wishlist.imageUrl
+                          )
+                        ) : wishlist.isDefault ? (
+                          "⭐"
+                        ) : (
+                          "🎁"
+                        )}
+                      </div>
+                      <h3>{wishlist.name}</h3>
+                      <p>{wishlist.itemCount} items</p>
+                    </div>
+                  ))}
+                  <div
+                    className="wishlist-card add-card wishlist-card-fade-in"
+                    style={{
+                      animationDelay: `${
+                        Math.min(wishlistSummaries.length, 4) * 0.05
+                      }s`,
+                    }}
+                    onClick={handleOpenCreateModal}
+                  >
+                    <div className="add-icon">
+                      <svg
+                        width="24"
+                        height="24"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                      >
+                        <line x1="12" y1="5" x2="12" y2="19" />
+                        <line x1="5" y1="12" x2="19" y2="12" />
+                      </svg>
+                    </div>
+                    <h3>New List</h3>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        ) : (
           <div
             className="create-wishlist-section animate-slide-up"
             style={{ animationDelay: "0.1s" }}
@@ -301,67 +438,6 @@ export default function HomePage() {
                 </svg>
                 <span>Wishlist</span>
               </button>
-            </div>
-          </div>
-        ) : (
-          <div
-            className="wishlists-section animate-slide-up"
-            style={{ animationDelay: "0.1s" }}
-          >
-            <div className="section-header">
-              <h2>My Wishlists</h2>
-              <button
-                className="see-all"
-                onClick={() => navigate("/wishlists")}
-              >
-                See all
-              </button>
-            </div>
-            <div className="wishlists-grid">
-              {wishlistSummaries.slice(0, 4).map((wishlist, index) => (
-                <div
-                  key={wishlist.id}
-                  className="wishlist-card animate-scale-in"
-                  style={{ animationDelay: `${0.1 + index * 0.05}s` }}
-                  onClick={() => handleWishlistClick(wishlist.id)}
-                >
-                  <div className="wishlist-icon">
-                    {wishlist.imageUrl ? (
-                      wishlist.imageUrl.startsWith("http") ||
-                      wishlist.imageUrl.startsWith("data:") ? (
-                        <img src={wishlist.imageUrl} alt={wishlist.name} />
-                      ) : (
-                        wishlist.imageUrl
-                      )
-                    ) : wishlist.isDefault ? (
-                      "⭐"
-                    ) : (
-                      "🎁"
-                    )}
-                  </div>
-                  <h3>{wishlist.name}</h3>
-                  <p>{wishlist.itemCount} items</p>
-                </div>
-              ))}
-              <div
-                className="wishlist-card add-card"
-                onClick={handleOpenCreateModal}
-              >
-                <div className="add-icon">
-                  <svg
-                    width="24"
-                    height="24"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                  >
-                    <line x1="12" y1="5" x2="12" y2="19" />
-                    <line x1="5" y1="12" x2="19" y2="12" />
-                  </svg>
-                </div>
-                <h3>New List</h3>
-              </div>
             </div>
           </div>
         )}
@@ -413,17 +489,14 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* Bottom Navigation */}
       <BottomNavBar />
 
-      {/* Settings Modal */}
       <SettingsModal
         isOpen={settingsOpen}
         onClose={() => setSettingsOpen(false)}
         user={{ firstName, photoUrl }}
       />
 
-      {/* Create Wishlist Modal */}
       <CreateWishlistModal
         isOpen={createModalOpen}
         onClose={() => setCreateModalOpen(false)}
@@ -435,7 +508,7 @@ export default function HomePage() {
         }}
       />
 
-      {/* Level Board Modal */}
+
       <LevelBoardModal
         isOpen={levelBoardOpen}
         onClose={() => setLevelBoardOpen(false)}

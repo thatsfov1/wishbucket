@@ -176,37 +176,171 @@
   gap: 28px;
 }
 
-/* Loading State */
-.loading-state {
+/* Skeleton Loading */
+.skeleton-card {
+  background: var(--bg-tertiary);
+  border-radius: 16px;
+  padding: 18px 14px;
+  min-height: 110px;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 60px 20px;
-  background: var(--bg-secondary);
-  border-radius: 20px;
-  box-shadow: var(--shadow-sm);
+  pointer-events: none;
+  opacity: 0;
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  animation:
+    skeleton-card-in 0.45s cubic-bezier(0.22, 1, 0.36, 1) forwards,
+    skeleton-card-pulse 2.2s ease-in-out 0.45s infinite;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.4) inset;
 }
 
-.loading-spinner {
-  width: 40px;
-  height: 40px;
-  border: 3px solid var(--bg-tertiary);
-  border-top-color: var(--coral);
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  margin-bottom: 16px;
+[data-theme="dark"] .skeleton-card {
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset;
 }
 
-@keyframes spin {
+/* Diagonal "shine" sweep across the whole card, like a light reflection */
+.skeleton-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+  background: linear-gradient(
+    115deg,
+    transparent 35%,
+    rgba(255, 255, 255, 0.55) 50%,
+    transparent 65%
+  );
+  background-size: 220% 100%;
+  background-position: 200% 0;
+  animation: skeleton-card-shine 1.8s linear infinite;
+  mix-blend-mode: overlay;
+}
+
+[data-theme="dark"] .skeleton-card::before {
+  background: linear-gradient(
+    115deg,
+    transparent 35%,
+    rgba(255, 255, 255, 0.14) 50%,
+    transparent 65%
+  );
+  background-size: 220% 100%;
+  mix-blend-mode: screen;
+}
+
+/* Inner block placeholders – gradient shimmer (same technique as LevelBadge) */
+.skeleton-shimmer {
+  position: relative;
+  z-index: 1;
+  background: linear-gradient(
+    90deg,
+    rgba(0, 0, 0, 0.05) 0%,
+    rgba(0, 0, 0, 0.12) 50%,
+    rgba(0, 0, 0, 0.05) 100%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.4s linear infinite;
+  border-radius: 6px;
+}
+
+[data-theme="dark"] .skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.05) 0%,
+    rgba(255, 255, 255, 0.16) 50%,
+    rgba(255, 255, 255, 0.05) 100%
+  );
+  background-size: 200% 100%;
+}
+
+.skeleton-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  margin-bottom: 14px;
+}
+
+.skeleton-line {
+  height: 12px;
+  border-radius: 6px;
+  margin-bottom: 8px;
+}
+
+.skeleton-line-title {
+  width: 75%;
+  height: 14px;
+}
+
+.skeleton-line-sub {
+  width: 45%;
+  height: 10px;
+  margin-bottom: 0;
+}
+
+.wishlist-card-fade-in {
+  opacity: 0;
+  animation: card-fade-in 0.45s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes skeleton-shimmer {
+  from {
+    background-position: 200% 0;
+  }
   to {
-    transform: rotate(360deg);
+    background-position: -200% 0;
   }
 }
 
-.loading-state p {
-  color: var(--text-muted);
-  font-size: 14px;
+@keyframes skeleton-card-shine {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -120% 0;
+  }
+}
+
+@keyframes skeleton-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes skeleton-card-pulse {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(0) scale(1.005);
+  }
+}
+
+@keyframes card-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-card,
+  .skeleton-card::before,
+  .skeleton-shimmer,
+  .wishlist-card-fade-in {
+    animation: none !important;
+    opacity: 1 !important;
+  }
 }
 
 /* Error State */

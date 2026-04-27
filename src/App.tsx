@@ -61,14 +61,12 @@ function AppRoutes() {
             .catch(console.error);
         }
 
-        // Deep link: open a specific wishlist (?startapp=wishlist_<id>)
         const wishlistId = getWishlistIdFromStart();
         if (wishlistId) {
           navigate(`/wishlists/${wishlistId}`, { replace: true });
           return;
         }
 
-        // Deep link: open a friend's profile (?startapp=user_<id>)
         const friendUserId = getUserIdFromStart();
         if (friendUserId) {
           navigate(`/user/${friendUserId}`, { replace: true });

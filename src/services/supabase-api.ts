@@ -1,10 +1,3 @@
-/**
- * Supabase API Service для Wish Bucket
- *
- * Цей файл містить всі функції для роботи з Supabase.
- * Код структурований та легко редагується.
- */
-
 import { supabase, getCurrentUserId } from "../lib/supabase";
 import {
   Wishlist,
@@ -21,20 +14,10 @@ import {
 } from "../types";
 import { getTelegramUser } from "../utils/telegram";
 
-// ============================================
-// Допоміжні функції
-// ============================================
-
-/**
- * Генерує унікальний referral code
- */
 const generateReferralCode = (): string => {
   return Math.random().toString(36).substring(2, 10).toUpperCase();
 };
 
-/**
- * Конвертує Supabase user в UserProfile
- */
 const mapUserToProfile = (
   user: any,
   telegramUser: TelegramUser | null,
@@ -43,7 +26,7 @@ const mapUserToProfile = (
     userId: user.user_id,
     telegramUser: telegramUser || JSON.parse(user.telegram_data),
     birthday: user.birthday || undefined,
-    friends: [], // Буде завантажено окремо
+    friends: [],
     referralCode: user.referral_code,
     referrals: user.referrals || 0,
     premiumStatus: user.premium_status || "free",
@@ -53,9 +36,6 @@ const mapUserToProfile = (
   };
 };
 
-/**
- * Конвертує Supabase wishlist в Wishlist
- */
 const mapWishlist = (wishlist: any, items: any[] = []): Wishlist => {
   return {
     id: wishlist.id,
@@ -72,9 +52,6 @@ const mapWishlist = (wishlist: any, items: any[] = []): Wishlist => {
   };
 };
 
-/**
- * Конвертує Supabase item в WishlistItem
- */
 const mapItem = (item: any): WishlistItem => {
   return {
     id: item.id,
@@ -97,10 +74,6 @@ const mapItem = (item: any): WishlistItem => {
   };
 };
 
-// ============================================
-// OPTIMIZED HOME PAGE API (Fast loading)
-// ============================================
-
 export interface WishlistSummary {
   id: string;
   name: string;
@@ -117,7 +90,6 @@ export interface HomePageData {
   wishlists: WishlistSummary[];
   friendsCount: number;
   followersCount: number;
-  unreadNotifications: number;
 }
 
 /**
@@ -134,7 +106,6 @@ export const getHomePageData = async (): Promise<HomePageData> => {
     itemsResult,
     friendsCountResult,
     followersCountResult,
-    notificationsResult,
   ] = await Promise.all([
     supabase
       .from("wishlists")
@@ -143,10 +114,13 @@ export const getHomePageData = async (): Promise<HomePageData> => {
       )
       .eq("user_id", userId)
       .order("created_at", { ascending: false }),
+    // Only pull non-purchased item ids for counting (DB-level filter is much
+    // faster than fetching every column / status and filtering in JS).
     supabase
       .from("wishlist_items")
-      .select("wishlist_id, status, wishlists!inner(user_id)")
-      .eq("wishlists.user_id", userId),
+      .select("wishlist_id, wishlists!inner(user_id)")
+      .eq("wishlists.user_id", userId)
+      .neq("status", "purchased"),
     supabase
       .from("friends")
       .select("*", { count: "exact", head: true })
@@ -155,26 +129,18 @@ export const getHomePageData = async (): Promise<HomePageData> => {
       .from("friends")
       .select("*", { count: "exact", head: true })
       .eq("friend_id", userId),
-    supabase
-      .from("notifications")
-      .select("*", { count: "exact", head: true })
-      .eq("user_id", userId)
-      .eq("is_read", false),
   ]);
 
   if (wishlistsResult.error) {
     throw new Error(`Failed to fetch data: ${wishlistsResult.error.message}`);
   }
 
-  // Build item count map (excluding purchased items)
   const itemCountMap = new Map<string, number>();
   (itemsResult.data || []).forEach((item: any) => {
-    if (item.status !== "purchased") {
-      itemCountMap.set(
-        item.wishlist_id,
-        (itemCountMap.get(item.wishlist_id) || 0) + 1,
-      );
-    }
+    itemCountMap.set(
+      item.wishlist_id,
+      (itemCountMap.get(item.wishlist_id) || 0) + 1,
+    );
   });
 
   const wishlists: WishlistSummary[] = (wishlistsResult.data || []).map(
@@ -195,7 +161,6 @@ export const getHomePageData = async (): Promise<HomePageData> => {
     wishlists,
     friendsCount: friendsCountResult.count || 0,
     followersCount: followersCountResult.count || 0,
-    unreadNotifications: notificationsResult.count || 0,
   };
 };
 
