@@ -28,8 +28,6 @@ export interface WishlistItem {
   name: string;
   description?: string;
   url: string;
-  originalUrl: string;
-  affiliateUrl?: string;
   imageUrl?: string;
   price?: number;
   currency?: string;

@@ -240,10 +240,6 @@ export default function AddItemPage() {
         name: formData.name,
         description: formData.description,
         url: affiliateResult.affiliateUrl || cleanUrl,
-        originalUrl: cleanUrl,
-        affiliateUrl: affiliateResult.hasAffiliate
-          ? affiliateResult.affiliateUrl
-          : undefined,
         imageUrl: productInfo.imageUrl,
         price: productInfo.price,
         currency: selectedCurrency,

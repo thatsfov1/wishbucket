@@ -56,24 +56,17 @@ CREATE TABLE wishlists (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- Індекси
 CREATE INDEX idx_wishlists_user_id ON wishlists(user_id);
 CREATE INDEX idx_wishlists_public ON wishlists(is_public) WHERE is_public = true;
 
--- Унікальний індекс: тільки один default wishlist на користувача
 CREATE UNIQUE INDEX idx_wishlists_user_default ON wishlists(user_id) WHERE is_default = true;
 
--- ============================================
--- Таблиця: wishlist_items (елементи списку)
--- ============================================
 CREATE TABLE wishlist_items (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   wishlist_id UUID NOT NULL REFERENCES wishlists(id) ON DELETE CASCADE,
   name VARCHAR(255) NOT NULL,
   description TEXT,
   url TEXT NOT NULL,
-  original_url TEXT NOT NULL,
-  affiliate_url TEXT,
   image_url TEXT,
   price DECIMAL(10, 2),
   currency VARCHAR(10) DEFAULT 'USD',

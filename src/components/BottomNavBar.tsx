@@ -99,10 +99,6 @@ export default function BottomNavBar() {
           name: itemData.name,
           description: itemData.description,
           url: finalUrl,
-          originalUrl: cleanUrl,
-          affiliateUrl: affiliateResult.hasAffiliate
-            ? affiliateResult.affiliateUrl
-            : undefined,
           imageUrl: itemData.imageUrl,
           price: itemData.price,
           currency: itemData.currency,

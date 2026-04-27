@@ -75,7 +75,6 @@ export default function PickWishlistModal({
         price: item.price,
         currency: item.currency ?? "$",
         url: item.url ?? "",
-        originalUrl: item.url ?? "",
         status: "available",
         priority: "medium",
       });

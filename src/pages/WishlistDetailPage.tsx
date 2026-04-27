@@ -137,10 +137,6 @@ export default function WishlistDetailPage() {
           name: itemData.name,
           description: itemData.description,
           url: finalUrl,
-          originalUrl: cleanUrl,
-          affiliateUrl: affiliateResult.hasAffiliate
-            ? affiliateResult.affiliateUrl
-            : undefined,
           imageUrl: itemData.imageUrl,
           price: itemData.price,
           currency: itemData.currency,
@@ -199,7 +195,6 @@ export default function WishlistDetailPage() {
               price: updates.price,
               currency: updates.currency || it.currency,
               url: updates.url || "",
-              originalUrl: updates.url || "",
             }
           : it,
       ),
@@ -220,9 +215,6 @@ export default function WishlistDetailPage() {
         price: updates.price,
         currency: updates.currency,
         url: finalUrl,
-        affiliateUrl: affiliateResult.hasAffiliate
-          ? affiliateResult.affiliateUrl
-          : undefined,
       });
       hapticFeedback.notification("success");
     } catch (error) {

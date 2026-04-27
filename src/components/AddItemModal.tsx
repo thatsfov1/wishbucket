@@ -110,9 +110,9 @@ export default function AddItemModal({
             : "",
         );
         setCurrency(editingItem.currency || "$");
-        setUrl(editingItem.originalUrl || editingItem.url || "");
+        setUrl(editingItem.url || "");
         // Don't auto-scrape on edit — user already filled this in.
-        lastScrapedUrlRef.current = editingItem.originalUrl || editingItem.url || "";
+        lastScrapedUrlRef.current = editingItem.url || "";
       } else {
         setName("");
         setDescription("");

@@ -95,8 +95,6 @@ export interface Database {
           name: string;
           description: string | null;
           url: string;
-          original_url: string;
-          affiliate_url: string | null;
           image_url: string | null;
           price: number | null;
           currency: string;
@@ -113,8 +111,6 @@ export interface Database {
           name: string;
           description?: string | null;
           url: string;
-          original_url: string;
-          affiliate_url?: string | null;
           image_url?: string | null;
           price?: number | null;
           currency?: string;
@@ -131,8 +127,6 @@ export interface Database {
           name?: string;
           description?: string | null;
           url?: string;
-          original_url?: string;
-          affiliate_url?: string | null;
           image_url?: string | null;
           price?: number | null;
           currency?: string;

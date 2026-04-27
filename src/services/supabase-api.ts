@@ -59,8 +59,6 @@ const mapItem = (item: any): WishlistItem => {
     name: item.name,
     description: item.description || undefined,
     url: item.url,
-    originalUrl: item.original_url,
-    affiliateUrl: item.affiliate_url || undefined,
     imageUrl: item.image_url || undefined,
     price: item.price ? parseFloat(item.price) : undefined,
     currency: item.currency || "USD",
@@ -1507,8 +1505,6 @@ export const addItem = async (
       name: item.name,
       description: item.description || null,
       url: item.url,
-      original_url: item.originalUrl,
-      affiliate_url: item.affiliateUrl || null,
       image_url: item.imageUrl || null,
       price: item.price || null,
       currency: item.currency || "USD",
@@ -1619,8 +1615,6 @@ export const updateItem = async (
   if (updates.description !== undefined)
     updateData.description = updates.description;
   if (updates.url !== undefined) updateData.url = updates.url;
-  if (updates.affiliateUrl !== undefined)
-    updateData.affiliate_url = updates.affiliateUrl;
   if (updates.imageUrl !== undefined) updateData.image_url = updates.imageUrl;
   if (updates.price !== undefined) updateData.price = updates.price;
   if (updates.currency !== undefined) updateData.currency = updates.currency;
@@ -1661,7 +1655,7 @@ export const markItemAsReceivedAcrossWishlists = async (
   // Get full item details for matching
   const { data: item, error: itemError } = await supabase
     .from("wishlist_items")
-    .select("original_url, wishlist_id, name, price, image_url")
+    .select("url, wishlist_id, name, price, image_url")
     .eq("id", itemId)
     .single();
 
@@ -1691,13 +1685,13 @@ export const markItemAsReceivedAcrossWishlists = async (
     return;
   }
 
-  // Try to delete duplicates - use original_url if available, otherwise match by name + price
-  if (item.original_url && item.original_url.trim() !== "") {
-    // Match by URL
+  // Try to delete duplicates - use url if available, otherwise match by name + price
+  if (item.url && item.url.trim() !== "") {
+    // Match by URL (same affiliate-tagged value across wishlists)
     const { error: deleteError } = await supabase
       .from("wishlist_items")
       .delete()
-      .eq("original_url", item.original_url)
+      .eq("url", item.url)
       .in("wishlist_id", otherWishlistIds);
 
     if (deleteError) {
