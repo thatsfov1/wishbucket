@@ -22,6 +22,21 @@
   transition: border-color 0.2s;
 }
 
+.input.skeleton,
+.textarea.skeleton {
+  border-color: var(--coral);
+  background: linear-gradient(
+    90deg,
+    var(--tg-theme-bg-color) 25%,
+    rgba(250, 112, 112, 0.14) 50%,
+    var(--tg-theme-bg-color) 75%
+  );
+  background-size: 220% 100%;
+  animation: skeleton-shimmer 1.2s ease-in-out infinite;
+  color: transparent;
+  caret-color: transparent;
+}
+
 .input:focus,
 .textarea:focus {
   border-color: var(--tg-theme-button-color);
@@ -43,5 +58,14 @@
   min-height: 100px;
   resize: vertical;
   font-family: inherit;
+}
+
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
 }
 

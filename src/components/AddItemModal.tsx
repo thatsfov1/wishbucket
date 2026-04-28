@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { hapticFeedback } from "../utils/telegram";
 import { useStore } from "../store/useStore";
 import { createWishlist, scrapeProductUrl } from "../services/supabase-api";
+import { sanitizeProductUrl } from "../utils/url";
 import type { WishlistItem } from "../types";
 import "./AddItemModal.css";
 
@@ -153,10 +154,11 @@ export default function AddItemModal({
   // Auto-scrape URL when pasted/changed
   const scrapeUrl = useCallback(
     async (urlToScrape: string, isNewUrl: boolean = false) => {
-      if (!urlToScrape.trim()) return;
+      const cleanUrl = sanitizeProductUrl(urlToScrape);
+      if (!cleanUrl) return;
 
       try {
-        new URL(urlToScrape);
+        new URL(cleanUrl);
       } catch {
         return;
       }
@@ -165,11 +167,16 @@ export default function AddItemModal({
       setScrapeError(null);
 
       try {
-        console.log("🔍 Auto-scraping URL:", urlToScrape);
-        const result = await scrapeProductUrl(urlToScrape);
+        console.log("🔍 Auto-scraping URL:", cleanUrl);
+        const result = await scrapeProductUrl(cleanUrl);
         console.log("✅ Scrape result:", result);
 
-        lastScrapedUrlRef.current = urlToScrape;
+        lastScrapedUrlRef.current = cleanUrl;
+
+        if (result.scrapeHint) {
+          setScrapeError(result.scrapeHint);
+          return;
+        }
 
         if (
           result.title ||
@@ -225,7 +232,12 @@ export default function AddItemModal({
   );
 
   useEffect(() => {
-    const urlValue = url.trim();
+    const urlValue = sanitizeProductUrl(url);
+
+    if (urlValue !== url) {
+      setUrl(urlValue);
+      return;
+    }
 
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
@@ -369,7 +381,7 @@ export default function AddItemModal({
           <label className="form-label">Image</label>
           <div className="image-row">
             <button
-              className={`item-image-preview ${customImage ? "has-image" : ""}`}
+              className={`item-image-preview ${customImage ? "has-image" : ""} ${isScrapingUrl ? "skeleton" : ""}`}
               onClick={() => fileInputRef.current?.click()}
             >
               {customImage ? (
@@ -423,7 +435,7 @@ export default function AddItemModal({
           <label className="form-label">Name *</label>
           <input
             type="text"
-            className="form-input"
+            className={`form-input ${isScrapingUrl ? "loading skeleton" : ""}`}
             placeholder="e.g., iPhone 15 Pro"
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -472,7 +484,7 @@ export default function AddItemModal({
             </button>
             <input
               type="number"
-              className="form-input price-input"
+              className={`form-input price-input ${isScrapingUrl ? "loading skeleton" : ""}`}
               placeholder="0.00"
               value={price}
               onChange={(e) => setPrice(e.target.value)}
@@ -515,14 +527,17 @@ export default function AddItemModal({
             placeholder="Paste a link to auto-fill..."
             value={url}
             onChange={(e) => {
-              const newUrl = e.target.value;
+              const newUrl = sanitizeProductUrl(e.target.value);
               setUrl(newUrl);
             }}
             onPaste={(e) => {
-              const pastedText = e.clipboardData.getData("text").trim();
+              const pastedText = sanitizeProductUrl(
+                e.clipboardData.getData("text"),
+              );
               if (pastedText) {
                 try {
                   new URL(pastedText);
+                  e.preventDefault();
                   if (debounceTimerRef.current) {
                     clearTimeout(debounceTimerRef.current);
                     debounceTimerRef.current = null;
@@ -548,7 +563,7 @@ export default function AddItemModal({
             Description <span className="optional">(optional)</span>
           </label>
           <textarea
-            className="form-textarea"
+            className={`form-textarea ${isScrapingUrl ? "loading skeleton" : ""}`}
             placeholder="Add details about the item..."
             value={description}
             onChange={(e) => setDescription(e.target.value)}

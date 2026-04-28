@@ -32,5 +32,8 @@ dist-ssr
 # Supabase
 .supabase
 
+# Apify local storage
+apify/product-scraper/storage
+
 BACKEND_API.md
 DATABASE_SCHEMA.md

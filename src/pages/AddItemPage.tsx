@@ -7,6 +7,7 @@ import { useStore } from "../store/useStore";
 import { addItem as addItemApi } from "../services/supabase-api";
 import { scrapeProductUrl } from "../services/supabase-api";
 import { generateAffiliateLink } from "../utils/affiliate";
+import { sanitizeProductUrl } from "../utils/url";
 import { showTelegramAlert, hapticFeedback } from "../utils/telegram";
 import "./AddItemPage.css";
 
@@ -41,38 +42,6 @@ const getCurrencySymbol = (code: string): string => {
   return currency?.symbol || code;
 };
 
-const sanitizeUrl = (url: string): string => {
-  const trimmed = url.trim();
-  if (!trimmed) return trimmed;
-
-  // String starts with http — handle Telegram WebView URL duplication
-  if (/^https?:\/\//i.test(trimmed)) {
-    // Check for URL-encoded duplicate: https://x.com https%3A%2F%2Fx.com
-    const encodedIndex = trimmed.search(/https?%3A%2F%2F/i);
-    if (encodedIndex > 0) {
-      return trimmed.substring(0, encodedIndex).trim();
-    }
-
-    // Check for literal duplicate: https://x.com https://x.com
-    // Start search after the first "://" to avoid cutting on the initial scheme
-    const secondHttp = trimmed.indexOf("http", 8);
-    if (secondHttp > 0 && /https?:\/\//.test(trimmed.substring(secondHttp))) {
-      return trimmed.substring(0, secondHttp).trim();
-    }
-
-    return trimmed;
-  }
-
-  // Doesn't start with http — extract embedded URL if present
-  // (e.g. "Article title: https://shop.com/product" pasted from Telegram)
-  const httpIndex = trimmed.search(/https?:\/\//i);
-  if (httpIndex >= 0) {
-    return trimmed.substring(httpIndex).trim();
-  }
-
-  return trimmed;
-};
-
 export default function AddItemPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -100,11 +69,9 @@ export default function AddItemPage() {
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastScrapedUrlRef = useRef<string>("");
 
-  // Fetch product info from URL
   const fetchProductInfo = useCallback(async (url: string, isNewUrl: boolean = false) => {
     if (!url.trim()) return;
 
-    // Validate URL
     try {
       new URL(url);
     } catch {
@@ -121,14 +88,17 @@ export default function AddItemPage() {
       const result = await scrapeProductUrl(url);
       console.log("✅ Scrape result:", result);
 
+      if (result.scrapeHint) {
+        setUrlError(result.scrapeHint);
+        return;
+      }
+
       if (result.title || result.imageUrl || result.price) {
         setProductInfo(result);
         lastScrapedUrlRef.current = url;
 
-        // Track the scraped currency for mismatch warning
         if (result.currency) {
           setScrapedCurrency(result.currency);
-          // Reset to default currency if new URL so warning shows
           if (isNewUrl) {
             setSelectedCurrency("USD");
           }
@@ -136,8 +106,6 @@ export default function AddItemPage() {
           setScrapedCurrency(null);
         }
 
-        // Auto-fill name and description
-        // If new URL, always update; otherwise only if empty
         setFormData((prev) => ({
           ...prev,
           name: isNewUrl ? (result.title || prev.name) : (prev.name || result.title || ""),
@@ -156,37 +124,27 @@ export default function AddItemPage() {
     }
   }, []);
 
-  // Auto-scrape when URL changes (with debounce)
   useEffect(() => {
-    const url = sanitizeUrl(formData.url);
+    const url = sanitizeProductUrl(formData.url);
 
-    // If sanitization changed the URL, update state and bail
-    // (the effect will re-run with the cleaned value)
     if (url !== formData.url) {
       setFormData((prev) => ({ ...prev, url }));
       return;
     }
 
-    // Clear any pending debounce
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
     }
 
-    // Only scrape if URL is valid and different from last scraped
     if (url && url !== lastScrapedUrlRef.current) {
       try {
         new URL(url);
-        // Check if this is a subsequent URL (not the first one)
         const isNewUrl = lastScrapedUrlRef.current !== "";
-        // Lock immediately so duplicate triggers are blocked
         lastScrapedUrlRef.current = url;
-        // Debounce the scraping to avoid too many requests while typing
         debounceTimerRef.current = setTimeout(() => {
           fetchProductInfo(url, isNewUrl);
         }, 500);
-      } catch {
-        // Invalid URL, don't scrape
-      }
+      } catch {}
     }
 
     return () => {
@@ -197,11 +155,9 @@ export default function AddItemPage() {
   }, [formData.url, fetchProductInfo]);
 
   const handleUrlChange = (url: string) => {
-    // Fix doubled URLs from Telegram WebView paste behavior
-    const cleaned = sanitizeUrl(url);
+    const cleaned = sanitizeProductUrl(url);
     setFormData((prev) => ({ ...prev, url: cleaned }));
     setUrlError(null);
-    // Only clear product info if URL is completely different (not just being typed)
     if (!cleaned.trim()) {
       setProductInfo({});
       setScrapedCurrency(null);
@@ -230,8 +186,7 @@ export default function AddItemPage() {
     try {
       setLoading(true);
 
-      // Generate affiliate link if possible
-      const cleanUrl = sanitizeUrl(formData.url);
+      const cleanUrl = sanitizeProductUrl(formData.url);
       console.log("🧹 Submit URL:", { raw: formData.url, clean: cleanUrl });
       const affiliateResult = generateAffiliateLink(cleanUrl);
 
@@ -268,6 +223,7 @@ export default function AddItemPage() {
             placeholder="e.g., iPhone 15 Pro"
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            className={processingUrl ? "skeleton" : ""}
             required
           />
 
@@ -280,7 +236,6 @@ export default function AddItemPage() {
             required
           />
 
-          {/* Fetch button - always shows when URL is entered */}
           {formData.url && !processingUrl && (
             <button
               type="button"
@@ -294,6 +249,16 @@ export default function AddItemPage() {
           {processingUrl && (
             <div className="processing-indicator">
               🔍 Fetching product info...
+            </div>
+          )}
+
+          {processingUrl && (
+            <div className="autofill-skeleton-card">
+              <div className="skeleton-image" />
+              <div className="skeleton-lines">
+                <div className="skeleton-line" />
+                <div className="skeleton-line short" />
+              </div>
             </div>
           )}
 
@@ -396,6 +361,7 @@ export default function AddItemPage() {
             label="Description (optional)"
             placeholder="Add any notes about this item..."
             value={formData.description}
+            className={processingUrl ? "skeleton" : ""}
             onChange={(e) =>
               setFormData({ ...formData, description: e.target.value })
             }

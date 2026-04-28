@@ -90,9 +90,6 @@ export interface HomePageData {
   followersCount: number;
 }
 
-/**
- * Single optimized query for home page - gets all needed data in minimal requests
- */
 export const getHomePageData = async (): Promise<HomePageData> => {
   const userId = getCurrentUserId();
   if (!userId) {
@@ -112,8 +109,6 @@ export const getHomePageData = async (): Promise<HomePageData> => {
       )
       .eq("user_id", userId)
       .order("created_at", { ascending: false }),
-    // Only pull non-purchased item ids for counting (DB-level filter is much
-    // faster than fetching every column / status and filtering in JS).
     supabase
       .from("wishlist_items")
       .select("wishlist_id, wishlists!inner(user_id)")
@@ -162,16 +157,13 @@ export const getHomePageData = async (): Promise<HomePageData> => {
   };
 };
 
-/**
- * Get wishlists with only summary data (no items)
- */
+
 export const getWishlistsSummary = async (): Promise<WishlistSummary[]> => {
   const userId = getCurrentUserId();
   if (!userId) {
     throw new Error("User not authenticated");
   }
 
-  // Parallel fetch: wishlists + all items for counting
   const [wishlistsResult, itemsResult] = await Promise.all([
     supabase
       .from("wishlists")
@@ -192,7 +184,6 @@ export const getWishlistsSummary = async (): Promise<WishlistSummary[]> => {
     );
   }
 
-  // Build item count map (excluding purchased items)
   const itemCountMap = new Map<string, number>();
   (itemsResult.data || []).forEach((item: any) => {
     if (item.status !== "purchased") {
@@ -216,9 +207,6 @@ export const getWishlistsSummary = async (): Promise<WishlistSummary[]> => {
   }));
 };
 
-/**
- * Get just the count of friends (fast)
- */
 export const getFriendsCount = async (): Promise<number> => {
   const userId = getCurrentUserId();
   if (!userId) return 0;
@@ -231,9 +219,6 @@ export const getFriendsCount = async (): Promise<number> => {
   return count || 0;
 };
 
-/**
- * Get just the count of followers (fast)
- */
 export const getFollowersCount = async (): Promise<number> => {
   const userId = getCurrentUserId();
   if (!userId) return 0;
@@ -246,161 +231,76 @@ export const getFollowersCount = async (): Promise<number> => {
   return count || 0;
 };
 
-// ============================================
-// URL Scraping API
-// ============================================
-
 export interface ScrapedProductInfo {
   title?: string;
   imageUrl?: string;
   price?: number;
   currency?: string;
   description?: string;
+  /** Set when automatic scraping failed; show to the user. */
+  scrapeHint?: string;
 }
 
-/**
- * Scrapes product information from a URL
- * Uses the Supabase Edge Function for server-side scraping
- */
 export const scrapeProductUrl = async (
   url: string,
 ): Promise<ScrapedProductInfo> => {
   try {
-    console.log("🔍 Calling scrape-url function for:", url);
     const { data, error } = await supabase.functions.invoke("scrape-url", {
       body: { url },
+      headers: {
+        "Accept-Language": navigator.languages?.length
+          ? navigator.languages.join(",")
+          : navigator.language || "en-US",
+      },
     });
 
-    console.log("📦 Raw response:", { data, error });
+    const scrapeData = data as {
+      success?: boolean;
+      manualEntryRequired?: boolean;
+      error?: string;
+      productInfo?: ScrapedProductInfo;
+    };
+
+    console.log("📦 Scrape function response:", { data: scrapeData, error });
 
     if (error) {
-      console.error("Supabase function error:", error);
-      // Fall back to client-side basic extraction
-      return extractFromUrlPattern(url);
+      console.error("Supabase scrape function error:", error);
+      return {
+        scrapeHint:
+          "Could not reach the scraper. Please fill in the form manually.",
+      };
     }
 
-    // Handle nested productInfo structure from Edge Function
-    const productInfo = data?.productInfo || data;
+    const manualEntry =
+      scrapeData?.manualEntryRequired === true || scrapeData?.success === false;
+
+    if (manualEntry || (scrapeData?.error && scrapeData?.success !== true)) {
+      const hint =
+        typeof scrapeData?.error === "string" && scrapeData.error.trim()
+          ? scrapeData.error
+          : "Could not load product details. Please fill in the form manually.";
+      return { scrapeHint: hint };
+    }
+
+    const productInfo = scrapeData?.productInfo ?? {};
     console.log("📦 Extracted productInfo:", productInfo);
 
-    const result: ScrapedProductInfo = {
+    return {
       title: productInfo?.title || undefined,
       imageUrl: productInfo?.imageUrl || undefined,
       price: productInfo?.price ? Number(productInfo.price) : undefined,
       currency: productInfo?.currency || undefined,
       description: productInfo?.description || undefined,
     };
-
-    console.log("✅ Final scrape result:", result);
-    return result;
   } catch (error) {
     console.error("Error scraping URL:", error);
-    // Fall back to client-side pattern matching
-    return extractFromUrlPattern(url);
-  }
-};
-
-/**
- * Basic fallback: extract product info from URL patterns
- * Works when edge function is unavailable
- */
-const extractFromUrlPattern = (url: string): ScrapedProductInfo => {
-  try {
-    const urlObj = new URL(url);
-    const path = urlObj.pathname;
-    const hostname = urlObj.hostname.toLowerCase();
-
-    // Try to extract product name from URL path
-    const segments = path.split("/").filter(Boolean);
-    let productName = "";
-
-    // Amazon-specific URL parsing
-    // Amazon URLs: /dp/ASIN/product-name or /gp/product/ASIN or /product-name/dp/ASIN
-    if (hostname.includes("amazon")) {
-      // Find the segment after /dp/ or find the product slug before /dp/
-      const dpIndex = segments.findIndex((s) => s === "dp" || s === "gp");
-      if (dpIndex > 0) {
-        // Product name is usually before the /dp/ segment
-        const potentialName = segments[dpIndex - 1];
-        if (potentialName && !/^[A-Z0-9]{10}$/.test(potentialName)) {
-          productName = potentialName;
-        }
-      }
-      // Also try the last segment if it looks like a product name
-      if (!productName && segments.length > 0) {
-        const lastSegment = segments[segments.length - 1];
-        if (
-          lastSegment &&
-          !/^[A-Z0-9]{10}$/.test(lastSegment) &&
-          lastSegment !== "dp" &&
-          lastSegment !== "ref"
-        ) {
-          productName = lastSegment;
-        }
-      }
-    } else {
-      // Common patterns: /product/product-name, /p/product-name, /item/product-name
-      const productPatterns = ["product", "p", "item", "dp", "pd", "goods"];
-      for (let i = 0; i < segments.length; i++) {
-        if (
-          productPatterns.includes(segments[i].toLowerCase()) &&
-          segments[i + 1]
-        ) {
-          productName = segments[i + 1];
-          break;
-        }
-      }
-
-      // If no pattern matched, use last meaningful segment
-      if (!productName && segments.length > 0) {
-        productName = segments[segments.length - 1];
-      }
-    }
-
-    // Clean up product name: replace dashes/underscores with spaces, remove IDs
-    if (productName) {
-      productName = productName
-        .replace(/[-_]/g, " ")
-        .replace(/\.(html|php|aspx?)$/i, "")
-        .replace(/\b[A-Z0-9]{10}\b/g, "") // Remove Amazon ASINs
-        .replace(/\b[a-f0-9]{8,}\b/gi, "") // Remove hex IDs
-        .replace(/\s+/g, " ")
-        .trim();
-
-      // Capitalize words
-      if (productName) {
-        productName = productName
-          .split(" ")
-          .filter(Boolean)
-          .map(
-            (word) =>
-              word.charAt(0).toUpperCase() + word.slice(1).toLowerCase(),
-          )
-          .join(" ");
-      }
-    }
-
-    // Don't return the domain name as the product name
-    const domainName = hostname.replace("www.", "").split(".")[0].toLowerCase();
-    if (productName && productName.toLowerCase() === domainName) {
-      productName = "";
-    }
-
     return {
-      title: productName || undefined,
+      scrapeHint:
+        "Could not reach the scraper. Please fill in the form manually.",
     };
-  } catch {
-    return {};
   }
 };
 
-// ============================================
-// User Profile API
-// ============================================
-
-/**
- * Отримує профіль користувача або створює новий
- */
 export const getUserProfile = async (): Promise<UserProfile> => {
   const telegramUser = getTelegramUser();
   if (!telegramUser) {
@@ -409,7 +309,6 @@ export const getUserProfile = async (): Promise<UserProfile> => {
 
   const userId = telegramUser.id;
 
-  // Fetch user and friends in parallel
   const [userResult, friendsResult] = await Promise.all([
     supabase.from("users").select("*").eq("user_id", userId).single(),
     supabase.from("friends").select("friend_id").eq("user_id", userId),
@@ -419,7 +318,6 @@ export const getUserProfile = async (): Promise<UserProfile> => {
     throw new Error(`Failed to fetch user: ${userResult.error.message}`);
   }
 
-  // If user doesn't exist, create new one
   if (!userResult.data) {
     const referralCode = generateReferralCode();
     const { data: newUser, error: createError } = await supabase
@@ -445,10 +343,6 @@ export const getUserProfile = async (): Promise<UserProfile> => {
   return userProfile;
 };
 
-/**
- * Returns completed social task ids used by level progression.
- * Falls back to empty array if the table is not deployed yet.
- */
 export const getCompletedSocialTasks = async (): Promise<string[]> => {
   const userId = getCurrentUserId();
   if (!userId) {
@@ -468,9 +362,6 @@ export const getCompletedSocialTasks = async (): Promise<string[]> => {
   return (data ?? []).map((row: { task_id: string }) => row.task_id);
 };
 
-/**
- * Marks one social task as completed for the current user.
- */
 export const markSocialTaskCompleted = async (
   taskId: string,
 ): Promise<void> => {
@@ -496,9 +387,7 @@ export const markSocialTaskCompleted = async (
   }
 };
 
-/**
- * Syncs multiple task ids to Supabase and returns merged server state.
- */
+
 export const syncCompletedSocialTasks = async (
   taskIds: string[],
 ): Promise<string[]> => {
@@ -527,9 +416,7 @@ export const syncCompletedSocialTasks = async (
   return getCompletedSocialTasks();
 };
 
-/**
- * Оновлює профіль користувача
- */
+
 export const updateUserProfile = async (
   updates: Partial<UserProfile>,
 ): Promise<UserProfile> => {
@@ -559,9 +446,7 @@ export const updateUserProfile = async (
   return mapUserToProfile(data, telegramUser);
 };
 
-/**
- * Отримує referral code користувача
- */
+
 export const getReferralCode = async (): Promise<string> => {
   const userId = getCurrentUserId();
   if (!userId) {
@@ -581,16 +466,13 @@ export const getReferralCode = async (): Promise<string> => {
   return data.referral_code;
 };
 
-/**
- * Застосовує referral code
- */
+
 export const applyReferralCode = async (code: string): Promise<void> => {
   const userId = getCurrentUserId();
   if (!userId) {
     throw new Error("User not authenticated");
   }
 
-  // Знаходимо користувача з цим кодом
   const { data: referrer, error: findError } = await supabase
     .from("users")
     .select("user_id")
@@ -605,10 +487,6 @@ export const applyReferralCode = async (code: string): Promise<void> => {
     throw new Error("Cannot use your own referral code");
   }
 
-  // Перевіряємо чи вже використовувався код
-  // (тут можна додати логіку перевірки)
-
-  // Оновлюємо бонуси реферера
   const { data: referrerData } = await supabase
     .from("users")
     .select("referrals")
@@ -620,7 +498,6 @@ export const applyReferralCode = async (code: string): Promise<void> => {
     .update({ referrals: (referrerData?.referrals || 0) + 1 })
     .eq("user_id", referrer.user_id);
 
-  // Додаємо бонуси користувачу
   const { data: userData } = await supabase
     .from("users")
     .select("bonus_points")
@@ -633,13 +510,6 @@ export const applyReferralCode = async (code: string): Promise<void> => {
     .eq("user_id", userId);
 };
 
-// ============================================
-// Friends API
-// ============================================
-
-/**
- * Додає друга (follow)
- */
 export const addFriend = async (friendId: number): Promise<void> => {
   const userId = getCurrentUserId();
   if (!userId) {
@@ -685,9 +555,6 @@ export const addFriend = async (friendId: number): Promise<void> => {
   }
 };
 
-/**
- * Видаляє друга (unfollow)
- */
 export const removeFriend = async (friendId: number): Promise<void> => {
   const userId = getCurrentUserId();
   if (!userId) {
@@ -705,9 +572,6 @@ export const removeFriend = async (friendId: number): Promise<void> => {
   }
 };
 
-/**
- * Combined fetch for FriendsPage - gets both following and followers in one efficient call
- */
 export interface FriendsPageData {
   following: Friend[];
   followers: Friend[];
@@ -805,16 +669,12 @@ export const getFriendsPageData = async (): Promise<FriendsPageData> => {
   return { following, followers };
 };
 
-/**
- * Отримує список друзів (following)
- */
 export const getFriends = async (): Promise<Friend[]> => {
   const userId = getCurrentUserId();
   if (!userId) {
     throw new Error("User not authenticated");
   }
 
-  // Run both queries in parallel for faster loading
   const [followingResult, followersResult] = await Promise.all([
     supabase
       .from("friends")
@@ -862,16 +722,12 @@ export const getFriends = async (): Promise<Friend[]> => {
   });
 };
 
-/**
- * Отримує список підписників (followers)
- */
 export const getFollowers = async (): Promise<Friend[]> => {
   const userId = getCurrentUserId();
   if (!userId) {
     throw new Error("User not authenticated");
   }
 
-  // Run both queries in parallel for faster loading
   const [followersResult, followingResult] = await Promise.all([
     supabase
       .from("friends")
@@ -919,9 +775,6 @@ export const getFollowers = async (): Promise<Friend[]> => {
   });
 };
 
-/**
- * Пошук користувачів за username або ім'ям
- */
 export const searchUsers = async (query: string): Promise<Friend[]> => {
   const userId = getCurrentUserId();
   if (!userId) {
@@ -934,7 +787,6 @@ export const searchUsers = async (query: string): Promise<Friend[]> => {
 
   const searchTerm = query.toLowerCase().trim();
 
-  // Search users by username using our optimized view
   const { data: users, error } = await supabase
     .from("public_user_profiles")
     .select("user_id, telegram_data")
@@ -948,7 +800,6 @@ export const searchUsers = async (query: string): Promise<Friend[]> => {
     throw new Error(`Failed to search users: ${error.message}`);
   }
 
-  // Get current following
   const { data: following } = await supabase
     .from("friends")
     .select("friend_id")
@@ -956,7 +807,6 @@ export const searchUsers = async (query: string): Promise<Friend[]> => {
 
   const followingIds = new Set(following?.map((f) => f.friend_id) || []);
 
-  // Get followers
   const { data: followers } = await supabase
     .from("friends")
     .select("user_id")
@@ -964,7 +814,6 @@ export const searchUsers = async (query: string): Promise<Friend[]> => {
 
   const followerIds = new Set(followers?.map((f) => f.user_id) || []);
 
-  // Filter and map users (already filtered by db)
   return (users || []).map((u) => {
     const telegramData =
       typeof u.telegram_data === "string"
@@ -984,9 +833,6 @@ export const searchUsers = async (query: string): Promise<Friend[]> => {
   });
 };
 
-/**
- * Знаходить користувачів за Telegram user_ids (для контактів)
- */
 export const findUsersByTelegramIds = async (
   telegramIds: number[],
 ): Promise<Friend[]> => {
@@ -1009,7 +855,6 @@ export const findUsersByTelegramIds = async (
     throw new Error(`Failed to find users: ${error.message}`);
   }
 
-  // Get current following
   const { data: following } = await supabase
     .from("friends")
     .select("friend_id")
@@ -1017,7 +862,6 @@ export const findUsersByTelegramIds = async (
 
   const followingIds = new Set(following?.map((f) => f.friend_id) || []);
 
-  // Get followers
   const { data: followers } = await supabase
     .from("friends")
     .select("user_id")
@@ -1044,9 +888,6 @@ export const findUsersByTelegramIds = async (
   });
 };
 
-/**
- * Отримує профіль користувача за ID
- */
 export const getUserById = async (
   targetUserId: number,
 ): Promise<Friend | null> => {
@@ -1055,7 +896,6 @@ export const getUserById = async (
     throw new Error("User not authenticated");
   }
 
-  // Parallel fetch: user data + following status + follower status
   const [userResult, followingResult, followerResult] = await Promise.all([
     supabase
       .from("users")
@@ -1098,9 +938,6 @@ export const getUserById = async (
   };
 };
 
-/**
- * Combined data fetch for FriendProfilePage - single efficient call
- */
 export interface FriendProfileData {
   user: Friend | null;
   wishlists: Wishlist[];
@@ -1114,7 +951,6 @@ export const getFriendProfileData = async (
     throw new Error("User not authenticated");
   }
 
-  // All queries in parallel
   const [userResult, followingResult, followerResult, wishlistsResult] =
     await Promise.all([
       supabase
@@ -1142,7 +978,6 @@ export const getFriendProfileData = async (
         .order("created_at", { ascending: false }),
     ]);
 
-  // Build user object
   let user: Friend | null = null;
   if (userResult.data) {
     const telegramData =
@@ -1163,7 +998,6 @@ export const getFriendProfileData = async (
     };
   }
 
-  // Build wishlists
   const wishlists = (wishlistsResult.data || []).map((wishlist: any) => {
     const items = (wishlist.wishlist_items || []).sort(
       (a: any, b: any) =>
@@ -1175,9 +1009,6 @@ export const getFriendProfileData = async (
   return { user, wishlists };
 };
 
-/**
- * Отримує публічні wishlists користувача
- */
 export const getUserPublicWishlists = async (
   targetUserId: number,
 ): Promise<Wishlist[]> => {
@@ -1197,7 +1028,6 @@ export const getUserPublicWishlists = async (
     throw new Error(`Failed to fetch wishlists: ${error.message}`);
   }
 
-  // Load items for each wishlist
   return (wishlists || []).map((wishlist) => {
     const items = (wishlist.wishlist_items || []).sort(
       (a: any, b: any) =>
@@ -1207,9 +1037,7 @@ export const getUserPublicWishlists = async (
   });
 };
 
-/**
- * Отримує профіль користувача за username
- */
+
 export const getUserByUsername = async (
   username: string,
 ): Promise<Friend | null> => {
@@ -1220,7 +1048,6 @@ export const getUserByUsername = async (
 
   const cleanUsername = username.toLowerCase().replace("@", "");
 
-  // Search using the fast view
   const { data: user, error } = await supabase
     .from("public_user_profiles")
     .select("user_id, telegram_data")
@@ -1239,7 +1066,6 @@ export const getUserByUsername = async (
       ? JSON.parse(user.telegram_data)
       : user.telegram_data;
 
-  // Check following status in parallel
   const [followingResult, followerResult] = await Promise.all([
     supabase
       .from("friends")
@@ -1267,20 +1093,12 @@ export const getUserByUsername = async (
   };
 };
 
-// ============================================
-// Wishlists API
-// ============================================
-
-/**
- * Отримує всі wishlists користувача
- */
 export const getWishlists = async (): Promise<Wishlist[]> => {
   const userId = getCurrentUserId();
   if (!userId) {
     throw new Error("User not authenticated");
   }
 
-  // Оптимізований запит за допомогою JOIN, завантажує wishlists та їх items за один раз
   const { data: wishlists, error } = await supabase
     .from("wishlists")
     .select(
@@ -1296,10 +1114,8 @@ export const getWishlists = async (): Promise<Wishlist[]> => {
     throw new Error(`Failed to fetch wishlists: ${error.message}`);
   }
 
-  // Форматуємо результати
   return (wishlists || []).map((wishlist) => {
-    // Сортуємо вкладені items за датою
-    const items = (wishlist.wishlist_items || []).sort(
+        const items = (wishlist.wishlist_items || []).sort(
       (a: any, b: any) =>
         new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
     );
@@ -1307,9 +1123,6 @@ export const getWishlists = async (): Promise<Wishlist[]> => {
   });
 };
 
-/**
- * Отримує конкретний wishlist
- */
 export const getWishlist = async (wishlistId: string): Promise<Wishlist> => {
   const { data: wishlist, error } = await supabase
     .from("wishlists")
@@ -1334,13 +1147,6 @@ export const getWishlist = async (wishlistId: string): Promise<Wishlist> => {
   return mapWishlist(wishlist, items);
 };
 
-/**
- * Створює новий wishlist
- */
-/**
- * Notifies all followers about an event. Title/message are localized
- * per-recipient inside the `send-telegram-notification` edge function.
- */
 const notifyFollowers = async (
   type: NotificationType,
   data?: Record<string, any>,
@@ -1373,7 +1179,6 @@ export const createWishlist = async (
     throw new Error("User not authenticated");
   }
 
-  // Якщо це default, знімаємо default з інших
   if (wishlist.isDefault) {
     await supabase
       .from("wishlists")
@@ -1400,7 +1205,6 @@ export const createWishlist = async (
     throw new Error(`Failed to create wishlist: ${error.message}`);
   }
 
-  // Notify followers about new public wishlist
   if (wishlist.isPublic && notifyFollowersFlag) {
     const telegramUser = getTelegramUser();
     const userName = telegramUser?.first_name || "Someone";
@@ -1416,9 +1220,6 @@ export const createWishlist = async (
   return mapWishlist(data, []);
 };
 
-/**
- * Оновлює wishlist
- */
 export const updateWishlist = async (
   wishlistId: string,
   updates: Partial<Wishlist>,
@@ -1435,7 +1236,6 @@ export const updateWishlist = async (
   if (updates.isDefault !== undefined) {
     updateData.is_default = updates.isDefault;
 
-    // Якщо робимо default, знімаємо default з інших
     if (updates.isDefault) {
       const userId = getCurrentUserId();
       await supabase
@@ -1461,9 +1261,6 @@ export const updateWishlist = async (
   return mapWishlist(data, []);
 };
 
-/**
- * Видаляє wishlist
- */
 export const deleteWishlist = async (wishlistId: string): Promise<void> => {
   const { error } = await supabase
     .from("wishlists")
@@ -1475,22 +1272,12 @@ export const deleteWishlist = async (wishlistId: string): Promise<void> => {
   }
 };
 
-/**
- * Отримує share link для wishlist
- */
+
 export const getShareLink = async (wishlistId: string): Promise<string> => {
-  // Генеруємо share link
-  const botUsername = "wishbucket_bot"; // Замініть на ваш bot username
+  const botUsername = "wishbucket_bot";
   return `https://t.me/${botUsername}?start=wishlist_${wishlistId}`;
 };
 
-// ============================================
-// Items API
-// ============================================
-
-/**
- * Додає item до wishlist
- */
 export const addItem = async (
   wishlistId: string,
   item: Omit<WishlistItem, "id" | "createdAt" | "updatedAt">,
@@ -1547,9 +1334,6 @@ export const addItem = async (
   return mapItem(data);
 };
 
-/**
- * Add item to multiple wishlists with a single combined notification
- */
 export const addItemToMultipleWishlists = async (
   wishlistIds: string[],
   item: Omit<WishlistItem, "id" | "createdAt" | "updatedAt" | "wishlistId">,
@@ -1562,7 +1346,7 @@ export const addItemToMultipleWishlists = async (
     const result = await addItem(
       wishlistId,
       { ...item, wishlistId },
-      false, // Don't notify - we'll send one combined notification
+      false,
     );
     addedItems.push(result);
   }
@@ -1580,9 +1364,7 @@ export const addItemToMultipleWishlists = async (
         const telegramUser = getTelegramUser();
         const userName = telegramUser?.first_name || "Someone";
 
-        // For a single wishlist we can pass `wishlistId` (deep-link).
-        // For multiple wishlists we omit it; the edge function falls back to
-        // a generic "added to their wishlists" copy and a "View Profile" CTA.
+       
         const single = publicWishlists.length === 1 ? publicWishlists[0] : null;
 
         notifyFollowers("friend_added_item", {
@@ -1602,9 +1384,6 @@ export const addItemToMultipleWishlists = async (
   return addedItems;
 };
 
-/**
- * Оновлює item
- */
 export const updateItem = async (
   itemId: string,
   updates: Partial<WishlistItem>,
@@ -1639,11 +1418,6 @@ export const updateItem = async (
   return mapItem(data);
 };
 
-/**
- * Mark item as received and remove duplicates from other wishlists
- * - Current item: marked as "purchased" (received)
- * - Same item in other wishlists: deleted
- */
 export const markItemAsReceivedAcrossWishlists = async (
   itemId: string,
 ): Promise<void> => {
@@ -1652,7 +1426,6 @@ export const markItemAsReceivedAcrossWishlists = async (
     throw new Error("User not authenticated");
   }
 
-  // Get full item details for matching
   const { data: item, error: itemError } = await supabase
     .from("wishlist_items")
     .select("url, wishlist_id, name, price, image_url")
@@ -1663,10 +1436,8 @@ export const markItemAsReceivedAcrossWishlists = async (
     throw new Error(`Failed to get item: ${itemError?.message}`);
   }
 
-  // Mark current item as received
   await updateItem(itemId, { status: "purchased" });
 
-  // Get all user's wishlist IDs
   const { data: wishlists } = await supabase
     .from("wishlists")
     .select("id")
@@ -1676,7 +1447,6 @@ export const markItemAsReceivedAcrossWishlists = async (
     return;
   }
 
-  // Get other wishlist IDs (exclude the current one)
   const otherWishlistIds = wishlists
     .map((w) => w.id)
     .filter((id) => id !== item.wishlist_id);
@@ -1685,9 +1455,7 @@ export const markItemAsReceivedAcrossWishlists = async (
     return;
   }
 
-  // Try to delete duplicates - use url if available, otherwise match by name + price
   if (item.url && item.url.trim() !== "") {
-    // Match by URL (same affiliate-tagged value across wishlists)
     const { error: deleteError } = await supabase
       .from("wishlist_items")
       .delete()
@@ -1701,19 +1469,16 @@ export const markItemAsReceivedAcrossWishlists = async (
       );
     }
   } else {
-    // No URL - match by name + price + image (items added together have same values)
     let query = supabase
       .from("wishlist_items")
       .delete()
       .eq("name", item.name)
       .in("wishlist_id", otherWishlistIds);
 
-    // Add price match if price exists
     if (item.price !== null) {
       query = query.eq("price", item.price);
     }
 
-    // Add image match if image exists
     if (item.image_url) {
       query = query.eq("image_url", item.image_url);
     }
@@ -1729,9 +1494,7 @@ export const markItemAsReceivedAcrossWishlists = async (
   }
 };
 
-/**
- * Видаляє item
- */
+
 export const deleteItem = async (itemId: string): Promise<void> => {
   const { error } = await supabase
     .from("wishlist_items")
@@ -1743,9 +1506,6 @@ export const deleteItem = async (itemId: string): Promise<void> => {
   }
 };
 
-/**
- * Резервує item
- */
 export const reserveItem = async (itemId: string): Promise<WishlistItem> => {
   const userId = getCurrentUserId();
   if (!userId) {
@@ -1758,9 +1518,6 @@ export const reserveItem = async (itemId: string): Promise<WishlistItem> => {
   });
 };
 
-/**
- * Скасовує резервацію item (робить його знову доступним)
- */
 export const unreserveItem = async (itemId: string): Promise<WishlistItem> => {
   const userId = getCurrentUserId();
   if (!userId) {
@@ -1782,9 +1539,7 @@ export const unreserveItem = async (itemId: string): Promise<WishlistItem> => {
   return mapItem(data);
 };
 
-/**
- * Позначає item як куплений
- */
+
 export const purchaseItem = async (itemId: string): Promise<WishlistItem> => {
   const userId = getCurrentUserId();
   if (!userId) {
@@ -1797,14 +1552,6 @@ export const purchaseItem = async (itemId: string): Promise<WishlistItem> => {
   });
 };
 
-// ============================================
-// URL Processing API
-// ============================================
-
-/**
- * Обробляє URL та додає affiliate link
- * Примітка: Це має бути реалізовано на бекенді або через Supabase Edge Function
- */
 export const processUrl = async (
   url: string,
 ): Promise<{
@@ -1819,8 +1566,6 @@ export const processUrl = async (
     currency?: string;
   };
 }> => {
-  // TODO: Реалізувати через Supabase Edge Function або окремий бекенд
-  // Поки що використовуємо клієнтську логіку
   const { processAffiliateLink } = await import("../utils/affiliate");
   const result = processAffiliateLink(url);
 
@@ -1829,17 +1574,10 @@ export const processUrl = async (
     affiliateUrl: result.url,
     hasAffiliate: result.hasAffiliate,
     programName: result.programName,
-    productInfo: {}, // Буде заповнено через Edge Function
+    productInfo: {},
   };
 };
 
-// ============================================
-// Secret Santa API
-// ============================================
-
-/**
- * Отримує всі Secret Santa події
- */
 export const getSecretSantas = async (): Promise<SecretSanta[]> => {
   const userId = getCurrentUserId();
   if (!userId) {
@@ -1863,13 +1601,9 @@ export const getSecretSantas = async (): Promise<SecretSanta[]> => {
     throw new Error(`Failed to fetch secret santas: ${error.message}`);
   }
 
-  // TODO: Map до SecretSanta типу
   return (data || []) as any;
 };
 
-/**
- * Створює Secret Santa подію
- */
 export const createSecretSanta = async (
   santa: Omit<SecretSanta, "id" | "createdAt">,
 ): Promise<SecretSanta> => {
@@ -1895,13 +1629,9 @@ export const createSecretSanta = async (
     throw new Error(`Failed to create secret santa: ${error.message}`);
   }
 
-  // TODO: Map до SecretSanta типу
   return data as any;
 };
 
-/**
- * Приєднується до Secret Santa
- */
 export const joinSecretSanta = async (
   santaId: string,
 ): Promise<SecretSanta> => {
@@ -1924,24 +1654,12 @@ export const joinSecretSanta = async (
   );
 };
 
-/**
- * Розігрує імена для Secret Santa
- */
 export const drawSecretSanta = async (
   santaId: string,
 ): Promise<SecretSanta> => {
-  // TODO: Реалізувати логіку розіграшу
-  // Це має бути зроблено через Supabase Edge Function для безпеки
   throw new Error("Not implemented yet");
 };
 
-// ============================================
-// Crowdfunding API
-// ============================================
-
-/**
- * Створює crowdfunding для item
- */
 export const createCrowdfunding = async (
   itemId: string,
   targetAmount: number,
@@ -1961,7 +1679,6 @@ export const createCrowdfunding = async (
     throw new Error(`Failed to create crowdfunding: ${error.message}`);
   }
 
-  // Оновлюємо item
   return updateItem(itemId, {
     crowdfunding: {
       id: data.id,
@@ -1975,9 +1692,7 @@ export const createCrowdfunding = async (
   });
 };
 
-/**
- * Вносить внесок до crowdfunding
- */
+
 export const contributeToCrowdfunding = async (
   itemId: string,
   amount: number,
@@ -1987,7 +1702,6 @@ export const contributeToCrowdfunding = async (
     throw new Error("User not authenticated");
   }
 
-  // Знаходимо crowdfunding
   const { data: crowdfunding, error: findError } = await supabase
     .from("crowdfunding")
     .select("*")
@@ -1998,7 +1712,6 @@ export const contributeToCrowdfunding = async (
     throw new Error("Crowdfunding not found");
   }
 
-  // Додаємо внесок
   const { error: contributeError } = await supabase
     .from("crowdfunding_contributors")
     .insert({
@@ -2011,14 +1724,12 @@ export const contributeToCrowdfunding = async (
     throw new Error(`Failed to contribute: ${contributeError.message}`);
   }
 
-  // Оновлюємо item (current_amount оновлюється автоматично через тригер)
   const { data: updatedCrowdfunding } = await supabase
     .from("crowdfunding")
     .select("*")
     .eq("id", crowdfunding.id)
     .single();
 
-  // Завантажуємо contributors
   const { data: contributors } = await supabase
     .from("crowdfunding_contributors")
     .select("*")
@@ -2041,20 +1752,12 @@ export const contributeToCrowdfunding = async (
   });
 };
 
-// ============================================
-// Birthday Reminders API
-// ============================================
-
-/**
- * Отримує нагадування про дні народження
- */
 export const getBirthdayReminders = async (): Promise<BirthdayReminder[]> => {
   const userId = getCurrentUserId();
   if (!userId) {
     throw new Error("User not authenticated");
   }
 
-  // Отримуємо друзів
   const { data: friends } = await supabase
     .from("friends")
     .select("friend_id")
@@ -2066,7 +1769,6 @@ export const getBirthdayReminders = async (): Promise<BirthdayReminder[]> => {
 
   const friendIds = friends.map((f) => f.friend_id);
 
-  // Отримуємо дані друзів з днями народження
   const { data: friendsData } = await supabase
     .from("users")
     .select("user_id, telegram_data, birthday")
@@ -2090,7 +1792,6 @@ export const getBirthdayReminders = async (): Promise<BirthdayReminder[]> => {
       birthday.getDate(),
     );
 
-    // Якщо день народження вже пройшов цього року, беремо наступний рік
     if (thisYearBirthday < now) {
       thisYearBirthday.setFullYear(now.getFullYear() + 1);
     }
@@ -2117,13 +1818,6 @@ export const getBirthdayReminders = async (): Promise<BirthdayReminder[]> => {
   return reminders.sort((a, b) => a.daysUntil - b.daysUntil);
 };
 
-// ============================================
-// Notifications API
-// ============================================
-
-/**
- * Отримує всі нотифікації користувача
- */
 export const getNotifications = async (): Promise<Notification[]> => {
   const userId = getCurrentUserId();
   if (!userId) {
@@ -2153,9 +1847,6 @@ export const getNotifications = async (): Promise<Notification[]> => {
   }));
 };
 
-/**
- * Позначає нотифікацію як прочитану
- */
 export const markNotificationRead = async (
   notificationId: string,
 ): Promise<void> => {
@@ -2169,9 +1860,6 @@ export const markNotificationRead = async (
   }
 };
 
-/**
- * Позначає всі нотифікації як прочитані
- */
 export const markAllNotificationsRead = async (): Promise<void> => {
   const userId = getCurrentUserId();
   if (!userId) {
@@ -2189,9 +1877,7 @@ export const markAllNotificationsRead = async (): Promise<void> => {
   }
 };
 
-/**
- * Отримує кількість непрочитаних нотифікацій
- */
+
 export const getUnreadNotificationsCount = async (): Promise<number> => {
   const userId = getCurrentUserId();
   if (!userId) {
@@ -2211,15 +1897,6 @@ export const getUnreadNotificationsCount = async (): Promise<number> => {
   return count || 0;
 };
 
-/**
- * Creates a notification.
- *
- * Title/message are NOT supplied by the caller — the `send-telegram-notification`
- * edge function looks up the recipient's language and renders the localized
- * copy from a translation table, then inserts the row into `notifications`
- * AND sends the Telegram message. Pass any context (names, item names,
- * wishlist IDs, etc.) via `data`.
- */
 export const createNotification = async (
   targetUserId: number,
   type: NotificationType,
@@ -2235,24 +1912,15 @@ export const createNotification = async (
     });
   } catch (e) {
     console.error("Failed to send notification:", e);
-    // Don't throw — notifications must never block the parent action.
   }
 };
 
-// ============================================
-// Referrals API
-// ============================================
-
-/**
- * Отримує статистику рефералів
- */
 export const getReferralStats = async (): Promise<ReferralStats> => {
   const userId = getCurrentUserId();
   if (!userId) {
     throw new Error("User not authenticated");
   }
 
-  // Parallel fetch for both user data and referrals
   const [userResult, referralsResult] = await Promise.all([
     supabase
       .from("users")
@@ -2285,9 +1953,6 @@ export const getReferralStats = async (): Promise<ReferralStats> => {
   };
 };
 
-/**
- * Debug: Check if referrals table exists and is accessible
- */
 export const checkReferralsTable = async (): Promise<{
   tableExists: boolean;
   userExists: boolean;
@@ -2308,7 +1973,6 @@ export const checkReferralsTable = async (): Promise<{
   };
 
   try {
-    // Check if user exists
     const { data: user, error: userError } = await supabase
       .from("users")
       .select("user_id, referral_code, referrals, bonus_points")
@@ -2328,7 +1992,6 @@ export const checkReferralsTable = async (): Promise<{
       result.userError = userError.message;
     }
 
-    // Check if referrals table is accessible
     const { data: referrals, error: refError } = await supabase
       .from("referrals")
       .select("*")
@@ -2347,7 +2010,6 @@ export const checkReferralsTable = async (): Promise<{
       result.tableError = refError.message;
     }
 
-    // Check all users with referral codes
     const { data: allUsers, error: allUsersError } = await supabase
       .from("users")
       .select("user_id, referral_code, referrals")
@@ -2368,9 +2030,6 @@ export const checkReferralsTable = async (): Promise<{
   return result;
 };
 
-/**
- * Отримує список рефералів
- */
 export const getReferrals = async (): Promise<Referral[]> => {
   const userId = getCurrentUserId();
   if (!userId) {
@@ -2419,9 +2078,6 @@ export const getReferrals = async (): Promise<Referral[]> => {
   });
 };
 
-/**
- * Застосовує реферальний код при реєстрації
- */
 export const applyReferral = async (
   referralCode: string,
 ): Promise<{ success: boolean; bonus: number }> => {
@@ -2434,7 +2090,6 @@ export const applyReferral = async (
     throw new Error("User not authenticated");
   }
 
-  // Find referrer
   console.log("🔍 Looking for referrer with code:", referralCode.toUpperCase());
   const { data: referrer, error: findError } = await supabase
     .from("users")
@@ -2455,7 +2110,6 @@ export const applyReferral = async (
     throw new Error("Cannot use your own referral code");
   }
 
-  // Check if already referred
   console.log("🔍 Checking if user already used a referral...");
   const { data: existingReferral, error: existingError } = await supabase
     .from("referrals")
@@ -2472,7 +2126,6 @@ export const applyReferral = async (
     throw new Error("You have already used a referral code");
   }
 
-  // Create referral record
   const bonusForReferrer = 100;
   const bonusForReferred = 50;
 
@@ -2494,14 +2147,12 @@ export const applyReferral = async (
     throw new Error(`Failed to apply referral: ${createError.message}`);
   }
 
-  // Get referrer's current bonus points
   const { data: referrerData } = await supabase
     .from("users")
     .select("bonus_points")
     .eq("user_id", referrer.user_id)
     .single();
 
-  // Update referrer's stats
   await supabase
     .from("users")
     .update({
@@ -2510,7 +2161,6 @@ export const applyReferral = async (
     })
     .eq("user_id", referrer.user_id);
 
-  // Update referred user's bonus
   const { data: userData } = await supabase
     .from("users")
     .select("bonus_points")
@@ -2522,7 +2172,6 @@ export const applyReferral = async (
     .update({ bonus_points: (userData?.bonus_points || 0) + bonusForReferred })
     .eq("user_id", userId);
 
-  // Notify referrer
   await createNotification(referrer.user_id, "referral_signup", {
     bonusPoints: bonusForReferrer,
   });
@@ -2532,11 +2181,6 @@ export const applyReferral = async (
     bonus: bonusForReferred,
   };
 };
-
-// ============================================
-// Gift Hints API
-// ============================================
-
 export interface GiftHint {
   id: string;
   userId: number;
@@ -2556,9 +2200,7 @@ export interface GiftHint {
   updatedAt: string;
 }
 
-/**
- * Get all gift hints for the current user
- */
+
 export const getGiftHints = async (): Promise<GiftHint[]> => {
   const userId = getCurrentUserId();
   if (!userId) return [];
@@ -2594,9 +2236,6 @@ export const getGiftHints = async (): Promise<GiftHint[]> => {
   }));
 };
 
-/**
- * Get hints grouped by person
- */
 export const getHintsGroupedByPerson = async (): Promise<
   Map<string, GiftHint[]>
 > => {
@@ -2614,9 +2253,6 @@ export const getHintsGroupedByPerson = async (): Promise<
   return grouped;
 };
 
-/**
- * Update hint status (mark as purchased, archive, etc.)
- */
 export const updateHintStatus = async (
   hintId: string,
   status: "active" | "purchased" | "archived",
@@ -2635,9 +2271,6 @@ export const updateHintStatus = async (
   }
 };
 
-/**
- * Add notes to a hint
- */
 export const updateHintNotes = async (
   hintId: string,
   notes: string,
@@ -2656,9 +2289,7 @@ export const updateHintNotes = async (
   }
 };
 
-/**
- * Delete a hint
- */
+
 export const deleteHint = async (hintId: string): Promise<void> => {
   const userId = getCurrentUserId();
   if (!userId) throw new Error("Not authenticated");
@@ -2674,9 +2305,7 @@ export const deleteHint = async (hintId: string): Promise<void> => {
   }
 };
 
-/**
- * Get hint count by person
- */
+
 export const getHintCountByPerson = async (): Promise<
   Array<{ name: string; count: number }>
 > => {
@@ -2695,9 +2324,7 @@ export const getHintCountByPerson = async (): Promise<
   return Array.from(counts.values()).sort((a, b) => b.count - a.count);
 };
 
-/**
- * Resend hint message to user's Telegram chat
- */
+
 export const resendHintToChat = async (hintId: string): Promise<boolean> => {
   const userId = getCurrentUserId();
   if (!userId) throw new Error("Not authenticated");

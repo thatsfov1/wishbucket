@@ -4,6 +4,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "scrape:dev": "npm run dev --prefix server",
+    "apify:scraper": "corepack pnpm --dir apify/product-scraper start",
     "build": "tsc && vite build",
     "preview": "vite preview",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0"

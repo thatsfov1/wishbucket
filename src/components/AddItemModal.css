@@ -55,6 +55,19 @@
   font-size: 32px;
 }
 
+.item-image-preview.skeleton {
+  border-style: solid;
+  border-color: var(--coral);
+  background: linear-gradient(
+    90deg,
+    var(--bg-tertiary) 25%,
+    rgba(250, 112, 112, 0.14) 50%,
+    var(--bg-tertiary) 75%
+  );
+  background-size: 220% 100%;
+  animation: shimmer 1.2s ease-in-out infinite;
+}
+
 .emoji-scroll {
   display: flex;
   gap: 8px;

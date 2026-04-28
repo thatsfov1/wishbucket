@@ -1,0 +1,30 @@
+{
+  "name": "wishbucket-product-scraper",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@9.15.4",
+  "scripts": {
+    "start": "tsx src/main.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@metascraper/helpers": "^5.49.1",
+    "apify": "^3.4.2",
+    "crawlee": "^3.13.0",
+    "impit": "^0.13.1",
+    "metascraper": "^5.49.1",
+    "metascraper-description": "^5.49.1",
+    "metascraper-image": "^5.49.1",
+    "metascraper-title": "^5.49.1",
+    "playwright": "^1.49.1",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  }
+}

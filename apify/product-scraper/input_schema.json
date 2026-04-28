@@ -1,0 +1,35 @@
+{
+  "title": "Product URL input",
+  "type": "object",
+  "schemaVersion": 1,
+  "properties": {
+    "url": {
+      "title": "Product URL",
+      "type": "string",
+      "description": "Single product URL to scrape.",
+      "editor": "textfield"
+    },
+    "urls": {
+      "title": "Product URLs",
+      "type": "array",
+      "description": "Optional list of product URLs. The first URL is used by Wishbucket.",
+      "editor": "stringList",
+      "items": {
+        "type": "string"
+      }
+    },
+    "acceptLanguage": {
+      "title": "Accept-Language",
+      "type": "string",
+      "description": "Optional locale header forwarded by the app.",
+      "editor": "textfield"
+    },
+    "proxyConfiguration": {
+      "title": "Proxy configuration",
+      "type": "object",
+      "description": "Optional Apify Proxy configuration. Leave empty to avoid proxy usage.",
+      "editor": "proxy"
+    }
+  },
+  "required": []
+}

@@ -1,0 +1,11 @@
+{
+  "actorSpecification": 1,
+  "name": "wishbucket-product-scraper",
+  "title": "Wishbucket Product Scraper",
+  "description": "Extracts title, image, price, currency, and description for wishlist product URLs.",
+  "version": "1.0",
+  "buildTag": "latest",
+  "dockerfile": "../Dockerfile",
+  "readme": "../README.md",
+  "input": "../input_schema.json"
+}
