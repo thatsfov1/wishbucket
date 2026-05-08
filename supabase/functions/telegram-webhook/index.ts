@@ -831,6 +831,19 @@ async function handleInstructionsCommand(message: TelegramMessage) {
   });
 }
 
+// Handle /languages command
+async function handleLanguagesCommand(message: TelegramMessage) {
+  const language = await getUserLanguage(message.from.id);
+  const t = I18N[language];
+  const text = `${t.chooseLanguageTitle}\n\n${t.chooseLanguageBody}`;
+
+  await sendTelegramMessage(
+    message.chat.id,
+    text,
+    getLanguageButtons(true, language),
+  );
+}
+
 // Handle regular (non-forwarded) message
 async function handleRegularMessage(message: TelegramMessage) {
   const language = await getUserLanguage(message.from.id);
@@ -884,6 +897,11 @@ Deno.serve(async (req: Request) => {
       msgText.startsWith("/help")
     ) {
       await handleInstructionsCommand(message);
+    } else if (
+      msgText.startsWith("/languages") ||
+      msgText.startsWith("/language")
+    ) {
+      await handleLanguagesCommand(message);
     }
     // Handle forwarded messages
     else if (

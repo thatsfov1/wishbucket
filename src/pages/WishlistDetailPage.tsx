@@ -161,7 +161,11 @@ export default function WishlistDetailPage() {
 
   const handleBack = () => {
     hapticFeedback.impact("light");
-    navigate(-1);
+    if (window.history.length > 1) {
+      navigate(-1);
+      return;
+    }
+    navigate("/wishlists");
   };
 
   const openEditItem = (item: WishlistItem) => {

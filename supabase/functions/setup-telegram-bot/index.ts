@@ -130,6 +130,7 @@ Deno.serve(async (req: Request) => {
     const commands = [
       { command: "start", description: "Open wishbucket menu" },
       { command: "hints", description: "Show recent gift hints" },
+      { command: "languages", description: "Choose bot language" },
       { command: "instructions", description: "How to use wishbucket" },
       { command: "help", description: "Show help and instructions" },
     ];

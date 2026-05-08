@@ -1,15 +1,5 @@
--- ============================================
--- Wish Bucket Database Schema for Supabase
--- ============================================
--- Виконайте цей SQL в Supabase SQL Editor
--- ============================================
-
--- Увімкнути розширення для UUID
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- ============================================
--- Таблиця: users (користувачі)
--- ============================================
 CREATE TABLE users (
   user_id BIGINT PRIMARY KEY,
   telegram_data JSONB NOT NULL,
@@ -23,28 +13,20 @@ CREATE TABLE users (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- Індекс для швидкого пошуку по referral_code
 CREATE INDEX idx_users_referral_code ON users(referral_code);
 
--- ============================================
--- Таблиця: friends (друзі)
--- ============================================
 CREATE TABLE friends (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id BIGINT NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
   friend_id BIGINT NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
   UNIQUE(user_id, friend_id),
-  CHECK (user_id != friend_id) -- Не можна додати себе в друзі
+  CHECK (user_id != friend_id)
 );
 
--- Індекси для швидкого пошуку
 CREATE INDEX idx_friends_user_id ON friends(user_id);
 CREATE INDEX idx_friends_friend_id ON friends(friend_id);
 
--- ============================================
--- Таблиця: wishlists (списки бажань)
--- ============================================
 CREATE TABLE wishlists (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id BIGINT NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
@@ -78,14 +60,10 @@ CREATE TABLE wishlist_items (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- Індекси
 CREATE INDEX idx_items_wishlist_id ON wishlist_items(wishlist_id);
 CREATE INDEX idx_items_status ON wishlist_items(status);
 CREATE INDEX idx_items_reserved_by ON wishlist_items(reserved_by) WHERE reserved_by IS NOT NULL;
 
--- ============================================
--- Таблиця: crowdfunding (збір коштів)
--- ============================================
 CREATE TABLE crowdfunding (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   item_id UUID NOT NULL REFERENCES wishlist_items(id) ON DELETE CASCADE,
@@ -94,16 +72,12 @@ CREATE TABLE crowdfunding (
   is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE(item_id) -- Один crowdfunding на item
+  UNIQUE(item_id)
 );
 
--- Індекси
 CREATE INDEX idx_crowdfunding_item_id ON crowdfunding(item_id);
 CREATE INDEX idx_crowdfunding_active ON crowdfunding(is_active) WHERE is_active = true;
 
--- ============================================
--- Таблиця: crowdfunding_contributors (учасники збору)
--- ============================================
 CREATE TABLE crowdfunding_contributors (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   crowdfunding_id UUID NOT NULL REFERENCES crowdfunding(id) ON DELETE CASCADE,
@@ -112,13 +86,10 @@ CREATE TABLE crowdfunding_contributors (
   contributed_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- Індекси
 CREATE INDEX idx_contributors_crowdfunding_id ON crowdfunding_contributors(crowdfunding_id);
 CREATE INDEX idx_contributors_user_id ON crowdfunding_contributors(user_id);
 
--- ============================================
--- Таблиця: secret_santa (таємний санта)
--- ============================================
+
 CREATE TABLE secret_santa (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   organizer_id BIGINT NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
@@ -130,13 +101,9 @@ CREATE TABLE secret_santa (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- Індекси
 CREATE INDEX idx_secret_santa_organizer_id ON secret_santa(organizer_id);
 CREATE INDEX idx_secret_santa_active ON secret_santa(is_active) WHERE is_active = true;
 
--- ============================================
--- Таблиця: secret_santa_participants (учасники)
--- ============================================
 CREATE TABLE secret_santa_participants (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   secret_santa_id UUID NOT NULL REFERENCES secret_santa(id) ON DELETE CASCADE,
@@ -145,17 +112,13 @@ CREATE TABLE secret_santa_participants (
   assigned_to BIGINT REFERENCES users(user_id),
   has_drawn BOOLEAN DEFAULT false,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE(secret_santa_id, user_id) -- Один користувач може бути тільки один раз
+  UNIQUE(secret_santa_id, user_id)
 );
 
--- Індекси
 CREATE INDEX idx_participants_secret_santa_id ON secret_santa_participants(secret_santa_id);
 CREATE INDEX idx_participants_user_id ON secret_santa_participants(user_id);
 CREATE INDEX idx_participants_assigned_to ON secret_santa_participants(assigned_to) WHERE assigned_to IS NOT NULL;
 
--- ============================================
--- Функції для автоматичного оновлення updated_at
--- ============================================
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -164,7 +127,6 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
--- Тригери для автоматичного оновлення updated_at
 CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
@@ -177,9 +139,6 @@ CREATE TRIGGER update_items_updated_at BEFORE UPDATE ON wishlist_items
 CREATE TRIGGER update_crowdfunding_updated_at BEFORE UPDATE ON crowdfunding
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
--- ============================================
--- Функція для автоматичного оновлення current_amount в crowdfunding
--- ============================================
 CREATE OR REPLACE FUNCTION update_crowdfunding_amount()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -195,26 +154,10 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
--- Тригер для автоматичного оновлення суми
 CREATE TRIGGER update_crowdfunding_on_contribution
   AFTER INSERT OR UPDATE OR DELETE ON crowdfunding_contributors
   FOR EACH ROW EXECUTE FUNCTION update_crowdfunding_amount();
 
--- ============================================
--- Row Level Security (RLS) Policies
--- ============================================
--- 
--- ВАЖЛИВО: Для Telegram Mini Apps ми використовуємо 
--- anon key + фільтрацію на рівні додатку.
--- RLS вимкнено, безпека забезпечується через API.
--- 
--- Якщо потрібна додаткова безпека, використовуйте:
--- 1. Service role key тільки на бекенді
--- 2. Supabase Edge Functions з верифікацією Telegram initData
--- ============================================
-
--- Вимкнути RLS для простоти (безпека на рівні API)
--- Якщо потрібен RLS, розкоментуйте секцію нижче
 
 ALTER TABLE users DISABLE ROW LEVEL SECURITY;
 ALTER TABLE friends DISABLE ROW LEVEL SECURITY;
@@ -225,38 +168,9 @@ ALTER TABLE crowdfunding_contributors DISABLE ROW LEVEL SECURITY;
 ALTER TABLE secret_santa DISABLE ROW LEVEL SECURITY;
 ALTER TABLE secret_santa_participants DISABLE ROW LEVEL SECURITY;
 
--- ============================================
--- Альтернатива: RLS з custom claims (опціонально)
--- ============================================
--- Якщо ви хочете увімкнути RLS, створіть custom JWT
--- з telegram_user_id в claims і використовуйте:
---
--- CREATE POLICY "Users can read own data" ON users
---   FOR SELECT USING (
---     user_id = (current_setting('request.jwt.claims', true)::json->>'telegram_user_id')::bigint
---   );
---
--- Докладніше: https://supabase.com/docs/guides/auth/jwts
-
--- ============================================
--- Початкові дані (опціонально)
--- ============================================
-
--- Коментар: Ви можете додати тестові дані тут, якщо потрібно
-
--- ============================================
--- Кінець схеми
--- ============================================
-
-
--- ============================================
--- ОПТИМІЗАЦІЯ ПРОДУКТИВНОСТІ: ІНДЕКСИ ТА ВІДГУКИ (VIEWS)
--- ============================================
-
--- 1. Індекс для швидкого пошуку користувачів за username в JSONB
 CREATE INDEX IF NOT EXISTS idx_users_telegram_username ON users ((lower(telegram_data->>'username')));
 
--- 2. В'юшка для швидкого доступу до публічних профілів та пошуку
+
 CREATE OR REPLACE VIEW public_user_profiles AS
 SELECT 
   user_id,
@@ -268,9 +182,7 @@ SELECT
 FROM users;
 
 
--- 3. Composite індекс для wishlist_items (wishlist_id та created_at) для прискорення сортування елементів в API
 CREATE INDEX IF NOT EXISTS idx_items_wishlist_created ON wishlist_items(wishlist_id, created_at DESC);
 
--- 4. Composite індекс для wishlists (user_id та created_at)
 CREATE INDEX IF NOT EXISTS idx_wishlists_user_created ON wishlists(user_id, created_at DESC);
 

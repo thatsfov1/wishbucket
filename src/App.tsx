@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import {
   BrowserRouter,
   Routes,
@@ -34,6 +34,7 @@ import EditWishlistPage from "./pages/EditWishlistPage";
 function AppRoutes() {
   const { setUserProfile } = useStore();
   const navigate = useNavigate();
+  const didHandleStartParamRef = useRef(false);
 
   useEffect(() => {
     const tg = initTelegram();
@@ -43,10 +44,13 @@ function AppRoutes() {
     }
 
     const initApp = async () => {
+      if (didHandleStartParamRef.current) return;
+
       const user = getTelegramUser();
       if (!user) return;
 
       try {
+        didHandleStartParamRef.current = true;
         const profile = await getUserProfile();
         setUserProfile(profile);
 
