@@ -103,6 +103,7 @@ export default function HomePage() {
             imageUrl: s.imageUrl,
             eventDate: s.eventDate,
             isPublic: s.isPublic,
+            visibility: s.visibility,
             isDefault: s.isDefault,
             createdAt: s.createdAt,
             updatedAt: s.createdAt,
@@ -174,6 +175,7 @@ export default function HomePage() {
     imageUrl?: string;
     eventDate?: string;
     isPublic: boolean;
+    visibility: "public" | "private" | "link";
     notifyFollowers: boolean;
   }) => {
     try {
@@ -184,6 +186,7 @@ export default function HomePage() {
           imageUrl: wishlistData.imageUrl,
           eventDate: wishlistData.eventDate,
           isPublic: wishlistData.isPublic,
+          visibility: wishlistData.visibility,
           isDefault: wishlistSummaries.length === 0,
           userId: telegramUser?.id || 0,
         },
@@ -198,6 +201,7 @@ export default function HomePage() {
           imageUrl: newWishlist.imageUrl,
           eventDate: newWishlist.eventDate,
           isPublic: newWishlist.isPublic,
+          visibility: newWishlist.visibility,
           isDefault: newWishlist.isDefault,
           itemCount: 0,
           createdAt: newWishlist.createdAt,

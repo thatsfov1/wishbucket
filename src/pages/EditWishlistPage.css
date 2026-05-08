@@ -39,10 +39,56 @@
   margin-bottom: var(--spacing);
 }
 
+.visibility-toggle.selected {
+  border: 2px solid var(--accent-primary);
+  background: rgba(250, 112, 112, 0.05);
+}
+
+.visibility-dropdown {
+  position: relative;
+  margin-bottom: var(--spacing);
+  border: 2px solid transparent;
+  border-radius: var(--border-radius);
+  background: var(--tg-theme-secondary-bg-color);
+  transition: border-color 0.2s ease;
+  overflow: hidden;
+}
+
+.visibility-dropdown.open {
+  border-color: var(--accent-primary);
+}
+
 .toggle-info {
   display: flex;
   flex-direction: column;
   gap: 2px;
+}
+
+.visibility-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.visibility-icon.public {
+  background: rgba(161, 195, 152, 0.2);
+}
+
+.visibility-icon.private {
+  background: rgba(250, 112, 112, 0.15);
+}
+
+.visibility-icon.link {
+  background: rgba(95, 167, 245, 0.18);
+}
+
+.visibility-icon-emoji {
+  font-size: 18px;
+  line-height: 1;
 }
 
 .toggle-label {
@@ -85,6 +131,59 @@
 
 .toggle-btn.active .toggle-knob {
   left: 25px;
+}
+
+.dropdown-chevron {
+  width: 24px;
+  height: 24px;
+  border-radius: 12px;
+  background: var(--bg-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  transition: transform 0.2s ease;
+  flex-shrink: 0;
+}
+
+.dropdown-chevron.open {
+  transform: rotate(180deg);
+}
+
+.visibility-menu {
+  margin-top: 0;
+  background: transparent;
+  border: none;
+  border-top: 1px solid var(--border-color);
+  border-radius: 0;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.visibility-menu-item {
+  width: 100%;
+  border: none;
+  background: var(--bg-tertiary);
+  border-radius: 10px;
+  padding: 12px;
+  text-align: left;
+  display: grid;
+  grid-template-columns: 40px 1fr;
+  column-gap: 10px;
+  row-gap: 2px;
+  align-items: center;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.visibility-menu-item:hover {
+  background: var(--bg-primary);
+}
+
+.visibility-menu-icon {
+  grid-row: 1 / span 2;
 }
 
 .form-actions {

@@ -336,6 +336,7 @@ export default function AddItemModal({
         name: newWishlistName.trim(),
         description: "",
         isPublic: true,
+        visibility: "public",
         isDefault: wishlists.length === 0,
         userId: 0,
       });

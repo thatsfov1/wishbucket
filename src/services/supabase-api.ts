@@ -37,6 +37,15 @@ const mapUserToProfile = (
 };
 
 const mapWishlist = (wishlist: any, items: any[] = []): Wishlist => {
+  const visibility =
+    wishlist.visibility === "link" ||
+    wishlist.visibility === "private" ||
+    wishlist.visibility === "public"
+      ? wishlist.visibility
+      : wishlist.is_public
+        ? "public"
+        : "private";
+
   return {
     id: wishlist.id,
     userId: wishlist.user_id,
@@ -45,6 +54,7 @@ const mapWishlist = (wishlist: any, items: any[] = []): Wishlist => {
     imageUrl: wishlist.image_url || undefined,
     eventDate: wishlist.event_date || undefined,
     isPublic: wishlist.is_public,
+    visibility,
     isDefault: wishlist.is_default,
     createdAt: wishlist.created_at,
     updatedAt: wishlist.updated_at,
@@ -79,6 +89,7 @@ export interface WishlistSummary {
   imageUrl?: string;
   eventDate?: string;
   isPublic: boolean;
+  visibility?: "public" | "private" | "link";
   isDefault: boolean;
   itemCount: number;
   createdAt: string;
@@ -105,7 +116,7 @@ export const getHomePageData = async (): Promise<HomePageData> => {
     supabase
       .from("wishlists")
       .select(
-        `id, name, description, image_url, event_date, is_public, is_default, created_at`,
+        `id, name, description, image_url, event_date, is_public, visibility, is_default, created_at`,
       )
       .eq("user_id", userId)
       .order("created_at", { ascending: false }),
@@ -144,6 +155,7 @@ export const getHomePageData = async (): Promise<HomePageData> => {
       imageUrl: w.image_url || undefined,
       eventDate: w.event_date || undefined,
       isPublic: w.is_public,
+      visibility: w.visibility || (w.is_public ? "public" : "private"),
       isDefault: w.is_default,
       itemCount: itemCountMap.get(w.id) || 0,
       createdAt: w.created_at,
@@ -168,7 +180,7 @@ export const getWishlistsSummary = async (): Promise<WishlistSummary[]> => {
     supabase
       .from("wishlists")
       .select(
-        `id, name, description, image_url, event_date, is_public, is_default, created_at`,
+        `id, name, description, image_url, event_date, is_public, visibility, is_default, created_at`,
       )
       .eq("user_id", userId)
       .order("created_at", { ascending: false }),
@@ -201,6 +213,7 @@ export const getWishlistsSummary = async (): Promise<WishlistSummary[]> => {
     imageUrl: w.image_url || undefined,
     eventDate: w.event_date || undefined,
     isPublic: w.is_public,
+    visibility: w.visibility || (w.is_public ? "public" : "private"),
     isDefault: w.is_default,
     itemCount: itemCountMap.get(w.id) || 0,
     createdAt: w.created_at,
@@ -974,7 +987,7 @@ export const getFriendProfileData = async (
         .from("wishlists")
         .select(`*, wishlist_items (*)`)
         .eq("user_id", targetUserId)
-        .eq("is_public", true)
+        .eq("visibility", "public")
         .order("created_at", { ascending: false }),
     ]);
 
@@ -1021,7 +1034,7 @@ export const getUserPublicWishlists = async (
     `,
     )
     .eq("user_id", targetUserId)
-    .eq("is_public", true)
+    .eq("visibility", "public")
     .order("created_at", { ascending: false });
 
   if (error) {
@@ -1187,6 +1200,9 @@ export const createWishlist = async (
       .eq("is_default", true);
   }
 
+  const visibility = wishlist.visibility || (wishlist.isPublic ? "public" : "private");
+  const isPublic = visibility === "public";
+
   const { data, error } = await supabase
     .from("wishlists")
     .insert({
@@ -1195,7 +1211,8 @@ export const createWishlist = async (
       description: wishlist.description || null,
       image_url: wishlist.imageUrl || null,
       event_date: wishlist.eventDate || null,
-      is_public: wishlist.isPublic,
+      is_public: isPublic,
+      visibility,
       is_default: wishlist.isDefault,
     })
     .select()
@@ -1205,7 +1222,7 @@ export const createWishlist = async (
     throw new Error(`Failed to create wishlist: ${error.message}`);
   }
 
-  if (wishlist.isPublic && notifyFollowersFlag) {
+  if (isPublic && notifyFollowersFlag) {
     const telegramUser = getTelegramUser();
     const userName = telegramUser?.first_name || "Someone";
 
@@ -1232,7 +1249,13 @@ export const updateWishlist = async (
   if (updates.imageUrl !== undefined) updateData.image_url = updates.imageUrl;
   if (updates.eventDate !== undefined)
     updateData.event_date = updates.eventDate;
-  if (updates.isPublic !== undefined) updateData.is_public = updates.isPublic;
+  if (updates.visibility !== undefined) {
+    updateData.visibility = updates.visibility;
+    updateData.is_public = updates.visibility === "public";
+  } else if (updates.isPublic !== undefined) {
+    updateData.is_public = updates.isPublic;
+    updateData.visibility = updates.isPublic ? "public" : "private";
+  }
   if (updates.isDefault !== undefined) {
     updateData.is_default = updates.isDefault;
 

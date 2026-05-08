@@ -16,6 +16,7 @@ export interface Wishlist {
   imageUrl?: string;
   eventDate?: string;
   isPublic: boolean;
+  visibility?: "public" | "private" | "link";
   isDefault: boolean;
   createdAt: string;
   updatedAt: string;

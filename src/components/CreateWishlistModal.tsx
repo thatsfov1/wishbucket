@@ -11,6 +11,7 @@ interface CreateWishlistModalProps {
     imageUrl?: string;
     eventDate?: string;
     isPublic: boolean;
+    visibility: WishlistVisibility;
     notifyFollowers: boolean;
   }) => void;
   /** Level 0 users cannot upload a custom photo */
@@ -20,6 +21,33 @@ interface CreateWishlistModalProps {
 }
 
 const defaultImages = ["🎁", "🎂", "🎄", "💝", "🎉", "✨", "🌟", "💫"];
+type WishlistVisibility = "public" | "link" | "private";
+
+const VISIBILITY_OPTIONS: Array<{
+  value: WishlistVisibility;
+  title: string;
+  description: string;
+  icon: string;
+}> = [
+  {
+    value: "public",
+    title: "Public",
+    description: "Visible to everyone in app and by link",
+    icon: "🌍",
+  },
+  {
+    value: "private",
+    title: "Private",
+    description: "Only you can see this wishlist",
+    icon: "🔒",
+  },
+  {
+    value: "link",
+    title: "Anyone with link",
+    description: "Hidden in app, accessible by shared link",
+    icon: "🔗",
+  },
+];
 
 export default function CreateWishlistModal({
   isOpen,
@@ -33,7 +61,8 @@ export default function CreateWishlistModal({
   const [selectedEmoji, setSelectedEmoji] = useState("🎁");
   const [customImage, setCustomImage] = useState<string | null>(null);
   const [eventDate, setEventDate] = useState("");
-  const [isPublic, setIsPublic] = useState(true);
+  const [visibility, setVisibility] = useState<WishlistVisibility>("public");
+  const [showVisibilityDropdown, setShowVisibilityDropdown] = useState(false);
   const [notifyFollowers, setNotifyFollowers] = useState(true);
   const [isClosing, setIsClosing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -51,7 +80,8 @@ export default function CreateWishlistModal({
       setSelectedEmoji("🎁");
       setCustomImage(null);
       setEventDate("");
-      setIsPublic(true);
+      setVisibility("public");
+      setShowVisibilityDropdown(false);
       // Load user's notification preference
       const savedNotifyPref = localStorage.getItem("notifyOnAdd");
       setNotifyFollowers(savedNotifyPref !== "false");
@@ -81,13 +111,15 @@ export default function CreateWishlistModal({
     }
 
     hapticFeedback.notification("success");
+    const isPublic = visibility === "public";
     onCreateWishlist({
       name: name.trim(),
       description: description.trim() || undefined,
       imageUrl: customImage || selectedEmoji,
       eventDate: eventDate || undefined,
       isPublic,
-      notifyFollowers: isPublic && notifyFollowers,
+      visibility,
+      notifyFollowers: visibility === "public" && notifyFollowers,
     });
     handleClose();
   };
@@ -109,6 +141,10 @@ export default function CreateWishlistModal({
     setSelectedEmoji(emoji);
     setCustomImage(null);
   };
+
+  const selectedVisibility =
+    VISIBILITY_OPTIONS.find((option) => option.value === visibility) ??
+    VISIBILITY_OPTIONS[0];
 
   if (!isOpen && !isClosing) return null;
 
@@ -246,68 +282,88 @@ export default function CreateWishlistModal({
           />
         </div>
 
-        {/* Privacy */}
+        {/* Visibility */}
         <div className="form-section">
-          <label className="form-label">Privacy</label>
-          <div className="privacy-options">
+          <label className="form-label">Visibility</label>
+          <div className={`privacy-dropdown ${showVisibilityDropdown ? "open" : ""}`}>
             <button
-              className={`privacy-btn ${isPublic ? "selected" : ""}`}
+              className="privacy-btn selected"
               onClick={() => {
-                setIsPublic(true);
                 hapticFeedback.selection();
+                setShowVisibilityDropdown(!showVisibilityDropdown);
               }}
+              type="button"
             >
-              <div className="privacy-icon public">
+              <div
+                className={`privacy-icon ${
+                  selectedVisibility.value === "private"
+                    ? "private"
+                    : selectedVisibility.value === "link"
+                      ? "link"
+                      : "public"
+                }`}
+              >
+                <span className="privacy-icon-emoji">{selectedVisibility.icon}</span>
+              </div>
+              <div className="privacy-text">
+                <span className="privacy-title">{selectedVisibility.title}</span>
+                <span className="privacy-desc">
+                  {selectedVisibility.description}
+                </span>
+              </div>
+              <div className={`dropdown-chevron ${showVisibilityDropdown ? "open" : ""}`}>
                 <svg
-                  width="20"
-                  height="20"
+                  width="16"
+                  height="16"
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="currentColor"
-                  strokeWidth="2"
+                  strokeWidth="2.4"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
                 >
-                  <circle cx="12" cy="12" r="10" />
-                  <line x1="2" y1="12" x2="22" y2="12" />
-                  <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+                  <polyline points="6,9 12,15 18,9" />
                 </svg>
               </div>
-              <div className="privacy-text">
-                <span className="privacy-title">Public</span>
-                <span className="privacy-desc">Anyone can view</span>
-              </div>
-              {isPublic && <div className="check-mark">✓</div>}
             </button>
-            <button
-              className={`privacy-btn ${!isPublic ? "selected" : ""}`}
-              onClick={() => {
-                setIsPublic(false);
-                hapticFeedback.selection();
-              }}
-            >
-              <div className="privacy-icon private">
-                <svg
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                >
-                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                  <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                </svg>
+
+            {showVisibilityDropdown && (
+              <div className="privacy-menu">
+                {VISIBILITY_OPTIONS.filter(
+                  (option) => option.value !== visibility,
+                ).map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    className="privacy-menu-item"
+                    onClick={() => {
+                      hapticFeedback.selection();
+                      setVisibility(option.value);
+                      setShowVisibilityDropdown(false);
+                    }}
+                  >
+                    <span
+                      className={`privacy-icon privacy-menu-icon ${
+                        option.value === "private"
+                          ? "private"
+                          : option.value === "link"
+                            ? "link"
+                            : "public"
+                      }`}
+                    >
+                      <span className="privacy-icon-emoji">{option.icon}</span>
+                    </span>
+                    <span className="privacy-title">{option.title}</span>
+                    <span className="privacy-desc">{option.description}</span>
+                  </button>
+                ))}
               </div>
-              <div className="privacy-text">
-                <span className="privacy-title">Private</span>
-                <span className="privacy-desc">Only you can view</span>
-              </div>
-              {!isPublic && <div className="check-mark">✓</div>}
-            </button>
+            )}
           </div>
         </div>
 
         {/* Notify Toggle - only for public wishlists */}
-        {isPublic && (
+        {visibility === "public" && (
           <div className="form-section notify-section">
             <div className="notify-toggle">
               <div className="notify-info">

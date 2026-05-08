@@ -59,6 +59,7 @@ export interface Database {
           image_url: string | null;
           event_date: string | null;
           is_public: boolean;
+          visibility: 'public' | 'private' | 'link';
           is_default: boolean;
           created_at: string;
           updated_at: string;
@@ -71,6 +72,7 @@ export interface Database {
           image_url?: string | null;
           event_date?: string | null;
           is_public?: boolean;
+          visibility?: 'public' | 'private' | 'link';
           is_default?: boolean;
           created_at?: string;
           updated_at?: string;
@@ -83,6 +85,7 @@ export interface Database {
           image_url?: string | null;
           event_date?: string | null;
           is_public?: boolean;
+          visibility?: 'public' | 'private' | 'link';
           is_default?: boolean;
           created_at?: string;
           updated_at?: string;

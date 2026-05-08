@@ -10,6 +10,33 @@ import { getUserLevel } from "../config/levels";
 import "./EditWishlistPage.css";
 
 const defaultImages = ["🎁", "🎂", "🎄", "💝", "🎉", "✨", "🌟", "💫"];
+type WishlistVisibility = "public" | "link" | "private";
+
+const VISIBILITY_OPTIONS: Array<{
+  value: WishlistVisibility;
+  title: string;
+  description: string;
+  icon: string;
+}> = [
+  {
+    value: "public",
+    title: "Public",
+    description: "Visible to everyone in app and by link",
+    icon: "🌍",
+  },
+  {
+    value: "private",
+    title: "Private",
+    description: "Only you can see this wishlist",
+    icon: "🔒",
+  },
+  {
+    value: "link",
+    title: "Anyone with link",
+    description: "Hidden in app, accessible by shared link",
+    icon: "🔗",
+  },
+];
 
 export default function EditWishlistPage() {
   const { id } = useParams<{ id: string }>();
@@ -24,6 +51,8 @@ export default function EditWishlistPage() {
   const [selectedEmoji, setSelectedEmoji] = useState("");
   const [customImage, setCustomImage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [visibility, setVisibility] = useState<WishlistVisibility>("public");
+  const [showVisibilityDropdown, setShowVisibilityDropdown] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     description: "",
@@ -58,6 +87,9 @@ export default function EditWishlistPage() {
           eventDate: wishlist.eventDate || "",
           isPublic: wishlist.isPublic,
         });
+        setVisibility(
+          wishlist.visibility || (wishlist.isPublic ? "public" : "private"),
+        );
       } catch (error) {
         console.error("Error loading wishlist:", error);
         showTelegramAlert("Failed to load wishlist");
@@ -87,7 +119,8 @@ export default function EditWishlistPage() {
         description: formData.description,
         imageUrl: customImage || selectedEmoji || undefined,
         eventDate: formData.eventDate || undefined,
-        isPublic: formData.isPublic,
+        isPublic: visibility === "public",
+        visibility,
       });
       hapticFeedback.notification("success");
       navigate(`/wishlists/${id}`);
@@ -110,6 +143,10 @@ export default function EditWishlistPage() {
       </Layout>
     );
   }
+
+  const selectedVisibility =
+    VISIBILITY_OPTIONS.find((option) => option.value === visibility) ??
+    VISIBILITY_OPTIONS[0];
 
   return (
     <Layout title="Edit Wishlist" showBackButton>
@@ -236,21 +273,82 @@ export default function EditWishlistPage() {
             }
           />
 
-          <div className="visibility-toggle">
-            <div className="toggle-info">
-              <span className="toggle-label">Public Wishlist</span>
-              <span className="toggle-desc">Anyone with the link can view</span>
-            </div>
+          <div className={`visibility-dropdown ${showVisibilityDropdown ? "open" : ""}`}>
             <button
               type="button"
-              className={`toggle-btn ${formData.isPublic ? "active" : ""}`}
+              className="visibility-toggle selected"
               onClick={() => {
                 hapticFeedback.selection();
-                setFormData({ ...formData, isPublic: !formData.isPublic });
+                setShowVisibilityDropdown(!showVisibilityDropdown);
               }}
             >
-              <span className="toggle-knob" />
+              <span
+                className={`visibility-icon ${
+                  selectedVisibility.value === "private"
+                    ? "private"
+                    : selectedVisibility.value === "link"
+                      ? "link"
+                      : "public"
+                }`}
+              >
+                <span className="visibility-icon-emoji">
+                  {selectedVisibility.icon}
+                </span>
+              </span>
+              <div className="toggle-info">
+                <span className="toggle-label">{selectedVisibility.title}</span>
+                <span className="toggle-desc">
+                  {selectedVisibility.description}
+                </span>
+              </div>
+              <div className={`dropdown-chevron ${showVisibilityDropdown ? "open" : ""}`}>
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.4"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <polyline points="6,9 12,15 18,9" />
+                </svg>
+              </div>
             </button>
+
+            {showVisibilityDropdown && (
+              <div className="visibility-menu">
+                {VISIBILITY_OPTIONS.filter(
+                  (option) => option.value !== visibility,
+                ).map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    className="visibility-menu-item"
+                    onClick={() => {
+                      hapticFeedback.selection();
+                      setVisibility(option.value);
+                      setShowVisibilityDropdown(false);
+                    }}
+                  >
+                    <span
+                      className={`visibility-icon visibility-menu-icon ${
+                        option.value === "private"
+                          ? "private"
+                          : option.value === "link"
+                            ? "link"
+                            : "public"
+                      }`}
+                    >
+                      <span className="visibility-icon-emoji">{option.icon}</span>
+                    </span>
+                    <span className="toggle-label">{option.title}</span>
+                    <span className="toggle-desc">{option.description}</span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="form-actions">

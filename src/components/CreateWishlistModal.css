@@ -276,17 +276,30 @@
   gap: 10px;
 }
 
+.privacy-dropdown {
+  position: relative;
+  border: 2px solid transparent;
+  border-radius: 14px;
+  background: var(--bg-tertiary);
+  transition: border-color 0.2s ease;
+  overflow: hidden;
+}
+
+.privacy-dropdown.open {
+  border-color: var(--accent-primary);
+}
+
 .privacy-btn {
   display: flex;
   align-items: center;
   gap: 14px;
   width: 100%;
   padding: 14px 16px;
-  background: var(--bg-tertiary);
-  border: 2px solid transparent;
-  border-radius: 14px;
+  background: transparent;
+  border: none;
+  border-radius: 0;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background 0.2s ease;
   text-align: left;
 }
 
@@ -295,8 +308,8 @@
 }
 
 .privacy-btn.selected {
-  border-color: var(--accent-primary);
-  background: rgba(250, 112, 112, 0.05);
+  border-color: transparent;
+  background: transparent;
 }
 
 .privacy-icon {
@@ -317,6 +330,16 @@
 .privacy-icon.private {
   background: rgba(250, 112, 112, 0.15);
   color: var(--coral);
+}
+
+.privacy-icon.link {
+  background: rgba(95, 167, 245, 0.18);
+  color: #2b7fcc;
+}
+
+.privacy-icon-emoji {
+  font-size: 18px;
+  line-height: 1;
 }
 
 .privacy-text {
@@ -348,6 +371,59 @@
   justify-content: center;
   font-size: 14px;
   font-weight: 600;
+}
+
+.dropdown-chevron {
+  width: 24px;
+  height: 24px;
+  border-radius: 12px;
+  background: var(--bg-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  transition: transform 0.2s ease;
+  flex-shrink: 0;
+}
+
+.dropdown-chevron.open {
+  transform: rotate(180deg);
+}
+
+.privacy-menu {
+  margin-top: 0;
+  background: transparent;
+  border: none;
+  border-top: 1px solid var(--border-color);
+  border-radius: 0;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.privacy-menu-item {
+  width: 100%;
+  border: none;
+  background: var(--bg-secondary);
+  border-radius: 10px;
+  padding: 10px 12px;
+  text-align: left;
+  display: grid;
+  grid-template-columns: 40px 1fr;
+  column-gap: 10px;
+  row-gap: 2px;
+  align-items: center;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.privacy-menu-item:hover {
+  background: var(--bg-primary);
+}
+
+.privacy-menu-icon {
+  grid-row: 1 / span 2;
 }
 
 /* Notify Section */

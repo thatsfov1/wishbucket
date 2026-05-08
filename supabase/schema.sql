@@ -33,6 +33,7 @@ CREATE TABLE wishlists (
   name VARCHAR(255) NOT NULL,
   description TEXT,
   is_public BOOLEAN DEFAULT false,
+  visibility VARCHAR(10) NOT NULL DEFAULT 'private' CHECK (visibility IN ('public', 'private', 'link')),
   is_default BOOLEAN DEFAULT false,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
@@ -40,6 +41,7 @@ CREATE TABLE wishlists (
 
 CREATE INDEX idx_wishlists_user_id ON wishlists(user_id);
 CREATE INDEX idx_wishlists_public ON wishlists(is_public) WHERE is_public = true;
+CREATE INDEX idx_wishlists_visibility ON wishlists(visibility);
 
 CREATE UNIQUE INDEX idx_wishlists_user_default ON wishlists(user_id) WHERE is_default = true;
 

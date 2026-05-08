@@ -40,6 +40,7 @@ export default function WishlistsPage() {
     imageUrl?: string;
     eventDate?: string;
     isPublic: boolean;
+    visibility: "public" | "private" | "link";
     notifyFollowers: boolean;
   }) => {
     try {
@@ -51,6 +52,7 @@ export default function WishlistsPage() {
           imageUrl: wishlistData.imageUrl,
           eventDate: wishlistData.eventDate,
           isPublic: wishlistData.isPublic,
+          visibility: wishlistData.visibility,
           isDefault: wishlists.length === 0,
           userId: telegramUser?.id || 0,
         },

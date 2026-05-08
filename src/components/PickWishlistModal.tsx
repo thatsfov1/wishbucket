@@ -96,6 +96,7 @@ export default function PickWishlistModal({
         name: newWishlistName.trim(),
         description: "",
         isPublic: true,
+        visibility: "public",
         isDefault: wishlists.length === 0,
         userId: 0,
       });
