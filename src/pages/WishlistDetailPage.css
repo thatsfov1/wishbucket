@@ -881,3 +881,9 @@
 .detail-link-btn:active {
   transform: scale(0.98);
 }
+
+.detail-created-at {
+  font-size: 14px;
+  color: var(--text-muted);
+  margin: 0 0 8px;
+}

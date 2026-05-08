@@ -113,7 +113,6 @@ export default function WishlistsPage() {
         </button>
       </header>
 
-      {/* Content */}
       <div className="wishlists-content">
         {isLoading ? (
           <div className="loading-state">

@@ -130,7 +130,6 @@ export default function WishlistDetailPage() {
         : { affiliateUrl: cleanUrl, hasAffiliate: false as const };
       const finalUrl = affiliateResult.affiliateUrl || cleanUrl;
 
-      // Add item to all selected wishlists with a single notification
       await addItemToMultipleWishlists(
         itemData.wishlistIds,
         {
@@ -145,7 +144,7 @@ export default function WishlistDetailPage() {
         },
         itemData.notifyFollowers,
       );
-      // Reload current wishlist if it was in the selected list
+
       if (id && itemData.wishlistIds.includes(id)) {
         const wishlist = await getWishlist(id);
         setCurrentWishlist(wishlist);
@@ -186,7 +185,7 @@ export default function WishlistDetailPage() {
     if (!editingItem || !currentWishlist) return;
 
     const previousItems = currentWishlist.items;
-    // Optimistic update
+
     setCurrentWishlist({
       ...currentWishlist,
       items: currentWishlist.items.map((it) =>
@@ -224,7 +223,6 @@ export default function WishlistDetailPage() {
     } catch (error) {
       console.error("Error updating item:", error);
       hapticFeedback.notification("error");
-      // Revert on failure
       setCurrentWishlist({ ...currentWishlist, items: previousItems });
     }
   };
@@ -240,11 +238,9 @@ export default function WishlistDetailPage() {
     const reason = DELETE_REASONS.find((r) => r.id === reasonId);
     const itemId = deleteItemModal.itemId;
 
-    // Optimistic UI update - immediately update the UI
     hapticFeedback.notification("success");
     
     if (reason?.action === "mark_received") {
-      // Optimistically mark as received
       setCurrentWishlist({
         ...currentWishlist,
         items: currentWishlist.items.map((item) =>
@@ -252,17 +248,14 @@ export default function WishlistDetailPage() {
         ),
       });
     } else {
-      // Optimistically remove from UI
       setCurrentWishlist({
         ...currentWishlist,
         items: currentWishlist.items.filter((item) => item.id !== itemId),
       });
     }
 
-    // Close modal immediately
     setDeleteItemModal({ isOpen: false, itemId: null, itemName: "" });
 
-    // Perform actual API call in background
     try {
       if (reason?.action === "mark_received") {
         await markItemAsReceivedAcrossWishlists(itemId);
@@ -272,7 +265,6 @@ export default function WishlistDetailPage() {
     } catch (error) {
       console.error("Error updating item:", error);
       hapticFeedback.notification("error");
-      // Reload to restore correct state on error
       const wishlist = await getWishlist(id);
       setCurrentWishlist(wishlist);
     }
@@ -733,6 +725,10 @@ export default function WishlistDetailPage() {
                   {selectedItem.status === "reserved" && "⏳ Reserved"}
                   {selectedItem.status === "purchased" && "🎁 Received"}
                 </span>
+              </div>
+              
+              <div className="detail-created-at">
+                Created at: {new Date(selectedItem.createdAt).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
               </div>
 
               {selectedItem.url && (
