@@ -1275,7 +1275,7 @@ export const deleteWishlist = async (wishlistId: string): Promise<void> => {
 
 export const getShareLink = async (wishlistId: string): Promise<string> => {
   const botUsername = "wishbucket_bot";
-  return `https://t.me/${botUsername}?start=wishlist_${wishlistId}`;
+  return `https://t.me/${botUsername}/app?startapp=wishlist_${wishlistId}`;
 };
 
 export const addItem = async (
