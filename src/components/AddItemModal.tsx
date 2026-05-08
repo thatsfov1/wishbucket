@@ -294,10 +294,17 @@ export default function AddItemModal({
     if (isEditMode && onUpdateItem) {
       onUpdateItem(payload);
     } else {
+      const hasAnyPublicWishlist = selectedWishlists.some((wishlistId) => {
+        const wishlist = wishlists.find((w) => w.id === wishlistId);
+        if (!wishlist) return false;
+        if (wishlist.visibility) return wishlist.visibility === "public";
+        return wishlist.isPublic;
+      });
+
       onAddItem({
         ...payload,
         wishlistIds: selectedWishlists,
-        notifyFollowers,
+        notifyFollowers: hasAnyPublicWishlist && notifyFollowers,
       });
     }
     handleClose();
@@ -356,6 +363,12 @@ export default function AddItemModal({
   if (!isOpen && !isClosing) return null;
 
   const hasNoWishlists = wishlists.length === 0;
+  const hasAnyPublicWishlistSelected = selectedWishlists.some((wishlistId) => {
+    const wishlist = wishlists.find((w) => w.id === wishlistId);
+    if (!wishlist) return false;
+    if (wishlist.visibility) return wishlist.visibility === "public";
+    return wishlist.isPublic;
+  });
 
   return (
     <div
@@ -686,7 +699,9 @@ export default function AddItemModal({
         )}
 
         {/* Notify Toggle — hidden when editing */}
-        {!isEditMode && selectedWishlists.length > 0 && (
+        {!isEditMode &&
+          selectedWishlists.length > 0 &&
+          hasAnyPublicWishlistSelected && (
           <div className="form-section notify-section">
             <div className="notify-toggle">
               <div className="notify-info">
