@@ -11,6 +11,18 @@ import {
 import { hapticFeedback } from "../utils/telegram";
 import "./HintsPage.css";
 
+const MESSAGE_TYPE_META: Record<
+  GiftHint["messageType"],
+  { icon: string; label: string; emptyText: string }
+> = {
+  text: { icon: "💬", label: "Text", emptyText: "Text message" },
+  voice: { icon: "🎤", label: "Voice", emptyText: "Voice message" },
+  video: { icon: "🎥", label: "Video", emptyText: "Video message" },
+  video_note: { icon: "⭕", label: "Video note", emptyText: "Video note" },
+  photo: { icon: "📷", label: "Photo", emptyText: "Photo message" },
+  document: { icon: "📄", label: "Document", emptyText: "Document" },
+};
+
 export default function HintsPage() {
   const navigate = useNavigate();
   const [hints, setHints] = useState<GiftHint[]>([]);
@@ -56,7 +68,8 @@ export default function HintsPage() {
     hapticFeedback.impact("medium");
     try {
       await updateHintStatus(hintId, "purchased");
-      setHints(hints.filter((h) => h.id !== hintId));
+      setHints((prev) => prev.filter((h) => h.id !== hintId));
+      setExpandedHint((prev) => (prev === hintId ? null : prev));
     } catch (error) {
       console.error("Error updating hint:", error);
     }
@@ -66,7 +79,8 @@ export default function HintsPage() {
     hapticFeedback.impact("light");
     try {
       await updateHintStatus(hintId, "archived");
-      setHints(hints.filter((h) => h.id !== hintId));
+      setHints((prev) => prev.filter((h) => h.id !== hintId));
+      setExpandedHint((prev) => (prev === hintId ? null : prev));
     } catch (error) {
       console.error("Error archiving hint:", error);
     }
@@ -76,7 +90,8 @@ export default function HintsPage() {
     hapticFeedback.notification("warning");
     try {
       await deleteHint(hintId);
-      setHints(hints.filter((h) => h.id !== hintId));
+      setHints((prev) => prev.filter((h) => h.id !== hintId));
+      setExpandedHint((prev) => (prev === hintId ? null : prev));
     } catch (error) {
       console.error("Error deleting hint:", error);
     }
@@ -94,23 +109,6 @@ export default function HintsPage() {
     } catch (error) {
       console.error("Error showing hint in chat:", error);
       hapticFeedback.notification("error");
-    }
-  };
-
-  const getMessageTypeIcon = (type: string) => {
-    switch (type) {
-      case "voice":
-        return "🎤";
-      case "video":
-        return "🎥";
-      case "video_note":
-        return "⭕";
-      case "photo":
-        return "📷";
-      case "document":
-        return "📄";
-      default:
-        return "💬";
     }
   };
 
@@ -230,7 +228,18 @@ export default function HintsPage() {
                     </div>
 
                     <div className="person-hints">
-                      {person.hints.map((hint) => (
+                      {person.hints.map((hint) => {
+                        const typeMeta =
+                          MESSAGE_TYPE_META[hint.messageType] ||
+                          MESSAGE_TYPE_META.text;
+                        const hasText =
+                          typeof hint.hintText === "string" &&
+                          hint.hintText.trim().length > 0;
+                        const hintDisplayText = hasText
+                          ? hint.hintText!.trim()
+                          : typeMeta.emptyText;
+
+                        return (
                         <div
                           key={hint.id}
                           className={`hint-card ${
@@ -245,16 +254,20 @@ export default function HintsPage() {
                         >
                           <div className="hint-main">
                             <span className="hint-type-icon">
-                              {getMessageTypeIcon(hint.messageType)}
+                              {typeMeta.icon}
                             </span>
                             <div className="hint-content">
                               <p className="hint-text">
-                                {hint.hintText ||
-                                  `[${hint.messageType} message]`}
+                                {hintDisplayText}
                               </p>
-                              <span className="hint-date">
-                                {formatDate(hint.createdAt)}
-                              </span>
+                              <div className="hint-meta">
+                                <span className="hint-type-pill">
+                                  {typeMeta.label}
+                                </span>
+                                <span className="hint-date">
+                                  {formatDate(hint.createdAt)}
+                                </span>
+                              </div>
                             </div>
                             <span className="hint-expand">
                               {expandedHint === hint.id ? "▲" : "▼"}
@@ -269,8 +282,10 @@ export default function HintsPage() {
                                   e.stopPropagation();
                                   handleShowInChat(hint.id);
                                 }}
+                                aria-label="Show in chat"
+                                title="Show in chat"
                               >
-                                💬 Show in Chat
+                                💬
                               </button>
                               <button
                                 className="action-btn purchased"
@@ -278,17 +293,10 @@ export default function HintsPage() {
                                   e.stopPropagation();
                                   handleMarkPurchased(hint.id);
                                 }}
+                                aria-label="Mark as bought"
+                                title="Mark as bought"
                               >
-                                ✓ Bought
-                              </button>
-                              <button
-                                className="action-btn archive"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleArchive(hint.id);
-                                }}
-                              >
-                                📦
+                                ✓
                               </button>
                               <button
                                 className="action-btn delete"
@@ -296,13 +304,16 @@ export default function HintsPage() {
                                   e.stopPropagation();
                                   handleDelete(hint.id);
                                 }}
+                                aria-label="Delete"
+                                title="Delete"
                               >
                                 🗑️
                               </button>
                             </div>
                           )}
                         </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 ))}
