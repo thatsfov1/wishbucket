@@ -152,10 +152,13 @@ export default function FriendsPage() {
 
   const handleShareInvite = () => {
     hapticFeedback.impact("medium");
+    const appLanguage = getAppLanguage();
     const message =
-      getAppLanguage() === "uk"
+      appLanguage === "uk"
         ? "Приєднуйся до мене в wishbucket! Створюй і ділись вішлистами з друзями 🎁"
-        : "Join me on wishbucket! Create and share wishlists with friends 🎁";
+        : appLanguage === "ru"
+          ? "Присоединяйся ко мне в wishbucket! Создавай и делись вишлистами с друзьями 🎁"
+          : "Join me on wishbucket! Create and share wishlists with friends 🎁";
     const link = referralStats?.referralLink || "https://t.me/wishbucket_bot";
     openTelegramLink(
       `https://t.me/share/url?url=${encodeURIComponent(

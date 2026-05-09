@@ -88,10 +88,13 @@ export default function ProfilePage() {
   };
 
   const handleShareReferral = () => {
+    const appLanguage = getAppLanguage();
     const message =
-      getAppLanguage() === "uk"
+      appLanguage === "uk"
         ? `Приєднуйся до Wish Bucket і використовуй мій реферальний код: ${referralCode}\n\nОтримуй бонусні бали після реєстрації!`
-        : `Join Wish Bucket and use my referral code: ${referralCode}\n\nGet bonus points when you sign up!`;
+        : appLanguage === "ru"
+          ? `Присоединяйся к Wish Bucket и используй мой реферальный код: ${referralCode}\n\nПолучай бонусные баллы после регистрации!`
+          : `Join Wish Bucket and use my referral code: ${referralCode}\n\nGet bonus points when you sign up!`;
     openTelegramLink(
       `https://t.me/share/url?url=${encodeURIComponent(
         "https://t.me/wishbucket_bot/app?startapp=invite",

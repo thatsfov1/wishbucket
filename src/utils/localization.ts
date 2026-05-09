@@ -2,7 +2,7 @@ export type AppLanguage = "en" | "uk" | "ru";
 
 const STORAGE_KEY = "wb_app_language";
 
-const DIRECT_TRANSLATIONS: Record<string, string> = {
+const DIRECT_TRANSLATIONS_UK: Record<string, string> = {
   "Set up your new wishlist": "Налаштуйте свій новий вішлист",
 
   "Welcome back": "З поверненням",
@@ -294,7 +294,150 @@ const DIRECT_TRANSLATIONS: Record<string, string> = {
   "Lv.": "Рів.",
 };
 
-const REGEX_TRANSLATIONS: Array<[RegExp, (match: RegExpMatchArray) => string]> =
+const DIRECT_TRANSLATIONS_RU: Record<string, string> = {
+  "Welcome back": "С возвращением",
+  Wishlists: "Вишлисты",
+  Following: "Подписки",
+  Followers: "Подписчики",
+  "Try Again": "Попробовать снова",
+  "My Wishlists": "Мои вишлисты",
+  "See all": "Смотреть все",
+  "New List": "Новый список",
+  "Create your first wishlist": "Создайте свой первый вишлист",
+  Wishlist: "Вишлист",
+  "Quick Actions": "Быстрые действия",
+  "Find Gift": "Найти подарок",
+  Friends: "Друзья",
+  Inspiration: "Вдохновение",
+  "Secret Santa": "Тайный Санта",
+  "Gift Hints": "Подсказки подарков",
+  "Saved Gift Ideas": "Сохраненные идеи подарков",
+  "No hints yet": "Пока нет подсказок",
+  "How it works:": "Как это работает:",
+  All: "Все",
+  "Show in chat": "Показать в чате",
+  "Mark as bought": "Отметить как купленное",
+  Delete: "Удалить",
+  Invite: "Пригласить",
+  "Invite Friends, Earn Rewards!": "Приглашайте друзей, получайте награды!",
+  "Share your link and get bonus points":
+    "Поделитесь своей ссылкой и получайте бонусные баллы",
+  Referrals: "Рефералов",
+  "Points 💎": "Баллы 💎",
+  Shop: "Магазин",
+  Earn: "Заработать",
+  "Copy Link": "Копировать ссылку",
+  Share: "Поделиться",
+  Code: "Код",
+  Find: "Поиск",
+  "Not following anyone yet": "Вы еще ни на кого не подписаны",
+  "Find Friends": "Найти друзей",
+  "No followers yet": "Пока нет подписчиков",
+  "Share Profile": "Поделиться профилем",
+  "Search Users": "Поиск пользователей",
+  "Search by name or username...": "Поиск по имени или username...",
+  "Searching...": "Поиск...",
+  Results: "Результаты",
+  Public: "Публичный",
+  "Create Wishlist": "Создать вишлист",
+  "Loading wishlists...": "Загрузка вишлистов...",
+  "No wishlists yet": "Пока нет вишлистов",
+  "Create your first wishlist to start adding items":
+    "Создайте первый вишлист, чтобы начать добавлять подарки",
+  "Share Wishlist": "Поделиться вишлистом",
+  "Edit Wishlist": "Редактировать вишлист",
+  "Delete Wishlist": "Удалить вишлист",
+  Active: "Активные",
+  Reserved: "Зарезервированные",
+  "Received ⤵": "Полученные ⤵",
+  "Received Gifts": "Полученные подарки",
+  Items: "Подарки",
+  "Add Item": "Добавить подарок",
+  "No items yet": "Пока нет подарков",
+  "Add your first item to this wishlist":
+    "Добавьте первый подарок в этот вишлист",
+  Edit: "Редактировать",
+  "Open link": "Открыть ссылку",
+  "Hide actions": "Скрыть действия",
+  "Show actions": "Показать действия",
+  "✓ Available": "✓ Доступен",
+  "⏳ Reserved": "⏳ Зарезервирован",
+  "🎁 Received": "🎁 Получен",
+  "View Product": "Посмотреть товар",
+  Cancel: "Отмена",
+  "Item Name *": "Название подарка *",
+  "Product URL *": "URL товара *",
+  "Paste a link to auto-fill...": "Вставьте ссылку для автозаполнения...",
+  "Description (optional)": "Описание (необязательно)",
+  Priority: "Приоритет",
+  Low: "Низкий",
+  Medium: "Средний",
+  High: "Высокий",
+  "Save Changes": "Сохранить изменения",
+  "Wishlist Name *": "Название вишлиста *",
+  "Cover Image": "Обложка",
+  "Default Currency": "Валюта по умолчанию",
+  "Dark Mode": "Темная тема",
+  Rewards: "Награды",
+  Profile: "Профиль",
+  "Earn Points": "Заработать баллы",
+  "Gift Shop": "Магазин подарков",
+  "Coming Soon": "Скоро",
+  "Find a Gift": "Найти подарок",
+  "All Gifts": "Все подарки",
+  "Notify friends & followers": "Уведомить друзей и подписчиков",
+  "Auto-notify followers": "Авто-уведомление подписчиков",
+  "When adding items or creating lists":
+    "При добавлении подарков или создании вишлистов",
+  "Birthday updated successfully!": "День рождения успешно обновлен!",
+  "Failed to update birthday": "Не удалось обновить день рождения",
+  "Please enter a referral code": "Пожалуйста, введите реферальный код",
+  "Referral code applied! You received bonus points!":
+    "Реферальный код применен! Вы получили бонусные баллы!",
+  "Failed to apply referral code": "Не удалось применить реферальный код",
+  "Premium subscription coming soon!": "Премиум-подписка скоро появится!",
+  "Level Board": "Доска уровней",
+  Close: "Закрыть",
+  Unlimited: "Безлимит",
+  "Up to": "До",
+  wishlists: "вишлистов",
+  friends: "друзей",
+  "Your perks": "Ваши преимущества",
+  "Maximum Level Reached!": "Достигнут максимальный уровень!",
+  "You're a wishbucket Legend. Enjoy unlimited wishlists!":
+    "Вы легенда wishbucket. Наслаждайтесь безлимитными вишлистами!",
+  Newcomer: "Новичок",
+  Explorer: "Исследователь",
+  Collector: "Коллекционер",
+  Legend: "Легенда",
+  "Just getting started": "Только начинаете",
+  "Growing your circle": "Расширяете свой круг",
+  "A true wishlist enthusiast": "Настоящий ценитель вишлистов",
+  "The ultimate wishlist master": "Высший мастер вишлистов",
+  "2 wishlists": "2 вишлиста",
+  "5 wishlists": "5 вишлистов",
+  "10 wishlists": "10 вишлистов",
+  "Unlimited wishlists": "Безлимитные вишлисты",
+  "Emoji covers": "Эмодзи-обложки",
+  "Custom cover images": "Собственные обложки",
+  "Priority support": "Приоритетная поддержка",
+  "Legend badge": "Значок легенды",
+  "Invite 3 friends": "Пригласите 3 друзей",
+  "Invite 10 friends": "Пригласите 10 друзей",
+  "Invite 25 friends": "Пригласите 25 друзей",
+  "Failed to add item": "Не удалось добавить подарок",
+  "Failed to follow user": "Не удалось подписаться на пользователя",
+  "Failed to unfollow user": "Не удалось отписаться от пользователя",
+  "Referral link copied!": "Реферальная ссылка скопирована!",
+  "Failed to load user profile": "Не удалось загрузить профиль пользователя",
+};
+
+const DIRECT_TRANSLATIONS_BY_LANGUAGE: Record<Exclude<AppLanguage, "en">, Record<string, string>> = {
+  uk: DIRECT_TRANSLATIONS_UK,
+  ru: DIRECT_TRANSLATIONS_RU,
+};
+
+const REGEX_TRANSLATIONS_UK: Array<[RegExp, (match: RegExpMatchArray) => string]> =
   [
     [/^(\d+)\sitems?$/i, (m) => `${m[1]} подарунків`],
     [/^(\d+)\shints?$/i, (m) => `${m[1]} підказок`],
@@ -332,6 +475,24 @@ const REGEX_TRANSLATIONS: Array<[RegExp, (match: RegExpMatchArray) => string]> =
     ],
   ];
 
+const REGEX_TRANSLATIONS_RU: Array<[RegExp, (match: RegExpMatchArray) => string]> = [
+  [/^(\d+)\sitems?$/i, (m) => `${m[1]} подарков`],
+  [/^(\d+)\shints?$/i, (m) => `${m[1]} подсказок`],
+  [/^All\s\((\d+)\)$/i, (m) => `Все (${m[1]})`],
+  [/^(\d+)\sdays ago$/i, (m) => `${m[1]} дн. назад`],
+  [/^Code:\s?/i, () => "Код: "],
+  [/^Created at:\s?/i, () => "Создано: "],
+  [/^Level\s(\d+)\sunlocks$/i, (m) => `Уровень ${m[1]} открывает`],
+  [/^Progress to Level\s(\d+)$/i, (m) => `Прогресс до Уровня ${m[1]}`],
+  [/^Complete to unlock Level\s(\d+)$/i, (m) => `Выполните, чтобы открыть Уровень ${m[1]}`],
+  [/^(\d+)\s\/\s(\d+)\sfriends$/i, (m) => `${m[1]} / ${m[2]} друзей`],
+];
+
+const REGEX_TRANSLATIONS_BY_LANGUAGE: Record<Exclude<AppLanguage, "en">, Array<[RegExp, (match: RegExpMatchArray) => string]>> = {
+  uk: REGEX_TRANSLATIONS_UK,
+  ru: REGEX_TRANSLATIONS_RU,
+};
+
 let currentLanguage: AppLanguage = "en";
 let observer: MutationObserver | null = null;
 
@@ -352,37 +513,29 @@ const getLanguageFromSource = (): AppLanguage => {
 
 export const getAppLanguage = (): AppLanguage => currentLanguage;
 
-type PluralCategory = "one" | "few" | "many";
+type PluralCategory = "one" | "many";
 type CountNounKey = "item";
 
 type CountNounForms = {
   one: string;
-  few: string;
   many: string;
 };
 
 const COUNT_NOUNS: Record<AppLanguage, Partial<Record<CountNounKey, CountNounForms>>> = {
   en: {
-    item: { one: "item", few: "items", many: "items" },
+    item: { one: "item", many: "items" },
   },
   uk: {
-    item: { one: "подарунок", few: "подарунки", many: "подарунків" },
+    item: { one: "подарунок", many: "подарунків" },
   },
   ru: {
-    item: { one: "подарок", few: "подарка", many: "подарков" },
+    item: { one: "подарок", many: "подарков" },
   },
 };
 
 const getPluralCategory = (language: AppLanguage, count: number): PluralCategory => {
-  const n = Math.abs(count);
-  if (language === "en") return n === 1 ? "one" : "many";
-
-  // Slavic pluralization (uk/ru)
-  const mod10 = n % 10;
-  const mod100 = n % 100;
-  if (mod10 === 1 && mod100 !== 11) return "one";
-  if (mod10 >= 2 && mod10 <= 4 && !(mod100 >= 12 && mod100 <= 14)) return "few";
-  return "many";
+  void language;
+  return count === 1 ? "one" : "many";
 };
 
 export const formatCount = (count: number, noun: CountNounKey): string => {
@@ -402,15 +555,17 @@ const applyDocumentLanguage = () => {
 };
 
 export const translateText = (input: string): string => {
-  if (currentLanguage !== "uk" || !input) return input;
+  if (currentLanguage === "en" || !input) return input;
   const trimmed = input.trim();
   if (!trimmed) return input;
 
-  if (DIRECT_TRANSLATIONS[trimmed]) {
-    return input.replace(trimmed, DIRECT_TRANSLATIONS[trimmed]);
+  const directTranslations = DIRECT_TRANSLATIONS_BY_LANGUAGE[currentLanguage];
+  if (directTranslations?.[trimmed]) {
+    return input.replace(trimmed, directTranslations[trimmed]);
   }
 
-  for (const [regex, handler] of REGEX_TRANSLATIONS) {
+  const regexTranslations = REGEX_TRANSLATIONS_BY_LANGUAGE[currentLanguage] || [];
+  for (const [regex, handler] of regexTranslations) {
     const match = trimmed.match(regex);
     if (match) {
       return input.replace(trimmed, handler(match));

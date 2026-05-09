@@ -170,10 +170,13 @@ export default function SettingsModal({
 
   const handleInvite = () => {
     hapticFeedback.impact("medium");
+    const appLanguage = getAppLanguage();
     const inviteText =
-      getAppLanguage() === "uk"
+      appLanguage === "uk"
         ? "Приєднуйся до мене в wishbucket! Створюй і ділись вішлистами з друзями 🎁"
-        : "Join me on wishbucket! Create and share wishlists with friends 🎁";
+        : appLanguage === "ru"
+          ? "Присоединяйся ко мне в wishbucket! Создавай и делись вишлистами с друзьями 🎁"
+          : "Join me on wishbucket! Create and share wishlists with friends 🎁";
     openTelegramLink(
       `https://t.me/share/url?url=${encodeURIComponent(
         "https://t.me/wishbucket_bot/app?startapp=invite",
@@ -183,10 +186,13 @@ export default function SettingsModal({
 
   const handleShareProfile = () => {
     hapticFeedback.impact("medium");
+    const appLanguage = getAppLanguage();
     const profileText =
-      getAppLanguage() === "uk"
+      appLanguage === "uk"
         ? "Переглянь мій вішлист у wishbucket!"
-        : "Check out my wishlist on wishbucket!";
+        : appLanguage === "ru"
+          ? "Посмотри мой вишлист в wishbucket!"
+          : "Check out my wishlist on wishbucket!";
     openTelegramLink(
       `https://t.me/share/url?url=${encodeURIComponent(
         "https://t.me/wishbucket_bot",

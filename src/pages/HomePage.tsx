@@ -163,10 +163,13 @@ export default function HomePage() {
   const handleInviteFriends = useCallback(() => {
     const botUsername = "wishbucket_bot";
     const userId = telegramUser?.id ?? 0;
+    const appLanguage = getAppLanguage();
     const shareText =
-      getAppLanguage() === "uk"
+      appLanguage === "uk"
         ? "🎁 Приєднуйся до мене в wishbucket — найзручнішому застосунку вішлистів у Telegram!"
-        : "🎁 Join me on wishbucket – the best wishlist app for Telegram!";
+        : appLanguage === "ru"
+          ? "🎁 Присоединяйся ко мне в wishbucket — лучшем приложении вишлистов в Telegram!"
+          : "🎁 Join me on wishbucket – the best wishlist app for Telegram!";
     const botUrl = `https://t.me/${botUsername}/app?startapp=ref_${userId}`;
     const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(botUrl)}&text=${encodeURIComponent(shareText)}`;
     try {

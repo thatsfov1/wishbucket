@@ -88,10 +88,13 @@ export default function WishlistDetailPage() {
     try {
       hapticFeedback.impact("light");
       const shareLink = await getShareLink(id);
+      const appLanguage = getAppLanguage();
       const shareText =
-        getAppLanguage() === "uk"
+        appLanguage === "uk"
           ? `Поглянь на мій вішлист: ${currentWishlist?.name || ""}`
-          : `Check out my wishlist: ${currentWishlist?.name || ""}`;
+          : appLanguage === "ru"
+            ? `Посмотри мой вишлист: ${currentWishlist?.name || ""}`
+            : `Check out my wishlist: ${currentWishlist?.name || ""}`;
       openTelegramLink(
         `https://t.me/share/url?url=${encodeURIComponent(shareLink)}&text=${encodeURIComponent(shareText)}`,
       );
