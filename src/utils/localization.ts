@@ -95,7 +95,6 @@ const DIRECT_TRANSLATIONS: Record<string, string> = {
   "Yes, I received this gift!": "Так, я отримав(-ла) цей подарунок!",
   "No, just remove it": "Ні, просто видалити",
   Cancel: "Скасувати",
-  "Add Item": "Додати подарунок",
   "Item Name *": "Назва подарунка *",
   "Product URL *": "URL товару *",
   "Paste a link to auto-fill...": "Вставте посилання для автозаповнення...",
