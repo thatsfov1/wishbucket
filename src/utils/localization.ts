@@ -144,16 +144,20 @@ let observer: MutationObserver | null = null;
 
 const normalizeLanguage = (value?: string | null): AppLanguage => {
   const normalized = (value || "").toLowerCase();
-  if (normalized.startsWith("uk")) return "uk";
+  if (normalized.startsWith("uk") || normalized.startsWith("ua")) return "uk";
   if (normalized.startsWith("ru")) return "ru";
   return "en";
 };
 
 const getLanguageFromSource = (): AppLanguage => {
+  const tgUserLang = window.Telegram?.WebApp?.initDataUnsafe?.user?.language_code;
+  const tgLanguage = normalizeLanguage(tgUserLang);
+  if (tgLanguage !== "en") return tgLanguage;
+
   const stored = normalizeLanguage(localStorage.getItem(STORAGE_KEY));
   if (stored !== "en") return stored;
-  const tgUserLang = window.Telegram?.WebApp?.initDataUnsafe?.user?.language_code;
-  return normalizeLanguage(tgUserLang);
+
+  return tgLanguage;
 };
 
 export const getAppLanguage = (): AppLanguage => currentLanguage;
