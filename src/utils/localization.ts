@@ -425,6 +425,158 @@ const DIRECT_TRANSLATIONS_RU: Record<string, string> = {
   "Invite 3 friends": "Пригласите 3 друзей",
   "Invite 10 friends": "Пригласите 10 друзей",
   "Invite 25 friends": "Пригласите 25 друзей",
+  "Set up your new wishlist": "Настройте новый вишлист",
+  Text: "Текст",
+  Voice: "Голос",
+  Video: "Видео",
+  "Video note": "Видеосообщение",
+  Photo: "Фото",
+  Document: "Документ",
+  "Text message": "Текстовое сообщение",
+  "Voice message": "Голосовое сообщение",
+  "Video message": "Видеосообщение",
+  "Photo message": "Фото-сообщение",
+  "Loading hints...": "Загрузка подсказок...",
+  "Forward messages from chats to save hints":
+    "Пересылайте сообщения из чатов, чтобы сохранять подсказки",
+  hints: "подсказок",
+  "Try a different search or invite them!":
+    "Попробуйте другой запрос или пригласите их!",
+  "Find from Contacts": "Найти из контактов",
+  "Coming soon! We'll help you find friends from your Telegram contacts who use wishbucket.":
+    "Скоро! Мы поможем найти друзей из ваших контактов Telegram, которые пользуются wishbucket.",
+  "Did you receive this gift?": "Вы получили этот подарок?",
+  "Yes, I received this gift!": "Да, я получил(а) этот подарок!",
+  "No, just remove it": "Нет, просто удалить",
+  "Add details about the item...": "Добавьте детали о подарке...",
+  "🔄 Refetch Info": "🔄 Обновить данные",
+  "🔍 Fetch Product Info": "🔍 Получить данные товара",
+  "🔍 Fetching product info...": "🔍 Получение данных товара...",
+  Product: "Товар",
+  "✓ Product info loaded": "✓ Данные товара загружены",
+  Currency: "Валюта",
+  Hide: "Скрыть",
+  Change: "Изменить",
+  "(optional)": "(необязательно)",
+  "➕ Add Item": "➕ Добавить подарок",
+  item: "подарок",
+  items: "подарков",
+  "What's this wishlist for?": "Для чего этот вишлист?",
+  "Add a new item to your wishlist": "Добавьте новый подарок в ваш вишлист",
+  "Add a description for your wishlist...": "Добавьте описание для вашего вишлиста...",
+  "e.g., Birthday Wishlist": "напр., Вишлист на день рождения",
+  "e.g., Iphone 15 Pro": "напр., iPhone 15 Pro",
+  "Your followers will be notified about this new wishlist":
+    "Ваши подписчики получат уведомление об этом новом вишлисте",
+  "Name *": "Название *",
+  Price: "Цена",
+  Link: "Ссылка",
+  Image: "Изображение",
+  Description: "Описание",
+  Birthday: "День рождения",
+  "Save Birthday": "Сохранить день рождения",
+  "Hide year": "Скрыть год",
+  Preferences: "Настройки",
+  "No items in this wishlist": "В этом вишлисте нет подарков",
+  "No public wishlists yet": "Пока нет публичных вишлистов",
+  "Go Back": "Назад",
+  More: "Ещё",
+  Collections: "Коллекции",
+  "Under $50": "До $50",
+  Romantic: "Романтичные",
+  "Cozy Vibes": "Уютные",
+  Adventurous: "Для приключений",
+  "Unique Finds": "Уникальные находки",
+  Luxury: "Люкс",
+  Tech: "Техника",
+  Fashion: "Мода",
+  Outdoors: "На природе",
+  Creative: "Творчество",
+  Food: "Еда",
+  Wellness: "Здоровье",
+  Gaming: "Игры",
+  Books: "Книги",
+  "Who is this gift for?": "Для кого этот подарок?",
+  "What's the occasion?": "Какой повод?",
+  "What are they into?": "Чем они увлекаются?",
+  "What's your budget?": "Какой у вас бюджет?",
+  Partner: "Партнёр",
+  Friend: "Друг",
+  Parent: "Родитель",
+  Sibling: "Брат/сестра",
+  Colleague: "Коллега",
+  Child: "Ребёнок",
+  Holiday: "Праздник",
+  Anniversary: "Годовщина",
+  Graduation: "Выпускной",
+  "Valentine's": "День святого Валентина",
+  "Just Because": "Просто так",
+  "Pick their main interest": "Выберите их главный интерес",
+  "How do you want them to feel?": "Какие эмоции вы хотите подарить?",
+  Practical: "Практичные",
+  Cozy: "Уютные",
+  Fun: "Весёлые",
+  Unique: "Уникальные",
+  "gifts matched your answers": "подарков подошло под ваши ответы",
+  "No gifts matched all filters. Try restarting with different answers!":
+    "Нет подарков по всем фильтрам. Попробуйте начать заново с другими ответами!",
+  "Perfect Picks 🎁": "Идеальные подарки 🎁",
+  Restart: "Начать заново",
+  "Add to list": "Добавить в список",
+  match: "совпадение",
+  "Add to Wishlist": "Добавить в вишлист",
+  New: "Новый",
+  "Discover great gift ideas": "Откройте для себя отличные идеи подарков",
+  "Complete tasks, invite friends, and earn points to redeem in the Gift Shop!":
+    "Выполняйте задания, приглашайте друзей и зарабатывайте баллы для обмена в Магазине подарков!",
+  "Redeem your points for exclusive gifts, discounts, and special rewards!":
+    "Обменивайте баллы на эксклюзивные подарки, скидки и особые награды!",
+  "Organize gift exchanges with friends and family! Draw names, set budgets, and spread holiday cheer.":
+    "Организуйте обмен подарками с друзьями и семьёй! Тяните имена, задавайте бюджеты и дарите праздник.",
+  "Share & Invite": "Поделиться и пригласить",
+  Crowdfunding: "Краудфандинг",
+  "Help your friends get expensive items by contributing together! Pool money with friends and family for big purchases.":
+    "Помогите друзьям получить дорогие вещи, складываясь вместе! Собирайте деньги с друзьями и семьёй на крупные покупки.",
+  "Invite Friends": "Пригласить друзей",
+  "Add to Wishlist *": "Добавить в вишлист *",
+  "Hidden in app, accessible by shared link":
+    "Скрыто в приложении, доступно по ссылке",
+  "Event Date": "Дата события",
+  "Only you can see this wishlist": "Только вы видите этот вишлист",
+  "Anyone with link": "Все по ссылке",
+  "Visible to everyone in app and by link":
+    "Видно всем в приложении и по ссылке",
+  Private: "Приватный",
+  "Loading...": "Загрузка...",
+  Today: "Сегодня",
+  Yesterday: "Вчера",
+  "Share & Invite Friends": "Поделиться и пригласить друзей",
+  "Failed to load wishlist": "Не удалось загрузить вишлист",
+  "Please enter a wishlist name": "Пожалуйста, введите название вишлиста",
+  "Failed to update wishlist": "Не удалось обновить вишлист",
+  "Are you sure you want to delete this wishlist?":
+    "Вы уверены, что хотите удалить этот вишлист?",
+  "Please enter a valid URL": "Пожалуйста, введите корректный URL",
+  "Failed to fetch. Please fill manually.":
+    "Не удалось получить данные. Заполните вручную.",
+  "Wishlist ID is missing": "Отсутствует ID вишлиста",
+  "Please enter an item name": "Пожалуйста, введите название подарка",
+  "Please enter a URL": "Пожалуйста, введите URL",
+  "Add year": "Добавить год",
+  "🎂 Birthday": "🎂 День рождения",
+  "This item is already reserved or purchased":
+    "Этот подарок уже зарезервирован или куплен",
+  "Item reserved! They won't see who reserved it.":
+    "Подарок зарезервирован! Владелец не увидит, кто зарезервировал.",
+  "Failed to reserve item": "Не удалось зарезервировать подарок",
+  "Reservation released.": "Резерв снят.",
+  "Failed to release reservation": "Не удалось снять резерв",
+  "Marked as gifted! 🎁": "Отмечено как подарено! 🎁",
+  "Complete to unlock Level": "Выполните, чтобы открыть Уровень",
+  "Progress to Level": "Прогресс до Уровня",
+  "Share your profile and invite friends to get followers!":
+    "Поделитесь профилем и пригласите друзей, чтобы получить подписчиков!",
+  "Lv.": "Ур.",
   "Failed to add item": "Не удалось добавить подарок",
   "Failed to follow user": "Не удалось подписаться на пользователя",
   "Failed to unfollow user": "Не удалось отписаться от пользователя",
@@ -480,12 +632,27 @@ const REGEX_TRANSLATIONS_RU: Array<[RegExp, (match: RegExpMatchArray) => string]
   [/^(\d+)\shints?$/i, (m) => `${m[1]} подсказок`],
   [/^All\s\((\d+)\)$/i, (m) => `Все (${m[1]})`],
   [/^(\d+)\sdays ago$/i, (m) => `${m[1]} дн. назад`],
+  [
+    /^No users found for "(.+)"$/i,
+    (m) => `Пользователей по запросу "${m[1]}" не найдено`,
+  ],
   [/^Code:\s?/i, () => "Код: "],
   [/^Created at:\s?/i, () => "Создано: "],
   [/^Level\s(\d+)\sunlocks$/i, (m) => `Уровень ${m[1]} открывает`],
+  [
+    /^Level\s(\d+)\sunlocks\s(.+)$/i,
+    (m) => `Уровень ${m[1]} открывает ${translateText(m[2])}`,
+  ],
+  [/^🔓 Unlock at Level\s(\d+)$/i, (m) => `🔓 Открывается на Уровне ${m[1]}`],
   [/^Progress to Level\s(\d+)$/i, (m) => `Прогресс до Уровня ${m[1]}`],
+  [/^Progress to Level\s(\d+)\s(.+)$/i, (m) => `Прогресс до Уровня ${m[1]} ${m[2]}`],
   [/^Complete to unlock Level\s(\d+)$/i, (m) => `Выполните, чтобы открыть Уровень ${m[1]}`],
   [/^(\d+)\s\/\s(\d+)\sfriends$/i, (m) => `${m[1]} / ${m[2]} друзей`],
+  [
+    /^Level\s(\d+)\s–\s(.+)\.\sTap to view progress\.$/i,
+    (m) =>
+      `Уровень ${m[1]} — ${translateText(m[2])}. Нажмите, чтобы посмотреть прогресс.`,
+  ],
 ];
 
 const REGEX_TRANSLATIONS_BY_LANGUAGE: Record<Exclude<AppLanguage, "en">, Array<[RegExp, (match: RegExpMatchArray) => string]>> = {
@@ -495,6 +662,45 @@ const REGEX_TRANSLATIONS_BY_LANGUAGE: Record<Exclude<AppLanguage, "en">, Array<[
 
 let currentLanguage: AppLanguage = "en";
 let observer: MutationObserver | null = null;
+
+const isLocalizedLanguage = (lang: AppLanguage): lang is Exclude<AppLanguage, "en"> =>
+  lang === "uk" || lang === "ru";
+
+const startDomLocalization = () => {
+  if (!isLocalizedLanguage(currentLanguage)) {
+    observer?.disconnect();
+    observer = null;
+    return;
+  }
+
+  const runTranslate = () => {
+    if (document.body) translateTree(document.body);
+  };
+
+  runTranslate();
+  window.requestAnimationFrame(runTranslate);
+
+  observer?.disconnect();
+  observer = new MutationObserver((mutations) => {
+    for (const mutation of mutations) {
+      if (mutation.type === "childList") {
+        mutation.addedNodes.forEach((node) => translateTree(node));
+      } else if (mutation.type === "characterData" && mutation.target) {
+        translateNodeText(mutation.target);
+      }
+    }
+  });
+
+  if (document.body) {
+    observer.observe(document.body, {
+      subtree: true,
+      childList: true,
+      characterData: true,
+      attributes: true,
+      attributeFilter: ["placeholder", "title", "aria-label"],
+    });
+  }
+};
 
 const normalizeLanguage = (value?: string | null): AppLanguage => {
   const normalized = (value || "").toLowerCase();
@@ -609,73 +815,29 @@ export const initLocalization = () => {
   currentLanguage = getLanguageFromSource();
   localStorage.setItem(STORAGE_KEY, currentLanguage);
   applyDocumentLanguage();
-
-  if (currentLanguage !== "uk") return;
-
-  const runTranslate = () => {
-    if (document.body) translateTree(document.body);
-  };
-
-  runTranslate();
-  window.requestAnimationFrame(runTranslate);
-
-  observer?.disconnect();
-  observer = new MutationObserver((mutations) => {
-    for (const mutation of mutations) {
-      if (mutation.type === "childList") {
-        mutation.addedNodes.forEach((node) => translateTree(node));
-      } else if (mutation.type === "characterData" && mutation.target) {
-        translateNodeText(mutation.target);
-      }
-    }
-  });
-
-  if (document.body) {
-    observer.observe(document.body, {
-      subtree: true,
-      childList: true,
-      characterData: true,
-      attributes: true,
-      attributeFilter: ["placeholder", "title", "aria-label"],
-    });
-  }
+  startDomLocalization();
 };
 
 export const setAppLanguage = (language?: string | null) => {
   const nextLanguage = normalizeLanguage(language);
+  const prev = currentLanguage;
+
+  if (prev !== nextLanguage) {
+    const fromLoc = isLocalizedLanguage(prev);
+    const toLoc = isLocalizedLanguage(nextLanguage);
+    if ((fromLoc && !toLoc) || (fromLoc && toLoc && prev !== nextLanguage)) {
+      currentLanguage = nextLanguage;
+      localStorage.setItem(STORAGE_KEY, currentLanguage);
+      applyDocumentLanguage();
+      observer?.disconnect();
+      observer = null;
+      window.location.reload();
+      return;
+    }
+  }
+
   currentLanguage = nextLanguage;
   localStorage.setItem(STORAGE_KEY, currentLanguage);
   applyDocumentLanguage();
-
-  if (currentLanguage === "uk") {
-    const runTranslate = () => {
-      if (document.body) translateTree(document.body);
-    };
-    runTranslate();
-    window.requestAnimationFrame(runTranslate);
-
-    observer?.disconnect();
-    observer = new MutationObserver((mutations) => {
-      for (const mutation of mutations) {
-        if (mutation.type === "childList") {
-          mutation.addedNodes.forEach((node) => translateTree(node));
-        } else if (mutation.type === "characterData" && mutation.target) {
-          translateNodeText(mutation.target);
-        }
-      }
-    });
-
-    if (document.body) {
-      observer.observe(document.body, {
-        subtree: true,
-        childList: true,
-        characterData: true,
-        attributes: true,
-        attributeFilter: ["placeholder", "title", "aria-label"],
-      });
-    }
-    return;
-  }
-
-  observer?.disconnect();
+  startDomLocalization();
 };
