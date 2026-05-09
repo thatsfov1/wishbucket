@@ -343,17 +343,62 @@ const normalizeLanguage = (value?: string | null): AppLanguage => {
 };
 
 const getLanguageFromSource = (): AppLanguage => {
-  // Source of truth is bot-selected language stored in app profile.
-  // Before profile loads, only reuse previously stored bot language.
+
   const stored = normalizeLanguage(localStorage.getItem(STORAGE_KEY));
   if (stored === "uk" || stored === "ru") return stored;
   return "en";
 };
 
+
 export const getAppLanguage = (): AppLanguage => currentLanguage;
 
+type PluralCategory = "one" | "few" | "many";
+type CountNounKey = "item";
+
+type CountNounForms = {
+  one: string;
+  few: string;
+  many: string;
+};
+
+const COUNT_NOUNS: Record<AppLanguage, Partial<Record<CountNounKey, CountNounForms>>> = {
+  en: {
+    item: { one: "item", few: "items", many: "items" },
+  },
+  uk: {
+    item: { one: "подарунок", few: "подарунки", many: "подарунків" },
+  },
+  ru: {
+    item: { one: "подарок", few: "подарка", many: "подарков" },
+  },
+};
+
+const getPluralCategory = (language: AppLanguage, count: number): PluralCategory => {
+  const n = Math.abs(count);
+  if (language === "en") return n === 1 ? "one" : "many";
+
+  // Slavic pluralization (uk/ru)
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  if (mod10 === 1 && mod100 !== 11) return "one";
+  if (mod10 >= 2 && mod10 <= 4 && !(mod100 >= 12 && mod100 <= 14)) return "few";
+  return "many";
+};
+
+export const formatCount = (count: number, noun: CountNounKey): string => {
+  const forms =
+    COUNT_NOUNS[currentLanguage][noun] ||
+    COUNT_NOUNS.en[noun];
+
+  if (!forms) return `${count}`;
+  const category = getPluralCategory(currentLanguage, count);
+  return `${count} ${forms[category]}`;
+};
+
+export const formatItemCount = (count: number): string => formatCount(count, "item");
+
 const applyDocumentLanguage = () => {
-  document.documentElement.lang = currentLanguage === "uk" ? "uk" : "en";
+  document.documentElement.lang = currentLanguage;
 };
 
 export const translateText = (input: string): string => {
