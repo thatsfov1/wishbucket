@@ -226,7 +226,6 @@ const DIRECT_TRANSLATIONS: Record<string, string> = {
   wishlists: "вішлистів",
   friends: "друзів",
   "Your perks": "Ваші переваги",
-  "Complete to unlock Level": "Виконайте, щоб відкрити Рівень",
   "Share & Invite Friends": "Поділитися і запросити друзів",
   "Maximum Level Reached!": "Досягнуто максимального рівня!",
   "You're a wishbucket Legend. Enjoy unlimited wishlists!":
@@ -274,7 +273,9 @@ const DIRECT_TRANSLATIONS: Record<string, string> = {
   "Reservation released.": "Резервування скасовано.",
   "Failed to release reservation": "Не вдалося скасувати резервування",
   "Marked as gifted! 🎁": "Позначено як подарований! 🎁",
-
+  "Complete to unlock Level": "Виконайте, щоб відкрити Рівень",
+  "Progress to Level": "Прогрес до Рівня",
+  "Lv.": "Рів.",
 };
 
 const REGEX_TRANSLATIONS: Array<[RegExp, (match: RegExpMatchArray) => string]> = [
@@ -285,10 +286,9 @@ const REGEX_TRANSLATIONS: Array<[RegExp, (match: RegExpMatchArray) => string]> =
   [/^No users found for "(.+)"$/i, (m) => `Користувачів за запитом "${m[1]}" не знайдено`],
   [/^Code:\s?/i, () => "Код: "],
   [/^Created at:\s?/i, () => "Створено: "],
-  [/^Lv\.(\d+)$/i, (m) => `Рів.${m[1]}`],
+  [/^Level\s(\d+)\sunlocks$/i, (m) => `Рівень ${m[1]} відкриває`],
   [/^Level\s(\d+)\sunlocks\s(.+)$/i, (m) => `Рівень ${m[1]} відкриває ${translateText(m[2])}`],
   [/^🔓 Unlock at Level\s(\d+)$/i, (m) => `🔓 Відкривається на Рівні ${m[1]}`],
-  [/^Progress to Level\s(\d+)\s(.+)$/i, (m) => `Прогрес до Рівня ${m[1]} ${m[2]}`],
   [/^(\d+)\s\/\s(\d+)\sfriends$/i, (m) => `${m[1]} / ${m[2]} друзів`],
   [/^Level\s(\d+)\s–\s(.+)\.\sTap to view progress\.$/i, (m) => `Рівень ${m[1]} — ${translateText(m[2])}. Натисніть, щоб переглянути прогрес.`],
 ];
