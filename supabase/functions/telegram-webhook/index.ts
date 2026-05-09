@@ -56,7 +56,7 @@ const I18N = {
     chooseLanguageTitle: `🌍 <b>Choose your language</b>`,
     chooseLanguageBody: `Pick one language for bot messages:`,
     languageSet: (name: string) =>
-      `✅ Language set to <b>${name}</b>. You can change it anytime.`,
+      `✅ Language set to ${name}. You can change it anytime.`,
     welcomeMenu: (firstName: string) =>
       `👋 <b>Hey ${firstName}! Welcome to wishbucket</b>\n\n` +
       `🎁 <b>wishbucket</b> is your personal wishlist assistant inside Telegram.\n\n` +
@@ -110,7 +110,7 @@ const I18N = {
     chooseLanguageTitle: `🌍 <b>Оберіть мову</b>`,
     chooseLanguageBody: `Виберіть мову повідомлень бота:`,
     languageSet: (name: string) =>
-      `✅ Мову змінено на <b>${name}</b>. Її можна змінити будь-коли.`,
+      `✅ Мову змінено на ${name}. Її можна змінити будь-коли.`,
     welcomeMenu: (firstName: string) =>
       `👋 <b>Привіт, ${firstName}! Ласкаво просимо у wishbucket</b>\n\n` +
       `🎁 <b>wishbucket</b> — ваш помічник для вішлістів у Telegram.\n\n` +
@@ -164,7 +164,7 @@ const I18N = {
     chooseLanguageTitle: `🌍 <b>Выберите язык</b>`,
     chooseLanguageBody: `Выберите язык сообщений бота:`,
     languageSet: (name: string) =>
-      `✅ Язык изменен на <b>${name}</b>. Его можно поменять в любой момент.`,
+      `✅ Язык изменен на ${name}. Его можно поменять в любой момент.`,
     welcomeMenu: (firstName: string) =>
       `👋 <b>Привет, ${firstName}! Добро пожаловать в wishbucket</b>\n\n` +
       `🎁 <b>wishbucket</b> — ваш помощник по вишлистам в Telegram.\n\n` +
