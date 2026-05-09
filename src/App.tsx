@@ -54,10 +54,15 @@ function AppRoutes() {
         didHandleStartParamRef.current = true;
         const profile = await getUserProfile();
         setUserProfile(profile);
+        const botSelectedLanguage = (
+          (profile.telegramUser as { language?: string }).language || ""
+        ).toLowerCase();
         const profileLanguage =
-          (profile.telegramUser as { language?: string }).language ||
-          profile.telegramUser.language_code ||
-          "en";
+          botSelectedLanguage === "uk" ||
+          botSelectedLanguage === "ua" ||
+          botSelectedLanguage === "ru"
+            ? botSelectedLanguage
+            : "en";
         setAppLanguage(profileLanguage);
 
         const referralCode = getReferralCodeFromStart();

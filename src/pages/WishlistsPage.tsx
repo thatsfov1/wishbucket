@@ -5,6 +5,7 @@ import { getWishlists, createWishlist } from "../services/supabase-api";
 import { hapticFeedback, getTelegramUser } from "../utils/telegram";
 import BottomNavBar from "../components/BottomNavBar";
 import CreateWishlistModal from "../components/CreateWishlistModal";
+import { formatItemCount } from "../utils/localization";
 import "./WishlistsPage.css";
 
 export default function WishlistsPage() {
@@ -188,8 +189,10 @@ export default function WishlistsPage() {
                     )}
                   </div>
                   <p className="wishlist-meta">
-                    {wishlist.items.filter(i => i.status !== 'purchased').length} item
-                    {wishlist.items.filter(i => i.status !== 'purchased').length !== 1 ? "s" : ""}
+                    {formatItemCount(
+                      wishlist.items.filter((i) => i.status !== "purchased")
+                        .length,
+                    )}
                     {wishlist.description &&
                       ` · ${wishlist.description.slice(0, 30)}${wishlist.description.length > 30 ? "..." : ""}`}
                   </p>

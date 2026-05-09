@@ -26,11 +26,20 @@ const mapUserToProfile = (
     typeof user.telegram_data === "string"
       ? JSON.parse(user.telegram_data)
       : user.telegram_data || {};
+
+  const storedBotLanguage = String(storedTelegramData.language || "").toLowerCase();
+  const effectiveLanguageCode =
+    storedBotLanguage === "uk" ||
+    storedBotLanguage === "ua" ||
+    storedBotLanguage === "ru"
+      ? storedBotLanguage
+      : telegramUser?.language_code;
+
   const mergedTelegramUser = {
     ...storedTelegramData,
     ...(telegramUser || {}),
     language_code:
-      telegramUser?.language_code ||
+      effectiveLanguageCode ||
       storedTelegramData.language_code ||
       storedTelegramData.language,
   } as TelegramUser;

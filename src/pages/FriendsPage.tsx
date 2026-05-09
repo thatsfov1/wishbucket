@@ -15,6 +15,7 @@ import {
 } from "../utils/telegram";
 import BottomNavBar from "../components/BottomNavBar";
 import { Friend, ReferralStats } from "../types";
+import { getAppLanguage } from "../utils/localization";
 import "./FriendsPage.css";
 
 type TabType = "following" | "followers" | "search";
@@ -35,7 +36,10 @@ export default function FriendsPage() {
   // navigates from Home → Friends with a different ?tab=).
   useEffect(() => {
     const t = searchParams.get("tab");
-    if ((t === "followers" || t === "search" || t === "following") && t !== activeTab) {
+    if (
+      (t === "followers" || t === "search" || t === "following") &&
+      t !== activeTab
+    ) {
       setActiveTab(t);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -47,7 +51,7 @@ export default function FriendsPage() {
   const [followers, setFollowers] = useState<Friend[]>([]);
   const [searchResults, setSearchResults] = useState<Friend[]>([]);
   const [referralStats, setReferralStats] = useState<ReferralStats | null>(
-    null
+    null,
   );
   const [isSearching, setIsSearching] = useState(false);
 
@@ -108,11 +112,11 @@ export default function FriendsPage() {
       });
 
       setSearchResults((prev) =>
-        prev.map((u) => (u.id === user.id ? { ...u, isFollowing: true } : u))
+        prev.map((u) => (u.id === user.id ? { ...u, isFollowing: true } : u)),
       );
 
       setFollowers((prev) =>
-        prev.map((u) => (u.id === user.id ? { ...u, isFollowing: true } : u))
+        prev.map((u) => (u.id === user.id ? { ...u, isFollowing: true } : u)),
       );
 
       hapticFeedback.notification("success");
@@ -132,11 +136,11 @@ export default function FriendsPage() {
       setFollowing((prev) => prev.filter((u) => u.id !== userId));
 
       setSearchResults((prev) =>
-        prev.map((u) => (u.id === userId ? { ...u, isFollowing: false } : u))
+        prev.map((u) => (u.id === userId ? { ...u, isFollowing: false } : u)),
       );
 
       setFollowers((prev) =>
-        prev.map((u) => (u.id === userId ? { ...u, isFollowing: false } : u))
+        prev.map((u) => (u.id === userId ? { ...u, isFollowing: false } : u)),
       );
 
       hapticFeedback.notification("success");
@@ -148,12 +152,15 @@ export default function FriendsPage() {
 
   const handleShareInvite = () => {
     hapticFeedback.impact("medium");
-    const message = `Join me on wishbucket! Create and share wishlists with friends 🎁`;
+    const message =
+      getAppLanguage() === "uk"
+        ? "Приєднуйся до мене в wishbucket! Створюй і ділись вішлистами з друзями 🎁"
+        : "Join me on wishbucket! Create and share wishlists with friends 🎁";
     const link = referralStats?.referralLink || "https://t.me/wishbucket_bot";
     openTelegramLink(
       `https://t.me/share/url?url=${encodeURIComponent(
-        link
-      )}&text=${encodeURIComponent(message)}`
+        link,
+      )}&text=${encodeURIComponent(message)}`,
     );
   };
 

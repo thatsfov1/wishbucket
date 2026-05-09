@@ -19,6 +19,7 @@ import {
 import BottomNavBar from "../components/BottomNavBar";
 import AddItemModal from "../components/AddItemModal";
 import { generateAffiliateLink } from "../utils/affiliate";
+import { getAppLanguage } from "../utils/localization";
 import "./WishlistDetailPage.css";
 
 // Extract a valid absolute URL from a potentially malformed stored value.
@@ -87,8 +88,12 @@ export default function WishlistDetailPage() {
     try {
       hapticFeedback.impact("light");
       const shareLink = await getShareLink(id);
+      const shareText =
+        getAppLanguage() === "uk"
+          ? `Поглянь на мій вішлист: ${currentWishlist?.name || ""}`
+          : `Check out my wishlist: ${currentWishlist?.name || ""}`;
       openTelegramLink(
-        `https://t.me/share/url?url=${encodeURIComponent(shareLink)}&text=${encodeURIComponent(`Check out my wishlist: ${currentWishlist?.name || ""}`)}`,
+        `https://t.me/share/url?url=${encodeURIComponent(shareLink)}&text=${encodeURIComponent(shareText)}`,
       );
       hapticFeedback.notification("success");
     } catch (error) {
@@ -239,12 +244,12 @@ export default function WishlistDetailPage() {
     const itemId = deleteItemModal.itemId;
 
     hapticFeedback.notification("success");
-    
+
     if (reason?.action === "mark_received") {
       setCurrentWishlist({
         ...currentWishlist,
         items: currentWishlist.items.map((item) =>
-          item.id === itemId ? { ...item, status: "purchased" as const } : item
+          item.id === itemId ? { ...item, status: "purchased" as const } : item,
         ),
       });
     } else {
@@ -511,7 +516,8 @@ export default function WishlistDetailPage() {
           </button>
         </div>
 
-        {currentWishlist.items.filter((i) => i.status !== "purchased").length === 0 ? (
+        {currentWishlist.items.filter((i) => i.status !== "purchased")
+          .length === 0 ? (
           <div className="empty-items">
             <div className="empty-emoji">🎁</div>
             <h3>No items yet</h3>
@@ -568,7 +574,9 @@ export default function WishlistDetailPage() {
                         </span>
                         <button
                           className={`item-chevron-btn ${isExpanded ? "open" : ""}`}
-                          aria-label={isExpanded ? "Hide actions" : "Show actions"}
+                          aria-label={
+                            isExpanded ? "Hide actions" : "Show actions"
+                          }
                           aria-expanded={isExpanded}
                           onClick={(e) => {
                             e.stopPropagation();
@@ -726,9 +734,14 @@ export default function WishlistDetailPage() {
                   {selectedItem.status === "purchased" && "🎁 Received"}
                 </span>
               </div>
-              
+
               <div className="detail-created-at">
-                Created at: {new Date(selectedItem.createdAt).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
+                Created at:{" "}
+                {new Date(selectedItem.createdAt).toLocaleDateString("en-US", {
+                  month: "long",
+                  day: "numeric",
+                  year: "numeric",
+                })}
               </div>
 
               {selectedItem.url && (

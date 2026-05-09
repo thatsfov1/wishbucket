@@ -14,6 +14,7 @@ import CreateWishlistModal from "../components/CreateWishlistModal";
 import LevelBadge from "../components/LevelBadge";
 import LevelBoardModal from "../components/LevelBoardModal";
 import { LEVELS, getUserLevel, getWishlistLimit } from "../config/levels";
+import { formatItemCount, getAppLanguage } from "../utils/localization";
 import "./HomePage.css";
 
 const HOME_CACHE_PREFIX = "wb_home_cache_v1_";
@@ -71,7 +72,8 @@ export default function HomePage() {
   const photoUrl = telegramUser?.photo_url;
 
   const referrals = userProfile?.referrals ?? 0;
-  const currentLevel = !isLevelLoading && userProfile ? getUserLevel(referrals) : null;
+  const currentLevel =
+    !isLevelLoading && userProfile ? getUserLevel(referrals) : null;
   const resolvedLevel = currentLevel ?? LEVELS[0];
   const wishlistLimit = currentLevel
     ? getWishlistLimit(referrals)
@@ -113,7 +115,10 @@ export default function HomePage() {
       } catch (err) {
         if (cancelled) return;
         console.error("Error loading data:", err);
-        if (err instanceof Error && !err.message.includes("not authenticated")) {
+        if (
+          err instanceof Error &&
+          !err.message.includes("not authenticated")
+        ) {
           setError(err.message);
         }
       } finally {
@@ -158,7 +163,10 @@ export default function HomePage() {
   const handleInviteFriends = useCallback(() => {
     const botUsername = "wishbucket_bot";
     const userId = telegramUser?.id ?? 0;
-    const shareText = `🎁 Join me on wishbucket – the best wishlist app for Telegram!`;
+    const shareText =
+      getAppLanguage() === "uk"
+        ? "🎁 Приєднуйся до мене в wishbucket — найзручнішому застосунку вішлистів у Telegram!"
+        : "🎁 Join me on wishbucket – the best wishlist app for Telegram!";
     const botUrl = `https://t.me/${botUsername}/app?startapp=ref_${userId}`;
     const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(botUrl)}&text=${encodeURIComponent(shareText)}`;
     try {
@@ -376,7 +384,7 @@ export default function HomePage() {
                         )}
                       </div>
                       <h3>{wishlist.name}</h3>
-                      <p>{wishlist.itemCount} items</p>
+                      <p>{formatItemCount(wishlist.itemCount)}</p>
                     </div>
                   ))}
                   <div
@@ -511,7 +519,6 @@ export default function HomePage() {
           setLevelBoardOpen(true);
         }}
       />
-
 
       <LevelBoardModal
         isOpen={levelBoardOpen}

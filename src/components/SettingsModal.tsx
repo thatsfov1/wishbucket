@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { hapticFeedback, openTelegramLink } from "../utils/telegram";
 import { getUserProfile, updateUserProfile } from "../services/supabase-api";
+import { getAppLanguage } from "../utils/localization";
 import "./SettingsModal.css";
 
 const CURRENCIES = [
@@ -44,9 +45,10 @@ export default function SettingsModal({
   const [savedBirthdayStr, setSavedBirthdayStr] = useState("");
 
   // Compute current birthday string from parts to detect changes
-  const currentBirthdayStr = birthMonth && birthDay
-    ? `${includeYear && birthYear ? birthYear : "1900"}-${birthMonth}-${birthDay}`
-    : "";
+  const currentBirthdayStr =
+    birthMonth && birthDay
+      ? `${includeYear && birthYear ? birthYear : "1900"}-${birthMonth}-${birthDay}`
+      : "";
 
   useEffect(() => {
     if (!isOpen) return;
@@ -168,15 +170,27 @@ export default function SettingsModal({
 
   const handleInvite = () => {
     hapticFeedback.impact("medium");
+    const inviteText =
+      getAppLanguage() === "uk"
+        ? "Приєднуйся до мене в wishbucket! Створюй і ділись вішлистами з друзями 🎁"
+        : "Join me on wishbucket! Create and share wishlists with friends 🎁";
     openTelegramLink(
-      "https://t.me/share/url?url=https://t.me/wishbucket_bot/app?startapp=invite&text=Join me on wishbucket! Create and share wishlists with friends 🎁",
+      `https://t.me/share/url?url=${encodeURIComponent(
+        "https://t.me/wishbucket_bot/app?startapp=invite",
+      )}&text=${encodeURIComponent(inviteText)}`,
     );
   };
 
   const handleShareProfile = () => {
     hapticFeedback.impact("medium");
+    const profileText =
+      getAppLanguage() === "uk"
+        ? "Переглянь мій вішлист у wishbucket!"
+        : "Check out my wishlist on wishbucket!";
     openTelegramLink(
-      "https://t.me/share/url?url=https://t.me/wishbucket_bot&text=Check out my wishlist on wishbucket!",
+      `https://t.me/share/url?url=${encodeURIComponent(
+        "https://t.me/wishbucket_bot",
+      )}&text=${encodeURIComponent(profileText)}`,
     );
   };
 
@@ -214,8 +228,23 @@ export default function SettingsModal({
                 onChange={(e) => setBirthMonth(e.target.value)}
               >
                 <option value="">Month</option>
-                {["January","February","March","April","May","June","July","August","September","October","November","December"].map((m, i) => (
-                  <option key={m} value={(i + 1).toString().padStart(2, "0")}>{m}</option>
+                {[
+                  "January",
+                  "February",
+                  "March",
+                  "April",
+                  "May",
+                  "June",
+                  "July",
+                  "August",
+                  "September",
+                  "October",
+                  "November",
+                  "December",
+                ].map((m, i) => (
+                  <option key={m} value={(i + 1).toString().padStart(2, "0")}>
+                    {m}
+                  </option>
                 ))}
               </select>
               <select
@@ -225,7 +254,9 @@ export default function SettingsModal({
               >
                 <option value="">Day</option>
                 {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
-                  <option key={d} value={d.toString().padStart(2, "0")}>{d}</option>
+                  <option key={d} value={d.toString().padStart(2, "0")}>
+                    {d}
+                  </option>
                 ))}
               </select>
             </div>
@@ -248,8 +279,13 @@ export default function SettingsModal({
                   onChange={(e) => setBirthYear(e.target.value)}
                 >
                   <option value="">Year</option>
-                  {Array.from({ length: 100 }, (_, i) => new Date().getFullYear() - i).map((y) => (
-                    <option key={y} value={y}>{y}</option>
+                  {Array.from(
+                    { length: 100 },
+                    (_, i) => new Date().getFullYear() - i,
+                  ).map((y) => (
+                    <option key={y} value={y}>
+                      {y}
+                    </option>
                   ))}
                 </select>
               )}
@@ -257,7 +293,12 @@ export default function SettingsModal({
             <button
               className="birthday-save-btn"
               onClick={handleSaveBirthday}
-              disabled={isSavingBirthday || !birthMonth || !birthDay || currentBirthdayStr === savedBirthdayStr}
+              disabled={
+                isSavingBirthday ||
+                !birthMonth ||
+                !birthDay ||
+                currentBirthdayStr === savedBirthdayStr
+              }
             >
               {isSavingBirthday ? "Saving..." : "Save Birthday"}
             </button>

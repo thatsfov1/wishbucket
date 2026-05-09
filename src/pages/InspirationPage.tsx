@@ -4,6 +4,7 @@ import BottomNavBar from "../components/BottomNavBar";
 import PickWishlistModal from "../components/PickWishlistModal";
 import type { PrefilledGiftItem } from "../components/PickWishlistModal";
 import { giftCatalog, GiftItem } from "../data/giftCatalog";
+import { formatItemCount } from "../utils/localization";
 import "./InspirationPage.css";
 
 interface Category {
@@ -177,7 +178,9 @@ export default function InspirationPage() {
               ? "All Gifts 🎁"
               : `${categories.find((c) => c.id === activeCategory)?.icon} ${categories.find((c) => c.id === activeCategory)?.name}`}
           </h2>
-          <span className="insp-item-count">{filteredItems.length} items</span>
+          <span className="insp-item-count">
+            {formatItemCount(filteredItems.length)}
+          </span>
         </div>
 
         <div className="insp-grid">

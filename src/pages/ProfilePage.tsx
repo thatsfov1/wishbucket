@@ -17,6 +17,7 @@ import {
   hapticFeedback,
 } from "../utils/telegram";
 import { getTelegramUser } from "../utils/telegram";
+import { getAppLanguage } from "../utils/localization";
 import "./ProfilePage.css";
 
 export default function ProfilePage() {
@@ -87,10 +88,14 @@ export default function ProfilePage() {
   };
 
   const handleShareReferral = () => {
-    const telegramUser = getTelegramUser();
-    const message = `Join Wish Bucket and use my referral code: ${referralCode}\n\nGet bonus points when you sign up!`;
+    const message =
+      getAppLanguage() === "uk"
+        ? `Приєднуйся до Wish Bucket і використовуй мій реферальний код: ${referralCode}\n\nОтримуй бонусні бали після реєстрації!`
+        : `Join Wish Bucket and use my referral code: ${referralCode}\n\nGet bonus points when you sign up!`;
     openTelegramLink(
-      `https://t.me/share/url?url=https://t.me/wishbucket_bot/app?startapp=invite&text=${encodeURIComponent(
+      `https://t.me/share/url?url=${encodeURIComponent(
+        "https://t.me/wishbucket_bot/app?startapp=invite",
+      )}&text=${encodeURIComponent(
         message
       )}`
     );
