@@ -1,5 +1,6 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Level, getLevelProgress, LEVELS } from "../config/levels";
+import { translateText } from "../utils/localization";
 import "./LevelBoardModal.css";
 
 interface LevelBoardModalProps {
@@ -17,12 +18,20 @@ export default function LevelBoardModal({
   referrals,
   onInviteFriends,
 }: LevelBoardModalProps) {
-  const nextLevel =
-    currentLevel.level < LEVELS.length - 1
-      ? LEVELS[currentLevel.level + 1]
-      : null;
+  const [selectedLevelIndex, setSelectedLevelIndex] = useState(currentLevel.level);
 
-  const progress = getLevelProgress(referrals, currentLevel);
+  useEffect(() => {
+    if (isOpen) {
+      setSelectedLevelIndex(currentLevel.level);
+    }
+  }, [isOpen, currentLevel.level]);
+
+  const selectedLevel = LEVELS[selectedLevelIndex] || currentLevel;
+  const nextLevel =
+    selectedLevel.level < LEVELS.length - 1
+      ? LEVELS[selectedLevel.level + 1]
+      : null;
+  const progress = getLevelProgress(referrals, selectedLevel);
 
   // Lock body scroll when open
   useEffect(() => {
@@ -45,7 +54,7 @@ export default function LevelBoardModal({
 
   if (!isOpen) return null;
 
-  const heroGradient = `linear-gradient(135deg, ${currentLevel.gradientStart} 0%, ${currentLevel.gradientEnd} 100%)`;
+  const heroGradient = `linear-gradient(135deg, ${selectedLevel.gradientStart} 0%, ${selectedLevel.gradientEnd} 100%)`;
 
   const levelJourney = LEVELS;
 
@@ -55,13 +64,17 @@ export default function LevelBoardModal({
       onClick={onClose}
       role="dialog"
       aria-modal="true"
-      aria-label="Level Board"
+      aria-label={translateText("Level Board")}
     >
       <div className="lbm-sheet" onClick={(e) => e.stopPropagation()}>
         {/* Hero header */}
         <div className="lbm-hero" style={{ background: heroGradient }}>
           <div className="lbm-drag-handle" />
-          <button className="lbm-close" onClick={onClose} aria-label="Close">
+          <button
+            className="lbm-close"
+            onClick={onClose}
+            aria-label={translateText("Close")}
+          >
             ✕
           </button>
 
@@ -71,13 +84,15 @@ export default function LevelBoardModal({
               boxShadow: `0 0 0 4px rgba(255,255,255,0.25), 0 0 0 8px rgba(255,255,255,0.10)`,
             }}
           >
-            <span className="lbm-level-num">{currentLevel.level}</span>
+            <span className="lbm-level-num">{selectedLevel.level}</span>
           </div>
 
           <h2 className="lbm-level-name">
-            {currentLevel.emoji} {currentLevel.name}
+            {selectedLevel.emoji} {translateText(selectedLevel.name)}
           </h2>
-          <p className="lbm-level-desc">{currentLevel.description}</p>
+          <p className="lbm-level-desc">
+            {translateText(selectedLevel.description)}
+          </p>
         </div>
 
         {/* Body */}
@@ -86,10 +101,11 @@ export default function LevelBoardModal({
           <div className="lbm-journey">
             {levelJourney.map((lv) => {
               const done = lv.level <= currentLevel.level;
-              const active = lv.level === currentLevel.level;
+              const active = lv.level === selectedLevel.level;
               return (
                 <div key={lv.level} className="lbm-journey-step">
-                  <div
+                  <button
+                    type="button"
                     className={`lbm-journey-dot ${done ? "done" : ""} ${active ? "active" : ""}`}
                     style={
                       done
@@ -98,12 +114,17 @@ export default function LevelBoardModal({
                           }
                         : {}
                     }
+                    onClick={() => setSelectedLevelIndex(lv.level)}
+                    aria-pressed={active}
+                    aria-label={translateText(
+                      `Level ${lv.level} – ${lv.name}. Tap to view progress.`,
+                    )}
                   >
                     <span>{done ? lv.emoji : lv.level}</span>
-                  </div>
+                  </button>
                   {lv.level < levelJourney.length - 1 && (
                     <div
-                      className={`lbm-journey-line ${lv.level < currentLevel.level ? "done" : ""}`}
+                      className={`lbm-journey-line ${lv.level < selectedLevel.level ? "done" : ""}`}
                     />
                   )}
                 </div>
@@ -122,16 +143,16 @@ export default function LevelBoardModal({
             <span className="lbm-limit-icon">🗂️</span>
             <div className="lbm-limit-text">
               <strong>
-                {currentLevel.wishlistLimit === -1
-                  ? "Unlimited"
-                  : `Up to ${currentLevel.wishlistLimit}`}{" "}
-                wishlists
+                {selectedLevel.wishlistLimit === -1
+                  ? translateText("Unlimited")
+                  : `${translateText("Up to")} ${selectedLevel.wishlistLimit}`}{" "}
+                {translateText("wishlists")}
               </strong>
               {nextLevel && (
                 <span>
-                  Level {nextLevel.level} unlocks{" "}
+                  {translateText(`Level ${nextLevel.level} unlocks`)}{" "}
                   {nextLevel.wishlistLimit === -1
-                    ? "unlimited"
+                    ? translateText("Unlimited")
                     : nextLevel.wishlistLimit}
                 </span>
               )}
@@ -140,28 +161,28 @@ export default function LevelBoardModal({
               className="lbm-limit-badge"
               style={{
                 background: `${currentLevel.gradientStart}22`,
-                color: currentLevel.color,
+                color: selectedLevel.color,
               }}
             >
-              Lv.{currentLevel.level}
+              Lv.{selectedLevel.level}
             </div>
           </div>
 
           {/* Current level perks */}
           <div className="lbm-perks-section">
-            <p className="lbm-perks-title">Your perks</p>
+            <p className="lbm-perks-title">{translateText("Your perks")}</p>
             <div className="lbm-perks-row">
-              {currentLevel.perks.map((perk) => (
+              {selectedLevel.perks.map((perk) => (
                 <span
                   key={perk}
                   className="lbm-perk-chip"
                   style={{
-                    background: `${currentLevel.gradientStart}18`,
-                    color: currentLevel.color,
-                    borderColor: `${currentLevel.gradientStart}40`,
+                    background: `${selectedLevel.gradientStart}18`,
+                    color: selectedLevel.color,
+                    borderColor: `${selectedLevel.gradientStart}40`,
                   }}
                 >
-                  ✓ {perk}
+                  ✓ {translateText(perk)}
                 </span>
               ))}
             </div>
@@ -171,17 +192,17 @@ export default function LevelBoardModal({
           {nextLevel && (
             <div className="lbm-perks-section lbm-perks-section--next">
               <p className="lbm-perks-title">
-                🔓 Unlock at Level {nextLevel.level}
+                {translateText(`🔓 Unlock at Level ${nextLevel.level}`)}
               </p>
               <div className="lbm-perks-row">
                 {nextLevel.perks
-                  .filter((p) => !currentLevel.perks.includes(p))
+                  .filter((p) => !selectedLevel.perks.includes(p))
                   .map((perk) => (
                     <span
                       key={perk}
                       className="lbm-perk-chip lbm-perk-chip--locked"
                     >
-                      🔒 {perk}
+                      🔒 {translateText(perk)}
                     </span>
                   ))}
               </div>
@@ -193,11 +214,12 @@ export default function LevelBoardModal({
             <div className="lbm-progress-section">
               <div className="lbm-progress-header">
                 <span>
-                  Progress to Level {nextLevel.level} {nextLevel.emoji}
+                  {translateText(`Progress to Level ${nextLevel.level}`)}{" "}
+                  {nextLevel.emoji}
                 </span>
                 <span
                   className="lbm-progress-pct"
-                  style={{ color: currentLevel.color }}
+                  style={{ color: selectedLevel.color }}
                 >
                   {progress}%
                 </span>
@@ -218,7 +240,7 @@ export default function LevelBoardModal({
           {nextLevel && nextLevel.requirement && (
             <div className="lbm-tasks-section">
               <h3 className="lbm-tasks-title">
-                Complete to unlock Level {nextLevel.level}
+                {translateText(`Complete to unlock Level ${nextLevel.level}`)}
               </h3>
 
               {(() => {
@@ -232,7 +254,9 @@ export default function LevelBoardModal({
                   <div className={`lbm-task-card ${done ? "done" : ""}`}>
                     <div className="lbm-task-icon">👥</div>
                     <div className="lbm-task-info">
-                      <span className="lbm-task-label">{req.label}</span>
+                      <span className="lbm-task-label">
+                        {translateText(req.label)}
+                      </span>
                       <div className="lbm-task-sub-track">
                         <div
                           className="lbm-task-sub-fill"
@@ -243,7 +267,7 @@ export default function LevelBoardModal({
                         />
                       </div>
                       <span className="lbm-task-progress-text">
-                        {referrals} / {req.count} friends
+                        {translateText(`${referrals} / ${req.count} friends`)}
                       </span>
                     </div>
                     {done ? (
@@ -254,7 +278,7 @@ export default function LevelBoardModal({
                         style={{ background: heroGradient }}
                         onClick={onInviteFriends}
                       >
-                        Invite
+                        {translateText("Invite")}
                       </button>
                     )}
                   </div>
@@ -266,7 +290,7 @@ export default function LevelBoardModal({
                 style={{ background: heroGradient }}
                 onClick={onInviteFriends}
               >
-                <span>🔗</span> Share &amp; Invite Friends
+                <span>🔗</span> {translateText("Share & Invite Friends")}
               </button>
             </div>
           )}
@@ -275,8 +299,12 @@ export default function LevelBoardModal({
           {!nextLevel && (
             <div className="lbm-max-level">
               <div className="lbm-max-crown">👑</div>
-              <h3>Maximum Level Reached!</h3>
-              <p>You're a wishbucket Legend. Enjoy unlimited wishlists!</p>
+              <h3>{translateText("Maximum Level Reached!")}</h3>
+              <p>
+                {translateText(
+                  "You're a wishbucket Legend. Enjoy unlimited wishlists!",
+                )}
+              </p>
             </div>
           )}
         </div>

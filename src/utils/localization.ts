@@ -134,14 +134,14 @@ const DIRECT_TRANSLATIONS: Record<string, string> = {
   "Birthday": "День народження",
   "Save Birthday": "Зберегти день народження",
   "Hide year": "Сховати рік",
-  "PREFERENCES": "Параметри",
-  "Dark mode": "Темний режим",
-  "REWARDS": "Нагороди",
+  "Preferences": "Параметри",
+  "Dark Mode": "Темний режим",
+  "Rewards": "Нагороди",
   "Default Currency": "Типова валюта",
   "Gift Shop": "Магазин подарунків",
   "Coming Soon": "Скоро з'явиться",
   "Go Back": "Повернутися",
-  "MORE": "Більше",
+  "More": "Більше",
   "Earn Points": "Заробити бали",
   "Collections": "Колекції",
   "Under $50": "До $50",
@@ -195,7 +195,7 @@ const DIRECT_TRANSLATIONS: Record<string, string> = {
   "Organize gift exchanges with friends and family! Draw names, set budgets, and spread holiday cheer.": "Організуйте обмін подарунками з друзями та родиною! Витягніть імена, встановіть бюджети та розповсюдьте веселощі під час свята.",
   "Auto-notify followers": "Автоматично повідомляти підписників",
   "When adding items or creating lists": "При додаванні подарунків або створенні вішлистів",
-  "SHARE & INVITE": "Поділитися та запросити",
+  "Share & Invite": "Поділитися та запросити",
   "Crowdfunding": "Крофандінг",
   "Help your friends get expensive items by contributing together! Pool money with friends and family for big purchases.":
     "Допоможіть друзям отримати дорогі предмети, збираючи кошти разом! Збирайте кошти з друзями та родиною для великих покупок.",
@@ -274,6 +274,7 @@ const DIRECT_TRANSLATIONS: Record<string, string> = {
   "Reservation released.": "Резервування скасовано.",
   "Failed to release reservation": "Не вдалося скасувати резервування",
   "Marked as gifted! 🎁": "Позначено як подарований! 🎁",
+
 };
 
 const REGEX_TRANSLATIONS: Array<[RegExp, (match: RegExpMatchArray) => string]> = [
