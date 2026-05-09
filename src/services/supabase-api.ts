@@ -22,9 +22,22 @@ const mapUserToProfile = (
   user: any,
   telegramUser: TelegramUser | null,
 ): UserProfile => {
+  const storedTelegramData =
+    typeof user.telegram_data === "string"
+      ? JSON.parse(user.telegram_data)
+      : user.telegram_data || {};
+  const mergedTelegramUser = {
+    ...storedTelegramData,
+    ...(telegramUser || {}),
+    language_code:
+      telegramUser?.language_code ||
+      storedTelegramData.language_code ||
+      storedTelegramData.language,
+  } as TelegramUser;
+
   return {
     userId: user.user_id,
-    telegramUser: telegramUser || JSON.parse(user.telegram_data),
+    telegramUser: mergedTelegramUser,
     birthday: user.birthday || undefined,
     friends: [],
     referralCode: user.referral_code,

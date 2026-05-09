@@ -127,6 +127,37 @@ const DIRECT_TRANSLATIONS: Record<string, string> = {
   "Loading...": "Завантаження...",
   Today: "Сьогодні",
   Yesterday: "Вчора",
+  "Birthday updated successfully!": "День народження успішно оновлено!",
+  "Failed to update birthday": "Не вдалося оновити день народження",
+  "Please enter a referral code": "Будь ласка, введіть реферальний код",
+  "Referral code applied! You received bonus points!":
+    "Реферальний код застосовано! Ви отримали бонусні бали!",
+  "Failed to apply referral code": "Не вдалося застосувати реферальний код",
+  "Premium subscription coming soon!": "Преміум-підписка скоро з'явиться!",
+  "Failed to load wishlist": "Не вдалося завантажити вішлист",
+  "Please enter a wishlist name": "Будь ласка, введіть назву вішлиста",
+  "Failed to update wishlist": "Не вдалося оновити вішлист",
+  "Are you sure you want to delete this wishlist?":
+    "Ви впевнені, що хочете видалити цей вішлист?",
+  "Please enter a valid URL": "Будь ласка, введіть коректний URL",
+  "Failed to fetch. Please fill manually.":
+    "Не вдалося отримати дані. Заповніть поля вручну.",
+  "Wishlist ID is missing": "ID вішлиста відсутній",
+  "Please enter an item name": "Будь ласка, введіть назву подарунка",
+  "Please enter a URL": "Будь ласка, введіть URL",
+  "Failed to add item": "Не вдалося додати подарунок",
+  "Failed to follow user": "Не вдалося підписатися на користувача",
+  "Failed to unfollow user": "Не вдалося відписатися від користувача",
+  "Referral link copied!": "Реферальне посилання скопійовано!",
+  "Failed to load user profile": "Не вдалося завантажити профіль користувача",
+  "This item is already reserved or purchased":
+    "Цей подарунок уже зарезервовано або придбано",
+  "Item reserved! They won't see who reserved it.":
+    "Подарунок зарезервовано! Власник не побачить, хто саме зарезервував.",
+  "Failed to reserve item": "Не вдалося зарезервувати подарунок",
+  "Reservation released.": "Резервування скасовано.",
+  "Failed to release reservation": "Не вдалося скасувати резервування",
+  "Marked as gifted! 🎁": "Позначено як подарований! 🎁",
 };
 
 const REGEX_TRANSLATIONS: Array<[RegExp, (match: RegExpMatchArray) => string]> = [
@@ -161,6 +192,10 @@ const getLanguageFromSource = (): AppLanguage => {
 };
 
 export const getAppLanguage = (): AppLanguage => currentLanguage;
+
+const applyDocumentLanguage = () => {
+  document.documentElement.lang = currentLanguage === "uk" ? "uk" : "en";
+};
 
 export const translateText = (input: string): string => {
   if (currentLanguage !== "uk" || !input) return input;
@@ -214,7 +249,7 @@ const translateTree = (root: Node) => {
 export const initLocalization = () => {
   currentLanguage = getLanguageFromSource();
   localStorage.setItem(STORAGE_KEY, currentLanguage);
-  document.documentElement.lang = currentLanguage === "uk" ? "uk" : "en";
+  applyDocumentLanguage();
 
   if (currentLanguage !== "uk") return;
 
@@ -245,4 +280,43 @@ export const initLocalization = () => {
       attributeFilter: ["placeholder", "title", "aria-label"],
     });
   }
+};
+
+export const setAppLanguage = (language?: string | null) => {
+  const nextLanguage = normalizeLanguage(language);
+  currentLanguage = nextLanguage;
+  localStorage.setItem(STORAGE_KEY, currentLanguage);
+  applyDocumentLanguage();
+
+  if (currentLanguage === "uk") {
+    const runTranslate = () => {
+      if (document.body) translateTree(document.body);
+    };
+    runTranslate();
+    window.requestAnimationFrame(runTranslate);
+
+    observer?.disconnect();
+    observer = new MutationObserver((mutations) => {
+      for (const mutation of mutations) {
+        if (mutation.type === "childList") {
+          mutation.addedNodes.forEach((node) => translateTree(node));
+        } else if (mutation.type === "characterData" && mutation.target) {
+          translateNodeText(mutation.target);
+        }
+      }
+    });
+
+    if (document.body) {
+      observer.observe(document.body, {
+        subtree: true,
+        childList: true,
+        characterData: true,
+        attributes: true,
+        attributeFilter: ["placeholder", "title", "aria-label"],
+      });
+    }
+    return;
+  }
+
+  observer?.disconnect();
 };

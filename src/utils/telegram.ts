@@ -1,5 +1,6 @@
 import { TelegramUser } from "../types";
 import { getMockUser } from "./telegram-mock";
+import { translateText } from "./localization";
 
 declare global {
   interface Window {
@@ -135,12 +136,12 @@ export const getTelegramUserId = (): number | null => {
 };
 
 export const showTelegramAlert = (message: string) => {
-  window.Telegram?.WebApp?.showAlert(message);
+  window.Telegram?.WebApp?.showAlert(translateText(message));
 };
 
 export const showTelegramConfirm = (message: string): Promise<boolean> => {
   return new Promise((resolve) => {
-    window.Telegram?.WebApp?.showConfirm(message, (confirmed) => {
+    window.Telegram?.WebApp?.showConfirm(translateText(message), (confirmed) => {
       resolve(confirmed);
     });
   });

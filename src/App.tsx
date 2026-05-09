@@ -13,6 +13,7 @@ import {
   getWishlistIdFromStart,
   getUserIdFromStart,
 } from "./utils/telegram";
+import { setAppLanguage } from "./utils/localization";
 import { useStore } from "./store/useStore";
 import { getUserProfile, applyReferral } from "./services/supabase-api";
 import HomePage from "./pages/HomePage";
@@ -53,6 +54,11 @@ function AppRoutes() {
         didHandleStartParamRef.current = true;
         const profile = await getUserProfile();
         setUserProfile(profile);
+        const profileLanguage =
+          (profile.telegramUser as { language?: string }).language ||
+          profile.telegramUser.language_code ||
+          "en";
+        setAppLanguage(profileLanguage);
 
         const referralCode = getReferralCodeFromStart();
         if (referralCode) {
